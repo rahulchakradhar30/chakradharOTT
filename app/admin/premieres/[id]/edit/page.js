@@ -22,9 +22,17 @@ export default function EditPremierePage() {
     description: "",
     embedLink: "",
     bannerImage: "",
+    thumbnailImage: "",
     displayTime: "",
     startTime: "",
   });
+
+  const toLocalISOString = (date) => {
+    if (!date) return "";
+    const tzoffset = date.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(date.getTime() - tzoffset)).toISOString().slice(0, 16);
+    return localISOTime;
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -49,8 +57,9 @@ export default function EditPremierePage() {
           description: data.description || "",
           embedLink: data.embedLink || "",
           bannerImage: data.bannerImage || "",
-          displayTime: data.displayTime?.toDate?.().toISOString().slice(0, 16) || "",
-          startTime: data.startTime?.toDate?.().toISOString().slice(0, 16) || "",
+          thumbnailImage: data.thumbnailImage || "",
+          displayTime: data.displayTime ? toLocalISOString(data.displayTime.toDate?.() || new Date(data.displayTime)) : "",
+          startTime: data.startTime ? toLocalISOString(data.startTime.toDate?.() || new Date(data.startTime)) : "",
         });
       } catch (err) {
         console.error("Error fetching premiere:", err);
@@ -87,12 +96,15 @@ export default function EditPremierePage() {
         description: form.description,
         embedLink: embed,
         bannerImage: form.bannerImage || "",
+        thumbnailImage: form.thumbnailImage || "",
         startTime: Timestamp.fromDate(new Date(form.startTime)),
       };
 
       // Only update displayTime if it's provided
       if (form.displayTime) {
         updateData.displayTime = Timestamp.fromDate(new Date(form.displayTime));
+      } else {
+        updateData.displayTime = null;
       }
 
       await updateDoc(doc(db, "premieres", id), updateData);
@@ -183,6 +195,16 @@ export default function EditPremierePage() {
             value={form.bannerImage}
             onChange={(val) => setForm((prev) => ({ ...prev, bannerImage: val }))}
             placeholder="Banner Image URL (optional)"
+          />
+        </div>
+
+        {/* THUMBNAIL */}
+        <div>
+          <ImageUploadSelector
+            label="Thumbnail Image (Join Page Preview)"
+            value={form.thumbnailImage}
+            onChange={(val) => setForm((prev) => ({ ...prev, thumbnailImage: val }))}
+            placeholder="Thumbnail Image URL (optional)"
           />
         </div>
 

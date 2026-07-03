@@ -100,9 +100,24 @@ export function AuthProvider({ children }) {
   };
 
   // Register
-  const registerWithEmail = async (email, password) => {
+  const registerWithEmail = async (email, password, additionalData = {}) => {
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
+      
+      try {
+        const { doc, setDoc } = await import("firebase/firestore");
+        const { db } = await import("@/firebase");
+        await setDoc(doc(db, "users", cred.user.uid), {
+          email,
+          firstName: additionalData.firstName || "",
+          lastName: additionalData.lastName || "",
+          dob: additionalData.dob || "",
+          createdAt: new Date(),
+        }, { merge: true });
+      } catch (dbErr) {
+        console.warn("Firestore profile save skipped:", dbErr);
+      }
+
       return cred.user;
     } catch (err) {
       console.warn("Firebase email signup failed, trying local storage fallback:", err);
@@ -117,6 +132,9 @@ export function AuthProvider({ children }) {
         uid: "local_" + Math.random().toString(36).substr(2, 9),
         email,
         password,
+        firstName: additionalData.firstName || "",
+        lastName: additionalData.lastName || "",
+        dob: additionalData.dob || "",
       };
       localUsers.push(newUser);
       localStorage.setItem("localUsers", JSON.stringify(localUsers));
@@ -124,7 +142,7 @@ export function AuthProvider({ children }) {
       const loggedUser = {
         uid: newUser.uid,
         email: newUser.email,
-        displayName: newUser.email.split("@")[0],
+        displayName: additionalData.firstName ? `${additionalData.firstName} ${additionalData.lastName}` : newUser.email.split("@")[0],
         photoURL: null,
         emailVerified: true,
       };

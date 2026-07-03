@@ -235,31 +235,58 @@ export default function PremiereJoinPage() {
             </p>
           </div>
 
-          {isLive ? (
-            <div className="aspect-video bg-black rounded-[1.75rem] overflow-hidden mb-8 border border-white/15">
-              {premiere.embedLink ? (
-                <iframe
-                  src={premiere.embedLink}
-                  title={premiere.title}
-                  allowFullScreen
-                  loading="lazy"
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          <div className="aspect-video relative rounded-[1.75rem] overflow-hidden mb-8 border border-white/15 shadow-2xl group">
+            {premiere.thumbnailImage || premiere.bannerImage ? (
+              (premiere.thumbnailImage || premiere.bannerImage).startsWith("data:image/") ? (
+                <img
+                  src={premiere.thumbnailImage || premiere.bannerImage}
+                  alt={premiere.title}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
               ) : (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-gray-400">Stream starting soon...</p>
+                <Image
+                  src={premiere.thumbnailImage || premiere.bannerImage}
+                  alt={premiere.title}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 80vw"
+                  className="object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+              )
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-br from-[#13203e] via-[#0d152b] to-black" />
+            )}
+            <div className="absolute inset-0 bg-black/60 transition-colors duration-500 group-hover:bg-black/50" />
+            
+            {/* Status overlay */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 space-y-4">
+              <span className={`px-4 py-2 rounded-full font-bold uppercase tracking-widest text-xs border ${
+                isLive
+                  ? "bg-red-500/80 border-red-300/40 text-white animate-pulse"
+                  : "bg-cyan-500/30 border-cyan-400/40 text-cyan-200"
+              }`}>
+                {isLive ? "🔴 LIVE NOW" : "🕐 UPCOMING PREMIERE"}
+              </span>
+              
+              <h3 className="text-xl md:text-2xl font-black max-w-lg drop-shadow-md select-none">{premiere.title}</h3>
+              
+              {isLive ? (
+                <p className="text-sm text-cyan-300 font-semibold drop-shadow-md animate-softPulse">
+                  The live stream is active! Enter the room below to watch and chat together.
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  <p className="text-xs text-gray-300 uppercase tracking-widest">Starts in</p>
+                  {timeUntilStart ? (
+                    <p className="text-2xl md:text-3xl font-black text-cyan-300 tracking-wide font-mono">
+                      {timeUntilStart.hours}h {timeUntilStart.minutes}m {timeUntilStart.seconds}s
+                    </p>
+                  ) : (
+                    <p className="text-xl font-bold text-gray-400 font-mono">TBA</p>
+                  )}
                 </div>
               )}
             </div>
-          ) : (
-            <div className="aspect-video bg-gradient-to-br from-[#13203e] via-[#0d152b] to-black rounded-[1.75rem] overflow-hidden mb-8 border border-white/15 flex items-center justify-center">
-              <div className="text-center">
-                <p className="text-gray-300 mb-2">Premiere coming soon</p>
-                <p className="text-sm text-cyan-300">Your seat will unlock at showtime</p>
-              </div>
-            </div>
-          )}
+          </div>
 
           {isTicketed && !hasTicket && (
             <div className="bg-red-900/25 border border-red-500/30 text-red-200 rounded-[1.25rem] p-4 mb-8 text-sm">

@@ -17,6 +17,7 @@ export default function CreatePremierePage() {
     description: "",
     embedLink: "",
     bannerImage: "",
+    thumbnailImage: "",
     startTime: "",
     displayTime: "",
     ticketRequired: false,
@@ -51,6 +52,7 @@ export default function CreatePremierePage() {
         description: form.description,
         embedLink: embed,
         bannerImage: form.bannerImage || "",
+        thumbnailImage: form.thumbnailImage || "",
         displayTime: form.displayTime ? Timestamp.fromDate(new Date(form.displayTime)) : null,
         startTime: Timestamp.fromDate(new Date(form.startTime)), // ✅ FIXED
         status: "scheduled",
@@ -116,6 +118,14 @@ export default function CreatePremierePage() {
           value={form.bannerImage}
           onChange={(val) => setForm((prev) => ({ ...prev, bannerImage: val }))}
           placeholder="Banner Image URL (optional)"
+        />
+
+        {/* THUMBNAIL */}
+        <ImageUploadSelector
+          label="Thumbnail Image (Join Page Preview)"
+          value={form.thumbnailImage}
+          onChange={(val) => setForm((prev) => ({ ...prev, thumbnailImage: val }))}
+          placeholder="Thumbnail Image URL (optional)"
         />
 
         {/* START TIME */}

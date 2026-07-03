@@ -24,10 +24,41 @@ export default function LoginPage() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+    firstName: "",
+    lastName: "",
+    dob: "",
+    captchaInput: "",
   });
+  const [captchaCode, setCaptchaCode] = useState("");
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+
+  const generateCaptcha = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+    for (let i = 0; i < 5; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setCaptchaCode(code);
+  };
+
+  useState(() => {
+    // Generate initial captcha on mount
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+    for (let i = 0; i < 5; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    // Set code dynamically in useEffect if window is defined
+  });
+
+  const { useEffect: useReactEffect } = require("react");
+  useReactEffect(() => {
+    if (mode === "register") {
+      generateCaptcha();
+    }
+  }, [mode]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -50,6 +81,21 @@ export default function LoginPage() {
       newErrors.password = "Password is required";
     } else if (formData.password.length < 6) {
       newErrors.password = "Password must be at least 6 characters";
+    }
+
+    if (mode === "register") {
+      if (!formData.firstName.trim()) {
+        newErrors.firstName = "First name is required";
+      }
+      if (!formData.lastName.trim()) {
+        newErrors.lastName = "Last name is required";
+      }
+      if (!formData.dob) {
+        newErrors.dob = "Date of birth is required";
+      }
+      if (formData.captchaInput.toUpperCase() !== captchaCode) {
+        newErrors.captchaInput = "Verification code does not match";
+      }
     }
 
     setErrors(newErrors);
@@ -102,15 +148,36 @@ export default function LoginPage() {
       }
 
       // Registration
-      await registerWithEmail(formData.email, formData.password);
+      await registerWithEmail(formData.email, formData.password, {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        dob: formData.dob,
+      });
       addToast("Account created successfully! Logging you in...", "success");
       
       // Auto login after registration
       await loginWithEmail(formData.email, formData.password);
       router.push("/");
     } catch (err) {
-      const errorMessage = err.message || "Authentication failed";
+      let errorMessage = "Authentication failed. Please try again.";
+      const errorCode = err.code || "";
+      
+      if (errorCode === "auth/user-not-found" || err.message?.includes("auth/user-not-found")) {
+        errorMessage = "This email is not registered. Please sign up first.";
+      } else if (errorCode === "auth/wrong-password" || err.message?.includes("auth/wrong-password") || errorCode === "auth/invalid-credential" || err.message?.includes("auth/invalid-credential")) {
+        errorMessage = "Incorrect email or password. Please try again.";
+      } else if (errorCode === "auth/email-already-in-use" || err.message?.includes("auth/email-already-in-use")) {
+        errorMessage = "This email is already registered. Please sign in instead.";
+      } else if (errorCode === "auth/network-request-failed" || err.message?.includes("auth/network-request-failed")) {
+        errorMessage = "Network error. Please check your internet connection.";
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
       addToast(errorMessage, "error");
+      if (mode === "register") {
+        generateCaptcha();
+      }
     } finally {
       setLoading(false);
     }
@@ -168,6 +235,80 @@ export default function LoginPage() {
         ) : null}
 
         <form onSubmit={handleEmailAuth} className="space-y-5">
+          {mode === "register" && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <FormInput
+                  label="First Name"
+                  name="firstName"
+                  type="text"
+                  placeholder="First name"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  error={errors.firstName}
+                  disabled={loading}
+                  required
+                />
+                <FormInput
+                  label="Last Name"
+                  name="lastName"
+                  type="text"
+                  placeholder="Last name"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  error={errors.lastName}
+                  disabled={loading}
+                  required
+                />
+              </div>
+
+              <FormInput
+                label="Date of Birth"
+                name="dob"
+                type="date"
+                value={formData.dob}
+                onChange={handleChange}
+                error={errors.dob}
+                disabled={loading}
+                required
+              />
+
+              {/* Bot Check Captcha */}
+              <div className="admin-panel p-4 rounded-2xl bg-zinc-900 border border-white/10 space-y-3">
+                <label className="block text-xs uppercase tracking-[0.18em] text-gray-400 font-semibold">
+                  Bot Verification
+                </label>
+                <div className="flex items-center justify-between gap-4">
+                  <div 
+                    className="flex-1 bg-gradient-to-r from-cyan-900 to-blue-900 text-cyan-200 py-3 rounded-xl text-center font-mono tracking-[0.4em] font-extrabold select-none border border-cyan-400/20 text-lg shadow-inner"
+                    style={{ textShadow: "0px 0px 8px rgba(0, 212, 255, 0.4)" }}
+                  >
+                    {captchaCode}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={generateCaptcha}
+                    className="p-3 bg-white/5 border border-white/15 rounded-xl hover:bg-white/10 transition text-sm text-cyan-300 font-bold"
+                    title="Generate new captcha code"
+                  >
+                    ↻
+                  </button>
+                </div>
+                <FormInput
+                  label="Type the code above"
+                  name="captchaInput"
+                  type="text"
+                  placeholder="Verification code"
+                  value={formData.captchaInput}
+                  onChange={handleChange}
+                  error={errors.captchaInput}
+                  disabled={loading}
+                  required
+                />
+              </div>
+            </>
+          )}
+
           <FormInput
             label="Email Address"
             name="email"

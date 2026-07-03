@@ -488,7 +488,25 @@ export default function PremiereRoomPage() {
         {/* VIDEO PLAYER */}
         <div className="relative">
           <div className="glass-card rounded-[2rem] overflow-hidden border border-white/10 aspect-video relative">
-            {premiere.embedLink ? (
+            {!isLive ? (
+              <div
+                className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-cover bg-center"
+                style={premiere.bannerImage ? { backgroundImage: `url(${premiere.bannerImage})` } : {}}
+              >
+                <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+                <div className="relative z-10 space-y-4">
+                  <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest bg-cyan-500/25 border border-cyan-400/30 text-cyan-200 animate-pulse">
+                    Upcoming Live Event
+                  </span>
+                  <h3 className="text-xl md:text-2xl font-black max-w-md">{premiere.title}</h3>
+                  <p className="text-sm text-gray-300">This stream will unlock automatically at showtime.</p>
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-400 uppercase tracking-widest">Countdown</p>
+                    <p className="text-3xl font-black text-cyan-300 font-mono tracking-widest">{countdown || "TBA"}</p>
+                  </div>
+                </div>
+              </div>
+            ) : premiere.embedLink ? (
               <iframe
                 src={premiere.embedLink}
                 className="w-full h-full"

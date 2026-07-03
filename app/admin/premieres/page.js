@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { db } from "@/firebase";
-import { collection, getDocs, query, orderBy, updateDoc, doc } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import Link from "next/link";
 
 export default function AdminPremieresPage() {
@@ -92,6 +92,21 @@ export default function AdminPremieresPage() {
     } catch (err) {
       console.error("Error restoring premiere:", err);
       alert("Failed to restore premiere");
+    }
+  };
+
+  // Permanently delete premiere
+  const handleDelete = async (premiereId) => {
+    const confirmDelete = window.confirm("⚠️ Are you absolutely sure you want to permanently delete this premiere? This action CANNOT be undone.");
+    if (!confirmDelete) return;
+
+    try {
+      await deleteDoc(doc(db, "premieres", premiereId));
+      setPremieres((prev) => prev.filter((p) => p.id !== premiereId));
+      alert("🗑️ Premiere permanently deleted!");
+    } catch (err) {
+      console.error("Error deleting premiere:", err);
+      alert("Failed to delete premiere: " + err.message);
     }
   };
 
@@ -247,9 +262,12 @@ export default function AdminPremieresPage() {
                     >
                       Restore
                     </button>
-                    <p className="flex-1 text-xs text-gray-500 flex items-center">
-                      {premiere.archivedAt?.toDate?.().toLocaleDateString?.()}
-                    </p>
+                    <button
+                      onClick={() => handleDelete(premiere.id)}
+                      className="flex-1 admin-button bg-red-500/10 text-red-100 border border-red-300/20 text-xs py-2"
+                    >
+                      Delete
+                    </button>
                   </>
                 )}
               </div>

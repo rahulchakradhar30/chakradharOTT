@@ -410,11 +410,12 @@ export default function Home() {
 
             return { id: doc.id, ...data, status, displayTime: display };
           })
+          .filter((p) => !p.archived) // Filter out archived/disabled premieres from homepage
           .sort((a, b) => (b.displayTime?.getTime?.() || 0) - (a.displayTime?.getTime?.() || 0));
 
         const liveList = premiereData.filter((p) => p.status === "live");
         const scheduledList = premiereData.filter(
-          (p) => p.status === "scheduled" && p.displayTime && now <= p.displayTime
+          (p) => p.status === "scheduled" && (!p.displayTime || now >= p.displayTime)
         );
 
         setPremieres(liveList);

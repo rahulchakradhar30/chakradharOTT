@@ -10,6 +10,8 @@ import {
   query,
   orderBy,
   limit,
+  updateDoc,
+  doc,
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { motion } from "framer-motion";
@@ -41,6 +43,48 @@ export default function AdminDashboard() {
   const [adminEmail, setAdminEmail] = useState("");
   const [sessionTimeLeft, setSessionTimeLeft] = useState(1800);
   const [loading, setLoading] = useState(true);
+  const [moviesList, setMoviesList] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleToggleFlag = async (movieId, field, currentValue) => {
+    try {
+      await updateDoc(doc(db, "movies", movieId), {
+        [field]: !currentValue,
+      });
+      setMoviesList((prev) =>
+        prev.map((m) => (m.id === movieId ? { ...m, [field]: !currentValue } : m))
+      );
+    } catch (err) {
+      console.error("Error toggling field:", err);
+      alert("Failed to toggle field: " + err.message);
+    }
+  };
+
+  const handleSetHero = async (movieId) => {
+    try {
+      // Clear hero status on all movies first
+      const clears = moviesList.map((m) =>
+        updateDoc(doc(db, "movies", m.id), { isHero: false })
+      );
+      await Promise.all(clears);
+
+      // Set target movie hero status
+      await updateDoc(doc(db, "movies", movieId), {
+        isHero: true,
+      });
+
+      setMoviesList((prev) =>
+        prev.map((m) => ({
+          ...m,
+          isHero: m.id === movieId,
+        }))
+      );
+      alert("🎯 Hero banner updated successfully!");
+    } catch (err) {
+      console.error("Error setting hero:", err);
+      alert("Failed to set hero: " + err.message);
+    }
+  };
 
   /* ---------------- AUTH ---------------- */
   useEffect(() => {
@@ -71,6 +115,12 @@ export default function AdminDashboard() {
           comments: commentsSnapshot.size,
           views: totalViews,
         });
+
+        const list = moviesSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setMoviesList(list);
 
         // 🎬 PREMIERE REVENUE DATA
         const premiereSnap = await getDocs(collection(db, "premieres"));
@@ -269,6 +319,101 @@ export default function AdminDashboard() {
             tone="amber"
           />
         </div>
+      </div>
+
+      {/* HOMEPAGE LAYOUT MANAGER PANEL */}
+      <div>
+        <motion.h2
+          initial={{ opacity: 0, x: -20 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          className="text-2xl font-black mb-6 text-transparent bg-gradient-to-r from-cyan-300 via-blue-300 to-indigo-300 bg-clip-text"
+        >
+          🏠 Homepage Content Controls
+        </motion.h2>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="glass-card rounded-[2.5rem] p-6 md:p-8 border border-white/10"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div>
+              <p className="admin-kicker mb-1 text-cyan-300">Layout Manager</p>
+              <h3 className="text-xl font-bold text-white">Spotlight Content Settings</h3>
+            </div>
+            <div className="w-full sm:w-64">
+              <input
+                type="text"
+                placeholder="Search catalog titles..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="admin-input focus-ring text-xs py-2"
+              />
+            </div>
+          </div>
+
+          <div className="overflow-x-auto hide-scrollbar max-h-96">
+            <table className="w-full text-left text-sm text-gray-300 border-collapse">
+              <thead>
+                <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-gray-400 font-extrabold">
+                  <th className="pb-3 font-semibold">Title</th>
+                  <th className="pb-3 text-center font-semibold">Hero Banner (Single)</th>
+                  <th className="pb-3 text-center font-semibold">Editors Choice</th>
+                  <th className="pb-3 text-center font-semibold">Trending Now</th>
+                  <th className="pb-3 text-right font-semibold">Manage</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {moviesList
+                  .filter((m) =>
+                    m.title?.toLowerCase().includes(searchQuery.toLowerCase())
+                  )
+                  .map((movie) => (
+                    <tr key={movie.id} className="hover:bg-white/[0.02] transition">
+                      <td className="py-4 font-bold text-white flex flex-col">
+                        <span>{movie.title}</span>
+                        <span className="text-[10px] text-gray-400 mt-0.5 uppercase tracking-wide">{movie.genre || "Drama"}</span>
+                      </td>
+                      <td className="py-4 text-center">
+                        <input
+                          type="radio"
+                          name="hero-radio"
+                          checked={movie.isHero || false}
+                          onChange={() => handleSetHero(movie.id)}
+                          className="cursor-pointer accent-cyan-400 w-4 h-4"
+                        />
+                      </td>
+                      <td className="py-4 text-center">
+                        <input
+                          type="checkbox"
+                          checked={movie.isFeatured || false}
+                          onChange={() => handleToggleFlag(movie.id, "isFeatured", !!movie.isFeatured)}
+                          className="cursor-pointer accent-cyan-400 w-4 h-4"
+                        />
+                      </td>
+                      <td className="py-4 text-center">
+                        <input
+                          type="checkbox"
+                          checked={movie.isTrending || false}
+                          onChange={() => handleToggleFlag(movie.id, "isTrending", !!movie.isTrending)}
+                          className="cursor-pointer accent-cyan-400 w-4 h-4"
+                        />
+                      </td>
+                      <td className="py-4 text-right">
+                        <Link
+                          href={`/admin/movies/edit/${movie.id}`}
+                          className="text-xs text-cyan-300 hover:underline font-extrabold"
+                        >
+                          Edit →
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
       </div>
 
       {/* ACTIVITY SECTION */}

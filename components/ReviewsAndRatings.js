@@ -40,8 +40,10 @@ export default function ReviewsAndRatings({ movieId }) {
         setLoading(true);
         
         // Get all reviews for movie
-        const reviewsRef = collection(db, `movies/${movieId}/reviews`);
-        const reviewsSnap = await getDocs(reviewsRef);
+        const reviewsRef = collection(db, "reviews");
+        const reviewsSnap = await getDocs(
+          query(reviewsRef, where("movieId", "==", movieId))
+        );
 
         const reviewsData = reviewsSnap.docs.map((doc) => ({
           id: doc.id,
@@ -105,11 +107,12 @@ export default function ReviewsAndRatings({ movieId }) {
       try {
         setSubmitting(true);
 
-        const reviewRef = doc(db, `movies/${movieId}/reviews/${user.uid}`);
+        const reviewRef = doc(db, "reviews", `${movieId}_${user.uid}`);
 
         await setDoc(
           reviewRef,
           {
+            movieId,
             userId: user.uid,
             userName: user.displayName || "Anonymous",
             userPhoto: user.photoURL || "",
@@ -126,8 +129,10 @@ export default function ReviewsAndRatings({ movieId }) {
         addToast?.("Review submitted successfully!", "success");
 
         // Reload reviews
-        const reviewsRef = collection(db, `movies/${movieId}/reviews`);
-        const reviewsSnap = await getDocs(reviewsRef);
+        const reviewsRef = collection(db, "reviews");
+        const reviewsSnap = await getDocs(
+          query(reviewsRef, where("movieId", "==", movieId))
+        );
         const reviewsData = reviewsSnap.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),

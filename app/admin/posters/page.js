@@ -21,24 +21,15 @@ export default function AdminPostersPage() {
   useEffect(() => {
     const fetchPosters = async () => {
       try {
-        const q = query(collection(db, "posters"), orderBy("createdAt", "desc"));
-        const snap = await getDocs(q);
-        setPosters(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        const res = await fetch("/api/posters");
+        const data = await res.json();
+        if (data.success) {
+          setPosters(data.posters || []);
+        } else {
+          console.error("API error fetching posters:", data.error);
+        }
       } catch (err) {
         console.error("Failed to fetch posters:", err);
-        // Fallback: fetch without ordering if index not ready
-        try {
-          const snap = await getDocs(collection(db, "posters"));
-          const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-          data.sort((a, b) => {
-            const ta = a.createdAt?.toDate?.()?.getTime?.() || 0;
-            const tb = b.createdAt?.toDate?.()?.getTime?.() || 0;
-            return tb - ta;
-          });
-          setPosters(data);
-        } catch (fallbackErr) {
-          console.error("Fallback fetch also failed:", fallbackErr);
-        }
       } finally {
         setLoading(false);
       }
@@ -49,8 +40,15 @@ export default function AdminPostersPage() {
   const handleDelete = async (id) => {
     if (!confirm("Delete this poster permanently?")) return;
     try {
-      await deleteDoc(doc(db, "posters", id));
-      setPosters((prev) => prev.filter((p) => p.id !== id));
+      const res = await fetch(`/api/posters?id=${id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPosters((prev) => prev.filter((p) => p.id !== id));
+      } else {
+        alert("Failed to delete poster: " + (data.error || "Unknown error"));
+      }
     } catch (err) {
       console.error("Delete failed:", err);
       alert("Failed to delete poster.");
@@ -156,7 +154,13 @@ export default function AdminPostersPage() {
                 </div>
 
                 <p className="text-[11px] text-gray-500">
-                  {poster.createdAt?.toDate?.().toLocaleDateString?.("en-IN", { day: "numeric", month: "short", year: "numeric" }) || "Unknown date"}
+                  {poster.createdAt
+                    ? new Date(poster.createdAt).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })
+                    : "Unknown date"}
                 </p>
 
                 {poster.tags?.length > 0 && (

@@ -45,11 +45,11 @@ export default function PosterDetailPage() {
     if (!id) return;
     const fetchPoster = async () => {
       try {
-        const snap = await getDoc(doc(db, "posters", id));
-        if (snap.exists()) {
-          const data = { id: snap.id, ...snap.data() };
-          setPoster(data);
-          setLikeCount(data.likesCount || 0);
+        const res = await fetch(`/api/posters/${id}`);
+        const data = await res.json();
+        if (data.success) {
+          setPoster(data.poster);
+          setLikeCount(data.poster.likesCount || 0);
         }
       } catch (err) {
         console.error("Error fetching poster:", err);
@@ -65,13 +65,9 @@ export default function PosterDetailPage() {
     if (!id || !user?.uid) return;
     const checkLike = async () => {
       try {
-        const q = query(
-          collection(db, "poster_likes"),
-          where("posterId", "==", id),
-          where("userId", "==", user.uid)
-        );
-        const snap = await getDocs(q);
-        setLiked(!snap.empty);
+        const res = await fetch(`/api/posters/${id}/like?userId=${user.uid}`);
+        const data = await res.json();
+        setLiked(data.liked);
       } catch (err) {
         console.error("Check like error:", err);
       }
@@ -79,27 +75,23 @@ export default function PosterDetailPage() {
     checkLike();
   }, [id, user]);
 
-  // Real-time comments
+  const fetchComments = async () => {
+    try {
+      const res = await fetch(`/api/posters/${id}/comments`);
+      const data = await res.json();
+      if (data.success) {
+        setComments(data.comments || []);
+      }
+    } catch (err) {
+      console.error("Failed to load comments:", err);
+    }
+  };
+
+  // Comments
   useEffect(() => {
-    if (!id) return;
-
-    const q = query(
-      collection(db, "poster_comments"),
-      where("posterId", "==", id)
-    );
-
-    const unsub = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-      // Sort client-side
-      data.sort((a, b) => {
-        const ta = a.createdAt?.toDate?.()?.getTime?.() || 0;
-        const tb = b.createdAt?.toDate?.()?.getTime?.() || 0;
-        return tb - ta;
-      });
-      setComments(data);
-    });
-
-    return () => unsub();
+    if (id) {
+      fetchComments();
+    }
   }, [id]);
 
   const handleLikeToggle = async () => {
@@ -108,31 +100,14 @@ export default function PosterDetailPage() {
 
     setLikeLoading(true);
     try {
-      if (liked) {
-        // Unlike
-        const q = query(
-          collection(db, "poster_likes"),
-          where("posterId", "==", id),
-          where("userId", "==", user.uid)
-        );
-        const snap = await getDocs(q);
-        for (const d of snap.docs) {
-          await deleteDoc(doc(db, "poster_likes", d.id));
-        }
-        await updateDoc(doc(db, "posters", id), { likesCount: increment(-1) });
-        setLiked(false);
-        setLikeCount((prev) => Math.max(0, prev - 1));
-      } else {
-        // Like
-        await addDoc(collection(db, "poster_likes"), {
-          posterId: id,
-          userId: user.uid,
-          createdAt: serverTimestamp(),
-        });
-        await updateDoc(doc(db, "posters", id), { likesCount: increment(1) });
-        setLiked(true);
-        setLikeCount((prev) => prev + 1);
-      }
+      const res = await fetch(`/api/posters/${id}/like`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.uid }),
+      });
+      const data = await res.json();
+      setLiked(data.liked);
+      setLikeCount((prev) => (data.liked ? prev + 1 : Math.max(0, prev - 1)));
     } catch (err) {
       console.error("Like toggle error:", err);
     } finally {
@@ -147,16 +122,22 @@ export default function PosterDetailPage() {
 
     setCommentLoading(true);
     try {
-      await addDoc(collection(db, "poster_comments"), {
-        posterId: id,
-        userId: user.uid,
-        name: user.displayName || user.email?.split("@")[0] || "User",
-        photoURL: user.photoURL || "",
-        comment: commentText.trim(),
-        createdAt: serverTimestamp(),
+      const res = await fetch(`/api/posters/${id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.uid,
+          name: user.displayName || user.email?.split("@")[0] || "User",
+          photoURL: user.photoURL || "",
+          comment: commentText.trim(),
+        }),
       });
-      await updateDoc(doc(db, "posters", id), { commentsCount: increment(1) });
-      setCommentText("");
+      const data = await res.json();
+      if (data.success) {
+        setCommentText("");
+        fetchComments();
+        setPoster((prev) => prev ? { ...prev, commentsCount: (prev.commentsCount || 0) + 1 } : prev);
+      }
     } catch (err) {
       console.error("Comment submit error:", err);
       alert("Failed to post comment.");
@@ -254,7 +235,13 @@ export default function PosterDetailPage() {
               )}
 
               <p className="text-[11px] text-gray-500 mt-3">
-                {poster.createdAt?.toDate?.().toLocaleDateString?.("en-IN", { day: "numeric", month: "long", year: "numeric" }) || ""}
+                {poster.createdAt
+                  ? new Date(poster.createdAt).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })
+                  : ""}
               </p>
             </div>
 
@@ -337,7 +324,12 @@ export default function PosterDetailPage() {
                       <div className="flex items-center gap-2 mb-1">
                         <p className="text-xs font-semibold text-gray-200">{c.name}</p>
                         <p className="text-[10px] text-gray-500">
-                          {c.createdAt?.toDate?.().toLocaleDateString?.("en-IN", { day: "numeric", month: "short" }) || ""}
+                          {c.createdAt
+                            ? new Date(c.createdAt).toLocaleDateString("en-IN", {
+                                day: "numeric",
+                                month: "short",
+                              })
+                            : ""}
                         </p>
                       </div>
                       <p className="text-sm text-gray-300">{c.comment}</p>

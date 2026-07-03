@@ -14,24 +14,15 @@ export default function PostersGalleryPage() {
   useEffect(() => {
     const fetchPosters = async () => {
       try {
-        const q = query(collection(db, "posters"), orderBy("createdAt", "desc"));
-        const snap = await getDocs(q);
-        setPosters(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        const res = await fetch("/api/posters");
+        const data = await res.json();
+        if (data.success) {
+          setPosters(data.posters || []);
+        } else {
+          console.error("API error loading posters:", data.error);
+        }
       } catch (err) {
         console.error("Fetch posters error:", err);
-        // Fallback without index
-        try {
-          const snap = await getDocs(collection(db, "posters"));
-          const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-          data.sort((a, b) => {
-            const ta = a.createdAt?.toDate?.()?.getTime?.() || 0;
-            const tb = b.createdAt?.toDate?.()?.getTime?.() || 0;
-            return tb - ta;
-          });
-          setPosters(data);
-        } catch (e2) {
-          console.error("Fallback also failed:", e2);
-        }
       } finally {
         setLoading(false);
       }

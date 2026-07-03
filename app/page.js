@@ -475,16 +475,11 @@ export default function Home() {
 
         // Fetch latest posters
         try {
-          const postersSnap = await getDocs(collection(db, "posters"));
-          const postersData = postersSnap.docs
-            .map((d) => ({ id: d.id, ...d.data() }))
-            .sort((a, b) => {
-              const ta = a.createdAt?.toDate?.()?.getTime?.() || 0;
-              const tb = b.createdAt?.toDate?.()?.getTime?.() || 0;
-              return tb - ta;
-            })
-            .slice(0, 8);
-          setLatestPosters(postersData);
+          const res = await fetch("/api/posters");
+          const data = await res.json();
+          if (data.success && data.posters) {
+            setLatestPosters(data.posters.slice(0, 8));
+          }
         } catch (posterErr) {
           console.warn("Posters fetch skipped:", posterErr);
         }

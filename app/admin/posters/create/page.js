@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { db } from "@/firebase";
-import { collection, addDoc, Timestamp } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import ImageUploadSelector from "@/components/ImageUploadSelector";
@@ -18,6 +18,30 @@ export default function CreatePosterPage() {
     movieId: "",
     tags: "",
   });
+
+  const [movies, setMovies] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  // Fetch all movies for dropdown selection
+  useEffect(() => {
+    const fetchMovies = async () => {
+      try {
+        const snap = await getDocs(collection(db, "movies"));
+        setMovies(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      } catch (err) {
+        console.error("Failed to load movies:", err);
+      }
+    };
+    fetchMovies();
+  }, []);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleOutsideClick = () => setShowDropdown(false);
+    document.addEventListener("click", handleOutsideClick);
+    return () => document.removeEventListener("click", handleOutsideClick);
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -45,17 +69,26 @@ export default function CreatePosterPage() {
         .map((t) => t.trim().toLowerCase())
         .filter(Boolean);
 
-      await addDoc(collection(db, "posters"), {
-        imageUrl: form.imageUrl,
-        caption: form.caption.trim(),
-        movieId: form.movieId.trim() || null,
-        tags: tagsArray,
-        likesCount: 0,
-        commentsCount: 0,
-        createdAt: Timestamp.now(),
+      const response = await fetch("/api/posters", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          imageUrl: form.imageUrl,
+          caption: form.caption.trim(),
+          movieId: form.movieId || null,
+          tags: tagsArray,
+        }),
       });
 
-      router.push("/admin/posters");
+      const data = await response.json();
+
+      if (data.success) {
+        router.push("/admin/posters");
+      } else {
+        alert("Failed to create poster: " + (data.error || "Unknown error"));
+      }
     } catch (err) {
       console.error("Create poster failed:", err);
       alert("Failed to create poster: " + (err.message || "Unknown error"));
@@ -112,18 +145,78 @@ export default function CreatePosterPage() {
           <p className="text-xs text-gray-400 mt-1">{form.caption.length}/2000 characters</p>
         </div>
 
-        {/* Movie Link (Optional) */}
-        <div>
+        {/* Searchable Movie Link */}
+        <div className="relative" onClick={(e) => e.stopPropagation()}>
           <label className="block text-sm font-semibold mb-2">Link to Movie (Optional)</label>
-          <input
-            type="text"
-            name="movieId"
-            value={form.movieId}
-            onChange={handleChange}
-            placeholder="Paste movie ID to link this poster to a movie page"
-            className="admin-input focus-ring"
-          />
-          <p className="text-xs text-gray-400 mt-1">Users will see a &quot;Watch Movie&quot; button if linked</p>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="Search movie by title to link..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setShowDropdown(true);
+                  if (!e.target.value) {
+                    setForm((prev) => ({ ...prev, movieId: "" }));
+                  }
+                }}
+                onFocus={() => setShowDropdown(true)}
+                className="admin-input focus-ring w-full"
+              />
+              {showDropdown && (
+                <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto rounded-xl border border-white/10 bg-zinc-950 p-2 shadow-2xl space-y-1">
+                  {movies.filter((m) =>
+                    m.title?.toLowerCase().includes(searchTerm.toLowerCase())
+                  ).length === 0 ? (
+                    <p className="text-xs text-gray-500 p-2">No movies found</p>
+                  ) : (
+                    movies
+                      .filter((m) =>
+                        m.title?.toLowerCase().includes(searchTerm.toLowerCase())
+                      )
+                      .map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => {
+                            setForm((prev) => ({ ...prev, movieId: m.id }));
+                            setSearchTerm(m.title);
+                            setShowDropdown(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-xs transition ${
+                            form.movieId === m.id
+                              ? "bg-cyan-500/25 text-cyan-300 border border-cyan-400/20"
+                              : "hover:bg-white/5 text-gray-300"
+                          }`}
+                        >
+                          {m.title}
+                        </button>
+                      ))
+                  )}
+                </div>
+              )}
+            </div>
+            {form.movieId && (
+              <button
+                type="button"
+                onClick={() => {
+                  setForm((prev) => ({ ...prev, movieId: "" }));
+                  setSearchTerm("");
+                }}
+                className="px-4 rounded-xl bg-red-600/25 border border-red-500/20 text-red-300 text-xs hover:bg-red-600/40 transition"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <p className="text-[11px] text-gray-400 mt-1.5">
+            {form.movieId ? (
+              <span className="text-cyan-300 font-medium">Selected Movie ID: {form.movieId}</span>
+            ) : (
+              "Select a movie to automatically link this poster to its detail page"
+            )}
+          </p>
         </div>
 
         {/* Tags */}

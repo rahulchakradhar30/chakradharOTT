@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { db } from "@/firebase";
-import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, onSnapshot, query, orderBy, limit } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
@@ -15,88 +15,89 @@ export default function TriviaHubPage() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch catalog movies and user statistics
+  // Fetch catalog movies and subscribe to realtime rankings
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchMovies = async () => {
       try {
-        // 1. Fetch catalog movies
         const moviesSnap = await getDocs(collection(db, "movies"));
         const moviesList = moviesSnap.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
         setMovies(moviesList);
-
-        // 2. Fetch current user XP
-        let userXP = 0;
-        if (user) {
-          const userSnap = await getDoc(doc(db, "users", user.uid));
-          if (userSnap.exists()) {
-            userXP = userSnap.data().totalXP || 0;
-            setCurrentUserXP(userXP);
-          }
-        }
-
-        // 3. Load rankings. We pull actual users from firestore, and blend in premium mock users to fill out leaderboard
-        const usersSnap = await getDocs(collection(db, "users"));
-        const realUsers = usersSnap.docs
-          .map((doc) => ({
-            id: doc.id,
-            name: doc.data().displayName || doc.data().email?.split("@")[0] || "Critic",
-            xp: doc.data().totalXP || 0,
-            photo: doc.data().photoURL || null,
-          }))
-          .filter((u) => u.xp > 0);
-
-        // Seed mock users to make it feel alive and highly competitive
-        const mockUsers = [
-          { id: "mock1", name: "CinephileSupreme", xp: 5200, photo: "https://images.unsplash.com/photo-1534528741775-53994a69daeb" },
-          { id: "mock2", name: "KubrickScorsese", xp: 4800, photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d" },
-          { id: "mock3", name: "MarvelGeek", xp: 3900, photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e" },
-          { id: "mock4", name: "NolanFanboy", xp: 2600, photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80" },
-        ];
-
-        // Combine and filter out current user duplicate in mock (if real exists)
-        const combined = [...realUsers];
-        
-        // Add current user if not already in realUsers
-        const exists = realUsers.some((u) => u.id === user?.uid);
-        if (user && !exists && userXP > 0) {
-          combined.push({
-            id: user.uid,
-            name: user.displayName || user.email?.split("@")[0] || "You",
-            xp: userXP,
-            photo: user.photoURL || null,
-          });
-        }
-
-        // Merge mock users
-        mockUsers.forEach((mock) => {
-          if (!combined.some((u) => u.name === mock.name)) {
-            combined.push(mock);
-          }
-        });
-
-        // Sort descending
-        combined.sort((a, b) => b.xp - a.xp);
-        setLeaderboard(combined);
-
       } catch (err) {
-        console.error("Error loading trivia hub details:", err);
-      } finally {
-        setLoading(false);
+        console.error("Error loading movies for trivia:", err);
       }
     };
+    fetchMovies();
 
-    fetchData();
+    // Subscribe to users leaderboard list in realtime
+    const leaderboardQuery = query(
+      collection(db, "users"),
+      orderBy("totalXP", "desc"),
+      limit(50)
+    );
+
+    const unsubscribe = onSnapshot(leaderboardQuery, (snapshot) => {
+      const realUsers = snapshot.docs
+        .map((doc) => ({
+          id: doc.id,
+          name: doc.data().displayName || doc.data().email?.split("@")[0] || "Critic",
+          xp: doc.data().totalXP || 0,
+          photo: doc.data().photoURL || null,
+        }))
+        .filter((u) => u.xp > 0);
+
+      // Seed mock users to make it feel alive and highly competitive
+      const mockUsers = [
+        { id: "mock1", name: "CinephileSupreme", xp: 5200, photo: "https://images.unsplash.com/photo-1534528741775-53994a69daeb" },
+        { id: "mock2", name: "KubrickScorsese", xp: 4800, photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d" },
+        { id: "mock3", name: "MarvelGeek", xp: 3900, photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e" },
+        { id: "mock4", name: "NolanFanboy", xp: 2600, photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80" },
+      ];
+
+      const combined = [...realUsers];
+
+      // Merge mock users
+      mockUsers.forEach((mock) => {
+        if (!combined.some((u) => u.name === mock.name)) {
+          combined.push(mock);
+        }
+      });
+
+      // Sort descending
+      combined.sort((a, b) => b.xp - a.xp);
+      setLeaderboard(combined);
+      setLoading(false);
+    }, (err) => {
+      console.error("Leaderboard subscription error:", err);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Fetch and subscribe to current user's profile XP in realtime
+  useEffect(() => {
+    if (!user) {
+      setCurrentUserXP(0);
+      return;
+    }
+    const userRef = doc(db, "users", user.uid);
+    const unsubscribeUser = onSnapshot(userRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setCurrentUserXP(docSnap.data().totalXP || 0);
+      }
+    });
+    return () => unsubscribeUser();
   }, [user]);
 
   // Determine user rank tier badge
   const getBadgeName = (xp) => {
-    if (xp >= 4000) return { title: "Cinephile Grandmaster 👑", color: "from-purple-500 to-indigo-600" };
-    if (xp >= 2500) return { title: "Screen Master 🎬", color: "from-pink-500 to-rose-600" };
-    if (xp >= 1000) return { title: "Trivia Buff 🍿", color: "from-cyan-500 to-blue-600" };
-    return { title: "Cinema Intern 🎟️", color: "from-gray-500 to-slate-600" };
+    if (xp >= 4000) return { title: "Cinephile Grandmaster", color: "from-purple-500 to-indigo-600" };
+    if (xp >= 2500) return { title: "Screen Master", color: "from-pink-500 to-rose-600" };
+    if (xp >= 1000) return { title: "Trivia Buff", color: "from-cyan-500 to-blue-600" };
+    return { title: "Cinema Intern", color: "from-gray-500 to-slate-600" };
   };
 
   const currentBadge = getBadgeName(currentUserXP);
@@ -140,8 +141,8 @@ export default function TriviaHubPage() {
         {user && (
           <div className="glass-card border border-cyan-500/30 p-6 rounded-[2rem] bg-gradient-to-r from-cyan-900/15 via-[#080d1a] to-[#04070f] max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-2xl border-2 border-cyan-400/40">
-                👤
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-white font-bold border-2 border-cyan-400/40">
+                User
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wider text-cyan-300 font-bold">Your Standings Profile</p>
@@ -172,7 +173,7 @@ export default function TriviaHubPage() {
         <div className="grid lg:grid-cols-[1fr_1.3fr] gap-8">
           {/* Left: Global Leaderboard Podiums & List */}
           <div className="glass-card border border-white/10 rounded-[2.5rem] p-6 flex flex-col">
-            <h3 className="text-xl font-black mb-6">🏆 Global Standings</h3>
+            <h3 className="text-xl font-black mb-6">Global Standings</h3>
 
             {/* Top 3 Podium Displays */}
             {podium.length > 0 && (
@@ -184,7 +185,7 @@ export default function TriviaHubPage() {
                       <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-slate-400 bg-white/10">
                         <img src={podium[1].photo || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde"} alt="" className="object-cover w-full h-full" />
                       </div>
-                      <span className="absolute -top-3 -left-2 text-xl">🥈</span>
+                      <span className="absolute -top-3 -left-2 text-[10px] bg-slate-500 text-white px-1.5 py-0.5 rounded-full font-black">2</span>
                     </div>
                     <p className="text-xs font-bold text-gray-300 mt-2 truncate max-w-[80px]">{podium[1].name}</p>
                     <span className="text-[10px] text-slate-400 font-extrabold">{podium[1].xp} XP</span>
@@ -199,7 +200,7 @@ export default function TriviaHubPage() {
                       <div className="w-18 h-18 rounded-full overflow-hidden border-4 border-yellow-400 bg-white/10 shadow-lg shadow-yellow-500/20">
                         <img src={podium[0].photo || "https://images.unsplash.com/photo-1544005313-94ddf0286df2"} alt="" className="object-cover w-full h-full" />
                       </div>
-                      <span className="absolute -top-4 -left-2 text-2xl animate-bounce">👑</span>
+                      <span className="absolute -top-3 -left-2 text-[10px] bg-yellow-500 text-black px-1.5 py-0.5 rounded-full font-black">1</span>
                     </div>
                     <p className="text-sm font-black text-white mt-2 truncate max-w-[90px]">{podium[0].name}</p>
                     <span className="text-xs text-yellow-400 font-black">{podium[0].xp} XP</span>
@@ -214,7 +215,7 @@ export default function TriviaHubPage() {
                       <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-amber-600 bg-white/10">
                         <img src={podium[2].photo || "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61"} alt="" className="object-cover w-full h-full" />
                       </div>
-                      <span className="absolute -top-3 -left-2 text-xl">🥉</span>
+                      <span className="absolute -top-3 -left-2 text-[10px] bg-amber-600 text-white px-1.5 py-0.5 rounded-full font-black">3</span>
                     </div>
                     <p className="text-xs font-bold text-gray-300 mt-2 truncate max-w-[80px]">{podium[2].name}</p>
                     <span className="text-[10px] text-amber-500 font-extrabold">{podium[2].xp} XP</span>
@@ -264,7 +265,7 @@ export default function TriviaHubPage() {
           {/* Right: Available Movie Quiz Challenges list */}
           <div className="glass-card border border-white/10 rounded-[2.5rem] p-6 space-y-6">
             <div>
-              <h3 className="text-xl font-black">🎬 Active Trivia Challenges</h3>
+              <h3 className="text-xl font-black">Active Trivia Challenges</h3>
               <p className="text-xs text-gray-400 mt-1">Select a title from our library to trigger its quiz board.</p>
             </div>
 
@@ -302,7 +303,7 @@ export default function TriviaHubPage() {
                       href={`/movie/${movie.id}/quiz`}
                       className="mt-4 block w-full text-center bg-yellow-400 hover:bg-yellow-300 text-black text-xs font-extrabold py-2 rounded-xl transition"
                     >
-                      Start Quiz 🏆
+                      Start Quiz
                     </Link>
                   </div>
                 ))

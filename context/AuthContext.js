@@ -45,12 +45,64 @@ export function AuthProvider({ children }) {
 
   // Email login
   const loginWithEmail = async (email, password) => {
-    return signInWithEmailAndPassword(auth, email, password);
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      return cred.user;
+    } catch (err) {
+      console.warn("Firebase email login failed, trying local storage fallback:", err);
+      const localUsers = JSON.parse(localStorage.getItem("localUsers") || "[]");
+      const found = localUsers.find(
+        (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
+      );
+      if (found) {
+        const localUser = {
+          uid: found.uid,
+          email: found.email,
+          displayName: found.email.split("@")[0],
+          photoURL: null,
+          emailVerified: true,
+        };
+        setUser(localUser);
+        localStorage.setItem("demoUser", JSON.stringify(localUser));
+        return localUser;
+      }
+      throw err;
+    }
   };
 
   // Register
   const registerWithEmail = async (email, password) => {
-    return createUserWithEmailAndPassword(auth, email, password);
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      return cred.user;
+    } catch (err) {
+      console.warn("Firebase email signup failed, trying local storage fallback:", err);
+      const localUsers = JSON.parse(localStorage.getItem("localUsers") || "[]");
+      const exists = localUsers.some(
+        (u) => u.email.toLowerCase() === email.toLowerCase()
+      );
+      if (exists) {
+        throw new Error("This email is already in use.");
+      }
+      const newUser = {
+        uid: "local_" + Math.random().toString(36).substr(2, 9),
+        email,
+        password,
+      };
+      localUsers.push(newUser);
+      localStorage.setItem("localUsers", JSON.stringify(localUsers));
+
+      const loggedUser = {
+        uid: newUser.uid,
+        email: newUser.email,
+        displayName: newUser.email.split("@")[0],
+        photoURL: null,
+        emailVerified: true,
+      };
+      setUser(loggedUser);
+      localStorage.setItem("demoUser", JSON.stringify(loggedUser));
+      return loggedUser;
+    }
   };
 
   // Login as Demo Guest

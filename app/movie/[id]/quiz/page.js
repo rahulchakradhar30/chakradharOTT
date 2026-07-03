@@ -27,63 +27,101 @@ export default function MovieQuizPage() {
   const [quizFinished, setQuizFinished] = useState(false);
   const [savingScore, setSavingScore] = useState(false);
 
-  // Generate dynamic, relevant questions based on actual movie metadata
+  // Generate dynamic, relevant questions based on actual movie metadata using AI-inspired template parameters
   const generateQuestions = (movieData) => {
     const title = movieData.title || "this film";
     const director = movieData.director || "the director";
-    const year = movieData.year || "the release year";
+    const year = movieData.year || 2024;
     const genre = movieData.genre || "Drama";
+    const tagline = movieData.tagline || "A cinematic experience.";
+    const description = movieData.description || "An engaging story of characters facing destiny.";
+
+    // Distractor plot summaries
+    const distractors = [
+      "A skilled thief enters people's dreams to steal their secrets from their subconscious.",
+      "A computer hacker learns about the true nature of his reality and his role in a war against its controllers.",
+      "A group of astronauts travel through a wormhole in search of a new home for humanity.",
+      "A young boy discovers he is a wizard and attends a secret magical academy to face dark forces.",
+      "A newly crowned queen accidentally uses her cryokinetic power to curse her home in infinite winter.",
+      "A giant white shark begins terrorizing a small New England resort town, and a sheriff tries to stop it."
+    ];
+
+    // Trope mapping by genre
+    const genreTropes = {
+      "Sci-Fi": "Explore technological advancements, space travel, and speculative science consequences.",
+      "Action": "High-stakes physical conflict, fast-paced chases, and heroic feats.",
+      "Drama": "Deep character development, interpersonal conflicts, and emotional storytelling.",
+      "Comedy": "Humorous situations, witty dialogue, and lighthearted resolutions.",
+      "Thriller": "Suspense, psychological tension, and unexpected plot twists.",
+      "Horror": "Fear of the unknown, survival instincts, and supernatural elements."
+    };
+
+    const correctTrope = genreTropes[genre] || "Intricate narrative arcs and emotional character journeys.";
+    const alternativeTropes = Object.values(genreTropes).filter(t => t !== correctTrope);
+
+    // Style mapping by genre
+    const genreStyles = {
+      "Sci-Fi": "Mind-bending visual concepts and high-tech futurism.",
+      "Action": "Dynamic camera movement and high-energy choreography.",
+      "Drama": "Intimate close-ups and rich character-driven dialogues.",
+      "Comedy": "Sharp comedic timing and colorful, bright setups.",
+      "Thriller": "Low-key shadow lighting and suspenseful pacing.",
+      "Horror": "Atmospheric dread and jump-scare timing."
+    };
+
+    const correctStyle = genreStyles[genre] || "Classic cinematic storytelling pacing.";
+    const alternativeStyles = Object.values(genreStyles).filter(s => s !== correctStyle);
 
     return [
       {
-        question: `Which director helmed the production of the movie "${title}"?`,
+        question: `Which of the following narrative summaries matches the plot of "${title}"?`,
+        options: [
+          description,
+          distractors[0],
+          distractors[1],
+          distractors[2]
+        ].sort(() => Math.random() - 0.5),
+        correct: description
+      },
+      {
+        question: `The film "${title}" is classified under the "${genre}" category. What major storytelling trope characteristic of this genre is explored?`,
+        options: [
+          correctTrope,
+          alternativeTropes[0] || "Slapstick humor and situational comedy.",
+          alternativeTropes[1] || "Supernatural investigations and ghost hunting.",
+          alternativeTropes[2] || "High-intensity sword fights and battle choreographies."
+        ].sort(() => Math.random() - 0.5),
+        correct: correctTrope
+      },
+      {
+        question: `Who directed the feature film "${title}"?`,
         options: [
           director,
           "Christopher Nolan",
-          "Denis Villeneuve",
-          "Greta Gerwig"
+          "James Cameron",
+          "S.S. Rajamouli"
         ].sort(() => Math.random() - 0.5),
         correct: director
       },
       {
-        question: `In which calendar year was "${title}" released to theatres?`,
+        question: `The tagline of "${title}" is: "${tagline}". What artistic style best describes how this story is directed?`,
+        options: [
+          correctStyle,
+          alternativeStyles[0] || "Dark atmospheric horror aesthetics.",
+          alternativeStyles[1] || "Futuristic neon cyberpunk scenery.",
+          alternativeStyles[2] || "Slapstick comedic timing setups."
+        ].sort(() => Math.random() - 0.5),
+        correct: correctStyle
+      },
+      {
+        question: `In which calendar year was "${title}" released to audiences?`,
         options: [
           String(year),
           String(Number(year) - 2),
-          String(Number(year) + 1),
-          "2022"
+          String(Number(year) + 3),
+          "2018"
         ].sort(() => Math.random() - 0.5),
         correct: String(year)
-      },
-      {
-        question: `What primary genre classification does "${title}" fall under?`,
-        options: [
-          genre,
-          genre === "Sci-Fi" ? "Romance" : "Sci-Fi",
-          genre === "Action" ? "Comedy" : "Action",
-          "Documentary"
-        ].sort(() => Math.random() - 0.5),
-        correct: genre
-      },
-      {
-        question: `What is the approximate runtime classification for major feature releases like "${title}"?`,
-        options: [
-          "90 - 150 minutes",
-          "Less than 60 minutes",
-          "Over 4 hours",
-          "Exactly 45 minutes"
-        ],
-        correct: "90 - 150 minutes"
-      },
-      {
-        question: `Which is a critical factor for a movie's commercial streaming success?`,
-        options: [
-          "Viewer ratings and engagement metrics",
-          "The color of the main poster only",
-          "Length of the end credits rolling list",
-          "Type of catering provided on set"
-        ],
-        correct: "Viewer ratings and engagement metrics"
       }
     ];
   };
@@ -201,7 +239,6 @@ export default function MovieQuizPage() {
     return (
       <div className="min-h-screen text-white flex items-center justify-center px-4 pt-20">
         <div className="glass-card border border-white/10 p-8 rounded-3xl text-center max-w-sm">
-          <p className="text-4xl mb-3">🔒</p>
           <h2 className="text-xl font-black">Login Required</h2>
           <p className="text-xs text-gray-400 mt-2">
             You must be logged in to test your movie knowledge and claim leaderboards XP.
@@ -240,7 +277,7 @@ export default function MovieQuizPage() {
             <div className="flex justify-between items-center pb-4 border-b border-white/10 mb-6 text-xs text-gray-400 font-bold">
               <span>QUESTION {currentIdx + 1} OF {questions.length}</span>
               <span className={`px-2.5 py-1 rounded-full ${timer <= 5 ? "bg-red-500/20 text-red-400 animate-pulse" : "bg-white/5 text-gray-300"}`}>
-                ⏱️ {timer}s
+                Time: {timer}s
               </span>
             </div>
 
@@ -292,14 +329,14 @@ export default function MovieQuizPage() {
                   disabled={selectedAns === null}
                   className="w-full bg-yellow-400 hover:bg-yellow-300 disabled:bg-gray-700 disabled:text-gray-400 text-black font-extrabold py-3.5 rounded-full text-sm transition-all"
                 >
-                  Submit Answer 🎯
+                  Submit Answer
                 </button>
               ) : (
                 <button
                   onClick={() => handleNextQuestion(false)}
                   className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-extrabold py-3.5 rounded-full text-sm transition-all"
                 >
-                  {currentIdx + 1 < questions.length ? "Next Question ➡️" : "Finish Quiz 📊"}
+                  {currentIdx + 1 < questions.length ? "Next Question" : "Finish Quiz"}
                 </button>
               )}
             </div>
@@ -342,8 +379,7 @@ export default function MovieQuizPage() {
               ))}
             </div>
 
-            <p className="text-5xl mb-4">🏆</p>
-            <h2 className="text-3xl font-black mb-2">Quiz Completed!</h2>
+            <h2 className="text-3xl font-black mb-2">Quiz Completed</h2>
             <p className="text-sm text-gray-400 max-w-md mx-auto">
               Nice work! You just finished testing your knowledge on <span className="text-cyan-300 font-extrabold"> {movie?.title}</span>.
             </p>
@@ -364,7 +400,7 @@ export default function MovieQuizPage() {
                 href="/trivia"
                 className="bg-cyan-500 hover:bg-cyan-400 text-black font-extrabold text-sm px-8 py-3.5 rounded-full transition shadow-lg shadow-cyan-500/20"
               >
-                View Global Leaderboard 📊
+                View Global Leaderboard
               </Link>
               <Link
                 href="/"

@@ -235,10 +235,7 @@ export default function PremiereRoomPage() {
   useEffect(() => {
     if (!id || !user) return;
 
-    const q = query(
-      collection(db, "premieres", id, "messages"),
-      orderBy("createdAt", "asc")
-    );
+    const q = collection(db, "premieres", id, "messages");
 
     const unsub = onSnapshot(
       q,
@@ -248,8 +245,15 @@ export default function PremiereRoomPage() {
           ...d.data(),
         }));
 
-        setMessages(data);
-        setPinned(data.find((m) => m.pinned));
+        // Sort messages client-side to prevent index errors
+        const sorted = data.sort((a, b) => {
+          const timeA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+          const timeB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+          return timeA - timeB;
+        });
+
+        setMessages(sorted);
+        setPinned(sorted.find((m) => m.pinned));
       },
       (err) => {
         console.warn("Messages listener blocked:", err?.message || err);

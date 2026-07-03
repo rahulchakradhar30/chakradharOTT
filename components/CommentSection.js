@@ -27,8 +27,7 @@ export default function CommentSection({ movieId }) {
   useEffect(() => {
     const q = query(
       collection(db, "comments"),
-      where("movieId", "==", movieId),
-      orderBy("timestamp", "desc")
+      where("movieId", "==", movieId)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -36,7 +35,15 @@ export default function CommentSection({ movieId }) {
         id: doc.id,
         ...doc.data(),
       }));
-      setComments(data);
+
+      // Sort comments client-side to avoid composite index requirements
+      const sorted = data.sort((a, b) => {
+        const timeA = a.timestamp?.toDate?.() || new Date(a.timestamp || 0);
+        const timeB = b.timestamp?.toDate?.() || new Date(b.timestamp || 0);
+        return timeB - timeA;
+      });
+
+      setComments(sorted);
     });
 
     return () => unsubscribe();

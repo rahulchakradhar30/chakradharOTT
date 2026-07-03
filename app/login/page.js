@@ -150,19 +150,9 @@ export default function LoginPage() {
           disabled={loading}
           variant="secondary"
           size="full"
-          className="mb-3 bg-white text-black hover:bg-white/90"
+          className="mb-5 bg-white text-black hover:bg-white/90"
         >
-          🔐 Continue with Google
-        </Button>
-
-        <Button
-          onClick={handleDemoLogin}
-          disabled={loading}
-          variant="secondary"
-          size="full"
-          className="mb-5 bg-gradient-to-r from-cyan-600/20 via-blue-600/25 to-pink-600/20 text-cyan-300 font-bold border border-cyan-400/30 hover:border-cyan-400/50"
-        >
-          🧪 Use Demo Guest Account (Bypass Auth)
+          Continue with Google
         </Button>
 
         <div className="text-center text-gray-400 mb-5 text-sm font-medium">or continue with email</div>
@@ -173,7 +163,6 @@ export default function LoginPage() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-4 rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-3 text-sm text-cyan-100 flex items-start gap-2"
           >
-            <span className="mt-0.5">ℹ️</span>
             <span>{message}</span>
           </motion.div>
         ) : null}
@@ -188,7 +177,6 @@ export default function LoginPage() {
             onChange={handleChange}
             error={errors.email}
             disabled={loading}
-            icon="📧"
             required
           />
 
@@ -201,7 +189,6 @@ export default function LoginPage() {
             onChange={handleChange}
             error={errors.password}
             disabled={loading}
-            icon="🔒"
             required
           />
 

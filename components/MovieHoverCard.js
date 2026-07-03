@@ -103,13 +103,21 @@ export default function MovieHoverCard({ movie }) {
         {/* Base Card */}
         <Link href={`/movie/${movie.id}`} className="block w-full h-full">
           <div className="relative w-full h-full rounded-2xl md:rounded-3xl overflow-hidden border border-white/15 bg-gradient-to-br from-[#0b1328] to-[#04070f] transition-all duration-300">
-            <Image
-              src={poster}
-              alt={movie.title || "Movie"}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 160px, (max-width: 1024px) 220px, 260px"
-            />
+            {poster.startsWith("data:image/") ? (
+              <img
+                src={poster}
+                alt={movie.title || "Movie"}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            ) : (
+              <Image
+                src={poster}
+                alt={movie.title || "Movie"}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 160px, (max-width: 1024px) 220px, 260px"
+              />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-[#04070f] via-transparent to-transparent" />
             
             {/* Base Title overlay */}
@@ -148,13 +156,21 @@ export default function MovieHoverCard({ movie }) {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <Image
-                    src={movie.bannerImage || poster}
-                    alt={movie.title || "Movie"}
-                    fill
-                    className="object-cover"
-                    sizes="260px"
-                  />
+                  (movie.bannerImage || poster).startsWith("data:image/") ? (
+                    <img
+                      src={movie.bannerImage || poster}
+                      alt={movie.title || "Movie"}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Image
+                      src={movie.bannerImage || poster}
+                      alt={movie.title || "Movie"}
+                      fill
+                      className="object-cover"
+                      sizes="260px"
+                    />
+                  )
                 )}
                 {/* Visual Mute Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#080d1e] via-transparent to-transparent" />

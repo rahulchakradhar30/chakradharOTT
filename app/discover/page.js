@@ -126,15 +126,23 @@ export default function DiscoverPage() {
                         #{index + 1}
                       </div>
 
-                      <Image
-                        src={
-                          item.posterImage ||
-                          "https://images.unsplash.com/photo-1524985069026-dd778a71c7b4"
-                        }
-                        alt={item.title}
-                        fill
-                        className="object-cover transition duration-700 group-hover:scale-105"
-                      />
+                      {(item.posterImage || "").startsWith("data:image/") ? (
+                        <img
+                          src={item.posterImage}
+                          alt={item.title}
+                          className="absolute inset-0 w-full h-full object-cover transition duration-700 group-hover:scale-105"
+                        />
+                      ) : (
+                        <Image
+                          src={
+                            item.posterImage ||
+                            "https://images.unsplash.com/photo-1524985069026-dd778a71c7b4"
+                          }
+                          alt={item.title}
+                          fill
+                          className="object-cover transition duration-700 group-hover:scale-105"
+                        />
+                      )}
                       <div className="absolute inset-0 bg-gradient-to-t from-[#04070f] via-transparent to-transparent" />
                     </div>
                     <h3 className="mt-3 text-sm md:text-base text-gray-200 group-hover:text-white line-clamp-2 font-medium">

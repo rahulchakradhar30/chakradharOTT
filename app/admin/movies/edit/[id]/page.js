@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { normalizeYouTubeEmbed } from "@/lib/youtube";
+import ImageUploadSelector from "@/components/ImageUploadSelector";
 
 export default function EditMovie({ params }) {
   const router = useRouter();
@@ -133,19 +134,19 @@ export default function EditMovie({ params }) {
             placeholder="YouTube Link"
           />
 
-          <input
-            type="text"
+          <ImageUploadSelector
+            label="Poster Image"
             value={movie.posterImage || ""}
-            onChange={(e) => handleChange("posterImage", e.target.value)}
-            className="admin-input focus-ring"
+            onChange={(val) => handleChange("posterImage", val)}
+            required
             placeholder="Poster Image URL"
           />
 
-          <input
-            type="text"
+          <ImageUploadSelector
+            label="Banner Image"
             value={movie.bannerImage || ""}
-            onChange={(e) => handleChange("bannerImage", e.target.value)}
-            className="admin-input focus-ring"
+            onChange={(val) => handleChange("bannerImage", val)}
+            required
             placeholder="Banner Image URL"
           />
 

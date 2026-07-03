@@ -5,6 +5,7 @@ import { db } from "@/firebase";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { normalizeYouTubeEmbed } from "@/lib/youtube";
+import ImageUploadSelector from "@/components/ImageUploadSelector";
 
 export default function CreateMovie() {
   const router = useRouter();
@@ -111,20 +112,20 @@ export default function CreateMovie() {
             onChange={(e) => handleChange("embedLink", e.target.value)}
           />
 
-          <input
-            type="text"
-            placeholder="Poster Image URL"
+          <ImageUploadSelector
+            label="Poster Image"
+            value={form.posterImage}
+            onChange={(val) => handleChange("posterImage", val)}
             required
-            className="admin-input focus-ring"
-            onChange={(e) => handleChange("posterImage", e.target.value)}
+            placeholder="Poster Image URL"
           />
 
-          <input
-            type="text"
-            placeholder="Banner Image URL"
+          <ImageUploadSelector
+            label="Banner Image"
+            value={form.bannerImage}
+            onChange={(val) => handleChange("bannerImage", val)}
             required
-            className="admin-input focus-ring"
-            onChange={(e) => handleChange("bannerImage", e.target.value)}
+            placeholder="Banner Image URL"
           />
 
         </div>

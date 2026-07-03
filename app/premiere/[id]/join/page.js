@@ -175,14 +175,22 @@ export default function PremiereJoinPage() {
     <div className="min-h-screen text-white pb-12">
       {premiere.bannerImage && (
         <div className="relative h-[56vh] md:h-[65vh] w-full overflow-hidden rounded-b-[2rem] md:rounded-b-[3rem]">
-          <Image
-            src={premiere.bannerImage}
-            alt={premiere.title}
-            fill
-            priority
-            sizes="100vw"
-            className="w-full h-full object-cover"
-          />
+          {premiere.bannerImage.startsWith("data:image/") ? (
+            <img
+              src={premiere.bannerImage}
+              alt={premiere.title}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <Image
+              src={premiere.bannerImage}
+              alt={premiere.title}
+              fill
+              priority
+              sizes="100vw"
+              className="w-full h-full object-cover"
+            />
+          )}
           <div className="absolute inset-0 bg-gradient-to-r from-[#04070f] via-[#04070f]/70 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#04070f] via-[#04070f]/35 to-transparent" />
         </div>

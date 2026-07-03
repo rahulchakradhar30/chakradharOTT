@@ -121,16 +121,24 @@ export default function MoviesPage() {
             >
               <Link href={`/movie/${movie.id}`} className="group block">
                 <div className="relative aspect-[2/3] overflow-hidden rounded-2xl border border-white/15 bg-[#0b1328] transition duration-500 group-hover:-translate-y-1 group-hover:border-cyan-300/50 shadow-lg hover:shadow-xl hover:shadow-cyan-500/20">
-                  <Image
-                    src={
-                      movie.posterImage ||
-                      "https://images.unsplash.com/photo-1524985069026-dd778a71c7b4"
-                    }
-                    alt={movie.title}
-                    fill
-                    className="object-cover transition duration-700 group-hover:scale-105"
-                    priority={index < 5}
-                  />
+                  {(movie.posterImage || "").startsWith("data:image/") ? (
+                    <img
+                      src={movie.posterImage}
+                      alt={movie.title}
+                      className="absolute inset-0 w-full h-full object-cover transition duration-700 group-hover:scale-105"
+                    />
+                  ) : (
+                    <Image
+                      src={
+                        movie.posterImage ||
+                        "https://images.unsplash.com/photo-1524985069026-dd778a71c7b4"
+                      }
+                      alt={movie.title}
+                      fill
+                      className="object-cover transition duration-700 group-hover:scale-105"
+                      priority={index < 5}
+                    />
+                  )}
 
                   <div className="absolute inset-0 bg-gradient-to-t from-[#04070f] via-transparent to-transparent" />
                   <div className="absolute inset-x-3 bottom-3 opacity-0 group-hover:opacity-100 transition duration-300">

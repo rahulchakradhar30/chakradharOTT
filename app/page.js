@@ -110,13 +110,21 @@ function CinematicHero({ movie, loading }) {
 
   return (
     <section className="relative h-[75vh] md:h-[92vh] w-full overflow-hidden -mt-20 md:-mt-24">
-      <Image 
-        src={image} 
-        alt={movie.title} 
-        fill 
-        priority 
-        className="object-cover object-center lg:object-[right_center]" 
-      />
+      {image.startsWith("data:image/") ? (
+        <img
+          src={image}
+          alt={movie.title}
+          className="absolute inset-0 w-full h-full object-cover object-center lg:object-[right_center]"
+        />
+      ) : (
+        <Image 
+          src={image} 
+          alt={movie.title} 
+          fill 
+          priority 
+          className="object-cover object-center lg:object-[right_center]" 
+        />
+      )}
 
       {/* Multi-layer gradient for premium look */}
       <div className="absolute inset-0 bg-gradient-to-r from-[#04070f] via-[#04070f]/75 to-transparent" />
@@ -223,12 +231,30 @@ function PremiereRow({ premieres, scheduled, loading }) {
         className={`relative h-[200px] md:h-[220px] rounded-3xl overflow-hidden border transition-all duration-500 group-hover/card:-translate-y-2 group-hover/card:shadow-[0_25px_50px_rgba(0,212,255,0.2)] ${
           isLive ? "border-red-400/50 group-hover/card:border-red-300/80" : "border-cyan-300/30 group-hover/card:border-cyan-300/60"
         }`}
-        style={{
-          background: `linear-gradient(135deg, ${accent})`,
-        }}
       >
+        {p.bannerImage ? (
+          p.bannerImage.startsWith("data:image/") ? (
+            <img
+              src={p.bannerImage}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-105"
+            />
+          ) : (
+            <Image
+              src={p.bannerImage}
+              alt=""
+              fill
+              className="object-cover transition-transform duration-700 group-hover/card:scale-105"
+            />
+          )
+        ) : (
+          <div
+            className="absolute inset-0"
+            style={{ background: `linear-gradient(135deg, ${accent})` }}
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-br from-transparent via-[#04070f]/40 to-[#04070f]/80" />
-        <div className="absolute inset-0 p-5 md:p-6 flex flex-col justify-between">
+        <div className="absolute inset-0 p-5 md:p-6 flex flex-col justify-between relative z-10">
           <div className="flex flex-wrap gap-2 text-xs">
             <motion.span
               initial={{ scale: 0.8 }}

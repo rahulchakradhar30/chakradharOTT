@@ -5,6 +5,7 @@ import { db } from "@/firebase";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { normalizeYouTubeEmbed } from "@/lib/youtube";
+import ImageUploadSelector from "@/components/ImageUploadSelector";
 
 export default function CreatePremierePage() {
   const router = useRouter();
@@ -110,11 +111,11 @@ export default function CreatePremierePage() {
         />
 
         {/* BANNER */}
-        <input
-          name="bannerImage"
+        <ImageUploadSelector
+          label="Banner Image"
+          value={form.bannerImage}
+          onChange={(val) => setForm((prev) => ({ ...prev, bannerImage: val }))}
           placeholder="Banner Image URL (optional)"
-          onChange={handleChange}
-          className="admin-input focus-ring"
         />
 
         {/* START TIME */}

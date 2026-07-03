@@ -6,6 +6,7 @@ import { doc, getDoc, updateDoc, Timestamp } from "firebase/firestore";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { normalizeYouTubeEmbed } from "@/lib/youtube";
+import ImageUploadSelector from "@/components/ImageUploadSelector";
 
 export default function EditPremierePage() {
   const params = useParams();
@@ -177,13 +178,11 @@ export default function EditPremierePage() {
 
         {/* BANNER */}
         <div>
-          <label className="block text-sm font-semibold mb-2">Banner Image URL</label>
-          <input
-            name="bannerImage"
+          <ImageUploadSelector
+            label="Banner Image"
             value={form.bannerImage}
-            onChange={handleChange}
+            onChange={(val) => setForm((prev) => ({ ...prev, bannerImage: val }))}
             placeholder="Banner Image URL (optional)"
-            className="admin-input focus-ring"
           />
         </div>
 

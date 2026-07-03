@@ -88,14 +88,22 @@ export default async function MovieDetail({ params }) {
       <ViewTracker movieId={id} />
 
       <section className="relative h-[72vh] md:h-[86vh] flex items-end rounded-b-[2rem] md:rounded-b-[3rem] overflow-hidden">
-        <Image
-          src={banner}
-          alt={title || "Movie banner"}
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover"
-        />
+        {banner.startsWith("data:image/") ? (
+          <img
+            src={banner}
+            alt={title || "Movie banner"}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : (
+          <Image
+            src={banner}
+            alt={title || "Movie banner"}
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover"
+          />
+        )}
 
         <div className="absolute inset-0 bg-gradient-to-r from-[#050915] via-[#050915]/85 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#04070f] via-[#04070f]/55 to-transparent" />

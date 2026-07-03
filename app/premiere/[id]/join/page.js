@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { db } from "@/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -21,6 +21,8 @@ export default function PremiereJoinPage() {
   const [timeUntilStart, setTimeUntilStart] = useState(null);
   const [isRemoved, setIsRemoved] = useState(false);
   const [removalReason, setRemovalReason] = useState("");
+  const [hasTicket, setHasTicket] = useState(false);
+  const [ticketChecking, setTicketChecking] = useState(true);
 
   useEffect(() => {
     if (!id) {
@@ -42,6 +44,23 @@ export default function PremiereJoinPage() {
         const data = docSnap.data();
         setPremieres({ id: docSnap.id, ...data });
         setError(null);
+
+        // Check if user has a ticket when required
+        if (data.ticketRequired) {
+          if (user?.uid) {
+            const ticketQuery = query(
+              collection(db, "users", user.uid, "tickets"),
+              where("premiereId", "==", String(id))
+            );
+            const ticketSnap = await getDocs(ticketQuery);
+            setHasTicket(!ticketSnap.empty);
+          } else {
+            setHasTicket(false);
+          }
+        } else {
+          setHasTicket(true);
+        }
+        setTicketChecking(false);
 
         // Optional removal check should never break page loading.
         if (user?.uid) {
@@ -230,14 +249,26 @@ export default function PremiereJoinPage() {
             </div>
           )}
 
+          {isTicketed && !hasTicket && (
+            <div className="bg-red-900/25 border border-red-500/30 text-red-200 rounded-[1.25rem] p-4 mb-8 text-sm">
+              A valid entry ticket is required to view this premiere. If you have already purchased a ticket or hold a promo code, navigate to the checkout page to redeem it.
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row gap-4">
             {isLive ? (
-              <Link
-                href={`/premiere/${id}/room`}
-                className="flex-1 admin-button admin-button-primary text-center animate-softPulse"
-              >
-                Join Live Room
-              </Link>
+              hasTicket ? (
+                <Link
+                  href={`/premiere/${id}/room`}
+                  className="flex-1 admin-button admin-button-primary text-center animate-softPulse"
+                >
+                  Join Live Room
+                </Link>
+              ) : (
+                <div className="flex-1 admin-button admin-button-secondary text-center cursor-not-allowed opacity-60">
+                  Ticket Required
+                </div>
+              )
             ) : (
               <div className="flex-1 admin-button admin-button-secondary text-center cursor-not-allowed">
                 Coming Soon
@@ -249,7 +280,7 @@ export default function PremiereJoinPage() {
                 href={`/premiere/${id}/tickets`}
                 className="focus-ring admin-button admin-button-primary flex-1 text-center"
               >
-                Get Ticket
+                {hasTicket ? "View Tickets" : "Get Ticket / Redeem"}
               </Link>
             )}
 

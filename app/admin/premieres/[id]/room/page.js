@@ -192,18 +192,28 @@ export default function PremiereRoomPage() {
     return null;
   };
 
-  /* VIEWERS */
+  /* VIEWERS & HEARTBEAT */
   useEffect(() => {
     if (!user || !id) return;
 
     const viewerRef = doc(db, "premieres", id, "viewers", user.uid);
 
-    setDoc(viewerRef, {
-      userId: user.uid,
-      joinedAt: serverTimestamp(),
-    });
+    const updateHeartbeat = async () => {
+      try {
+        await setDoc(viewerRef, {
+          userId: user.uid,
+          lastActive: new Date(),
+        }, { merge: true });
+      } catch (err) {
+        console.warn("Admin heartbeat write failed:", err);
+      }
+    };
+
+    updateHeartbeat();
+    const interval = setInterval(updateHeartbeat, 30000);
 
     return () => {
+      clearInterval(interval);
       deleteDoc(viewerRef).catch(() => {});
     };
   }, [user, id]);
@@ -216,12 +226,19 @@ export default function PremiereRoomPage() {
     const unsub = onSnapshot(
       ref,
       (snap) => {
-        setViewerCount(snap.size);
-        const viewerList = snap.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setViewers(viewerList);
+        const now = Date.now();
+        const activeViewers = snap.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }))
+          .filter((v) => {
+            const lastActiveTime = v.lastActive?.toDate?.() || new Date(v.lastActive || 0);
+            return now - lastActiveTime.getTime() < 90000;
+          });
+
+        setViewerCount(activeViewers.length);
+        setViewers(activeViewers);
       },
       (err) => {
         console.warn("Viewers listener blocked:", err?.message || err);

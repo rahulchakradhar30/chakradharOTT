@@ -13,6 +13,8 @@ import {
   orderBy,
   onSnapshot,
   deleteDoc,
+  where,
+  getDocs,
 } from "firebase/firestore";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -65,6 +67,9 @@ export default function PremiereRoomPage() {
   const [countdown, setCountdown] = useState("");
   const [postingReaction, setPostingReaction] = useState(false);
 
+  const [hasTicket, setHasTicket] = useState(false);
+  const [ticketChecking, setTicketChecking] = useState(true);
+
   const messageListRef = useRef(null);
 
   /* FETCH PREMIERE */
@@ -75,20 +80,39 @@ export default function PremiereRoomPage() {
       try {
         const snap = await getDoc(doc(db, "premieres", id));
         if (snap.exists()) {
-          setPremiere({ id: snap.id, ...snap.data() });
+          const data = snap.data();
+          setPremiere({ id: snap.id, ...data });
           setNotFound(false);
+
+          // Verify ticket requirements
+          if (data.ticketRequired) {
+            if (user?.uid) {
+              const ticketQuery = query(
+                collection(db, "users", user.uid, "tickets"),
+                where("premiereId", "==", String(id))
+              );
+              const ticketSnap = await getDocs(ticketQuery);
+              setHasTicket(!ticketSnap.empty);
+            } else {
+              setHasTicket(false);
+            }
+          } else {
+            setHasTicket(true);
+          }
         } else {
           setNotFound(true);
         }
       } catch (err) {
         console.error("Error fetching premiere:", err);
         setNotFound(true);
+      } finally {
+        setTicketChecking(false);
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchPremiere();
-  }, [id]);
+  }, [id, user?.uid]);
 
   /* CHECK IF PREMIERE IS LIVE */
   useEffect(() => {
@@ -121,35 +145,31 @@ export default function PremiereRoomPage() {
     return () => clearInterval(interval);
   }, [premiere]);
 
-  /* REGISTER VIEWER */
+  /* REGISTER & HEARTBEAT VIEWER */
   useEffect(() => {
     if (!user || !id) return;
 
     const viewerRef = doc(db, "premieres", id, "viewers", user.uid);
 
-    // Register viewer
-    const registerViewer = async () => {
+    const updateHeartbeat = async () => {
       try {
         await setDoc(viewerRef, {
           userId: user.uid,
           name: user.displayName || user.email || "Viewer",
           photoURL: user.photoURL || "",
-          joinedAt: serverTimestamp(),
-        });
+          lastActive: new Date(),
+        }, { merge: true });
       } catch (err) {
-        console.error("Error registering viewer:", err);
+        console.warn("Viewer heartbeat write failed:", err);
       }
     };
 
-    registerViewer();
+    updateHeartbeat();
+    const interval = setInterval(updateHeartbeat, 30000);
 
-    // Clean up when component unmounts
     return () => {
-      try {
-        deleteDoc(viewerRef).catch(() => {});
-      } catch (err) {
-        console.error("Error unregistering viewer:", err);
-      }
+      clearInterval(interval);
+      deleteDoc(viewerRef).catch(() => {});
     };
   }, [user, id]);
 
@@ -162,12 +182,19 @@ export default function PremiereRoomPage() {
     const unsub = onSnapshot(
       ref,
       (snap) => {
-        setViewerCount(snap.size);
-        const viewerList = snap.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setViewers(viewerList);
+        const now = Date.now();
+        const activeViewers = snap.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }))
+          .filter((v) => {
+            const lastActiveTime = v.lastActive?.toDate?.() || new Date(v.lastActive || 0);
+            return now - lastActiveTime.getTime() < 90000;
+          });
+
+        setViewerCount(activeViewers.length);
+        setViewers(activeViewers);
       },
       (err) => {
         console.warn("Viewers listener blocked:", err?.message || err);
@@ -358,6 +385,28 @@ export default function PremiereRoomPage() {
           <Link href="/login" className="admin-button admin-button-primary">
             Login
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  /* TICKET REQUIRED STATE */
+  if (premiere.ticketRequired && !hasTicket && !ticketChecking) {
+    return (
+      <div className="min-h-screen text-white flex items-center justify-center px-4">
+        <div className="admin-surface max-w-md text-center p-8 rounded-[2rem] border border-red-500/30 bg-red-950/20 shadow-2xl">
+          <h1 className="text-2xl font-black mb-4">Ticket Required</h1>
+          <p className="text-gray-300 text-sm mb-6">
+            A valid ticket or complimentary code is required to view <strong>{premiere.title}</strong>.
+          </p>
+          <div className="flex gap-4 justify-center">
+            <Link href={`/premiere/${id}/tickets`} className="admin-button admin-button-primary px-6 py-2.5">
+              Get Ticket / Redeem
+            </Link>
+            <Link href="/" className="admin-button admin-button-secondary px-6 py-2.5">
+              Go Back
+            </Link>
+          </div>
         </div>
       </div>
     );

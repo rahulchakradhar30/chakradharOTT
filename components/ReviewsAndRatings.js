@@ -19,7 +19,6 @@ import {
 } from "firebase/firestore";
 import { motion } from "framer-motion";
 import Button from "@/components/Button";
-import FormInput from "@/components/FormInput";
 import { useToast } from "@/components/Toast";
 
 export default function ReviewsAndRatings({ movieId }) {
@@ -28,7 +27,6 @@ export default function ReviewsAndRatings({ movieId }) {
   
   const [reviews, setReviews] = useState([]);
   const [userRating, setUserRating] = useState(0);
-  const [userReview, setUserReview] = useState("");
   const [averageRating, setAverageRating] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -74,7 +72,6 @@ export default function ReviewsAndRatings({ movieId }) {
           );
           if (userReviewDoc) {
             setUserRating(userReviewDoc.data().rating || 0);
-            setUserReview(userReviewDoc.data().title || "");
           }
         }
       } catch (err) {
@@ -117,7 +114,7 @@ export default function ReviewsAndRatings({ movieId }) {
             userName: user.displayName || "Anonymous",
             userPhoto: user.photoURL || "",
             rating: userRating,
-            title: userReview,
+            title: "",
             helpful: 0,
             unhelpful: 0,
             createdAt: serverTimestamp(),
@@ -153,7 +150,7 @@ export default function ReviewsAndRatings({ movieId }) {
         setSubmitting(false);
       }
     },
-    [user, userRating, userReview, movieId, addToast]
+    [user, userRating, movieId, addToast]
   );
 
   return (
@@ -195,13 +192,10 @@ export default function ReviewsAndRatings({ movieId }) {
           onSubmit={handleSubmitReview}
           className="glass-card rounded-2xl p-6 md:p-8 border border-white/10 space-y-6"
         >
-          <h4 className="text-xl font-bold">Share Your Thoughts</h4>
+          <h4 className="text-xl font-bold">Rate This Movie</h4>
 
           {/* Star Rating */}
           <div>
-            <label className="block text-sm font-semibold mb-3">
-              Your Rating
-            </label>
             <div className="flex gap-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
@@ -224,26 +218,13 @@ export default function ReviewsAndRatings({ movieId }) {
             </div>
           </div>
 
-          {/* Review Text */}
-          <FormInput
-            label="Your Review"
-            value={userReview}
-            onChange={(e) => setUserReview(e.target.value)}
-            placeholder="What did you think about this movie?"
-            maxLength={500}
-          />
-
-          <div className="text-sm text-gray-400">
-            {userReview.length}/500 characters
-          </div>
-
           <Button
             type="submit"
             disabled={submitting || !userRating}
             loading={submitting}
             variant="primary"
           >
-            Submit Review
+            Submit Rating
           </Button>
         </form>
       )}
@@ -306,12 +287,7 @@ export default function ReviewsAndRatings({ movieId }) {
                 </div>
               </div>
 
-              {/* Review Text */}
-              {review.title && (
-                <p className="text-gray-200 text-sm leading-relaxed">
-                  {review.title}
-                </p>
-              )}
+
 
               {/* Date */}
               <p className="text-xs text-gray-500 mt-3">

@@ -32,8 +32,8 @@ export async function GET(req, { params }) {
     const premiereRef = adminDb.collection("premieres").doc(id);
     const [premiereSnap, messagesSnap, viewersSnap] = await Promise.all([
       premiereRef.get(),
-      premiereRef.collection("messages").orderBy("createdAt", "asc").limit(300).get(),
-      premiereRef.collection("viewers").limit(300).get(),
+      adminDb.collection("premiere_messages").where("premiereId", "==", id).orderBy("createdAt", "asc").limit(300).get(),
+      adminDb.collection("premiere_viewers").where("premiereId", "==", id).limit(300).get(),
     ]);
 
     if (!premiereSnap.exists) {
@@ -111,7 +111,8 @@ export async function POST(req, { params }) {
         return badRequest("Message text is required");
       }
 
-      await adminDb.collection("premieres").doc(id).collection("messages").add({
+      await adminDb.collection("premiere_messages").add({
+        premiereId: id,
         text: text.slice(0, 2000),
         name: "Official Admin",
         userId: `admin:${adminEmail}`,
@@ -129,8 +130,8 @@ export async function POST(req, { params }) {
         return badRequest("Message id is required");
       }
 
-      const messagesRef = adminDb.collection("premieres").doc(id).collection("messages");
-      const pinnedSnap = await messagesRef.where("pinned", "==", true).get();
+      const messagesRef = adminDb.collection("premiere_messages");
+      const pinnedSnap = await messagesRef.where("premiereId", "==", id).where("pinned", "==", true).get();
       const batch = adminDb.batch();
 
       pinnedSnap.docs.forEach((docSnap) => {
@@ -150,9 +151,7 @@ export async function POST(req, { params }) {
       }
 
       await adminDb
-        .collection("premieres")
-        .doc(id)
-        .collection("messages")
+        .collection("premiere_messages")
         .doc(messageId)
         .delete();
 

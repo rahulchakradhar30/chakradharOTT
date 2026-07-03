@@ -150,11 +150,12 @@ export default function PremiereRoomPage() {
   useEffect(() => {
     if (!user || !id) return;
 
-    const viewerRef = doc(db, "premieres", id, "viewers", user.uid);
+    const viewerRef = doc(db, "premiere_viewers", `${id}_${user.uid}`);
 
     const updateHeartbeat = async () => {
       try {
         await setDoc(viewerRef, {
+          premiereId: id,
           userId: user.uid,
           name: user.displayName || user.email || "Viewer",
           photoURL: user.photoURL || "",
@@ -178,10 +179,10 @@ export default function PremiereRoomPage() {
   useEffect(() => {
     if (!id || !user) return;
 
-    const ref = collection(db, "premieres", id, "viewers");
+    const ref = collection(db, "premiere_viewers");
 
     const unsub = onSnapshot(
-      ref,
+      query(ref, where("premiereId", "==", id)),
       (snap) => {
         const now = Date.now();
         const activeViewers = snap.docs
@@ -209,9 +210,9 @@ export default function PremiereRoomPage() {
   useEffect(() => {
     if (!id || !user) return;
 
-    const ref = collection(db, "premieres", id, "reactions");
+    const ref = collection(db, "premiere_reactions");
     const unsub = onSnapshot(
-      ref,
+      query(ref, where("premiereId", "==", id)),
       (snap) => {
         const counts = {};
         const fresh = [];
@@ -249,17 +250,17 @@ export default function PremiereRoomPage() {
   useEffect(() => {
     if (!id || !user) return;
 
-    const q = collection(db, "premieres", id, "messages");
+    const ref = collection(db, "premiere_messages");
 
     const unsub = onSnapshot(
-      q,
+      query(ref, where("premiereId", "==", id)),
       (snap) => {
         const data = snap.docs.map((d) => ({
           id: d.id,
           ...d.data(),
         }));
 
-        // Sort messages client-side to prevent index failures
+        // Sort messages client-side to prevent index errors
         const sorted = data.sort((a, b) => {
           const timeA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
           const timeB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
@@ -294,7 +295,8 @@ export default function PremiereRoomPage() {
     setLastSent(now);
 
     try {
-      await addDoc(collection(db, "premieres", id, "messages"), {
+      await addDoc(collection(db, "premiere_messages"), {
+        premiereId: id,
         text: input,
         name: user.displayName || "User",
         userId: user.uid,
@@ -321,7 +323,8 @@ export default function PremiereRoomPage() {
     if (!id || !user || postingReaction) return;
     try {
       setPostingReaction(true);
-      await addDoc(collection(db, "premieres", id, "reactions"), {
+      await addDoc(collection(db, "premiere_reactions"), {
+        premiereId: id,
         type: item.key,
         emoji: item.emoji,
         userId: user.uid,

@@ -13,6 +13,8 @@ import {
   setDoc,
   deleteDoc,
   Timestamp,
+  where,
+  getDocs,
 } from "firebase/firestore";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -196,11 +198,12 @@ export default function PremiereRoomPage() {
   useEffect(() => {
     if (!user || !id) return;
 
-    const viewerRef = doc(db, "premieres", id, "viewers", user.uid);
+    const viewerRef = doc(db, "premiere_viewers", `${id}_${user.uid}`);
 
     const updateHeartbeat = async () => {
       try {
         await setDoc(viewerRef, {
+          premiereId: id,
           userId: user.uid,
           lastActive: new Date(),
         }, { merge: true });
@@ -221,10 +224,10 @@ export default function PremiereRoomPage() {
   useEffect(() => {
     if (!id || !user) return;
 
-    const ref = collection(db, "premieres", id, "viewers");
+    const ref = collection(db, "premiere_viewers");
 
     const unsub = onSnapshot(
-      ref,
+      query(ref, where("premiereId", "==", id)),
       (snap) => {
         const now = Date.now();
         const activeViewers = snap.docs
@@ -252,10 +255,10 @@ export default function PremiereRoomPage() {
   useEffect(() => {
     if (!id || !user) return;
 
-    const q = collection(db, "premieres", id, "messages");
+    const ref = collection(db, "premiere_messages");
 
     const unsub = onSnapshot(
-      q,
+      query(ref, where("premiereId", "==", id)),
       (snap) => {
         const data = snap.docs.map((d) => ({
           id: d.id,
@@ -299,7 +302,8 @@ export default function PremiereRoomPage() {
       } else {
         // Fallback for Firebase-authenticated host users.
         const { addDoc, collection } = await import("firebase/firestore");
-        await addDoc(collection(db, "premieres", id, "messages"), {
+        await addDoc(collection(db, "premiere_messages"), {
+          premiereId: id,
           text: input,
           name: author.name,
           userId: author.userId,

@@ -6,6 +6,8 @@ import {
   doc,
   getDoc,
   updateDoc,
+  collection,
+  getDocs,
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { normalizeYouTubeEmbed } from "@/lib/youtube";
@@ -16,6 +18,25 @@ export default function EditMovie({ params }) {
   const [movie, setMovie] = useState(null);
   const [movieId, setMovieId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [dbGenres, setDbGenres] = useState([]);
+
+  useEffect(() => {
+    const fetchGenres = async () => {
+      try {
+        const snap = await getDocs(collection(db, "genres"));
+        const names = snap.docs.map((doc) => doc.data().name);
+        const unique = Array.from(new Set(names)).filter(Boolean).sort();
+        setDbGenres(unique);
+      } catch (err) {
+        console.warn("Failed to load genres, falling back to defaults:", err);
+        setDbGenres([
+          "Action", "Comedy", "Drama", "Horror", "Thriller",
+          "Romance", "Science Fiction", "Fantasy", "Animation"
+        ]);
+      }
+    };
+    fetchGenres();
+  }, []);
 
   /* ---------- Resolve Params ---------- */
   useEffect(() => {
@@ -155,13 +176,17 @@ export default function EditMovie({ params }) {
         {/* META GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
-          <input
-            type="text"
+          <select
             value={movie.genre || ""}
+            required
             onChange={(e) => handleChange("genre", e.target.value)}
-            className="admin-input focus-ring"
-            placeholder="Genre"
-          />
+            className="admin-input focus-ring text-gray-200 bg-zinc-900 border-white/10"
+          >
+            <option value="">Select Genre *</option>
+            {dbGenres.map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
 
           <input
             type="date"

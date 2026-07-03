@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { db } from "@/firebase";
-import { collection, addDoc, Timestamp } from "firebase/firestore";
+import { collection, addDoc, Timestamp, getDocs } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { normalizeYouTubeEmbed } from "@/lib/youtube";
 import ImageUploadSelector from "@/components/ImageUploadSelector";
@@ -11,6 +11,7 @@ export default function CreateMovie() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
+  const [dbGenres, setDbGenres] = useState([]);
 
   const [form, setForm] = useState({
     title: "",
@@ -26,6 +27,24 @@ export default function CreateMovie() {
     isFeatured: false,
     isTrending: false,
   });
+
+  useEffect(() => {
+    const fetchGenres = async () => {
+      try {
+        const snap = await getDocs(collection(db, "genres"));
+        const names = snap.docs.map((doc) => doc.data().name);
+        const unique = Array.from(new Set(names)).filter(Boolean).sort();
+        setDbGenres(unique);
+      } catch (err) {
+        console.warn("Failed to load genres, falling back to defaults:", err);
+        setDbGenres([
+          "Action", "Comedy", "Drama", "Horror", "Thriller",
+          "Romance", "Science Fiction", "Fantasy", "Animation"
+        ]);
+      }
+    };
+    fetchGenres();
+  }, []);
 
   const handleChange = (field, value) => {
     setForm((prev) => ({
@@ -133,12 +152,17 @@ export default function CreateMovie() {
         {/* META INFO */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
-          <input
-            type="text"
-            placeholder="Genre"
-            className="admin-input focus-ring"
+          <select
+            value={form.genre}
+            required
             onChange={(e) => handleChange("genre", e.target.value)}
-          />
+            className="admin-input focus-ring text-gray-200 bg-zinc-900 border-white/10"
+          >
+            <option value="">Select Genre *</option>
+            {dbGenres.map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
 
           <input
             type="date"

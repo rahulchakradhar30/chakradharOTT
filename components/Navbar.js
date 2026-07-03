@@ -214,7 +214,7 @@ export default function Navbar() {
                     }
                     className="flex items-center transition hover:scale-105"
                   >
-                    {user.photoURL ? (
+                    {user.photoURL && user.photoURL.startsWith("http") ? (
                       <Image
                         src={user.photoURL}
                         alt="profile"

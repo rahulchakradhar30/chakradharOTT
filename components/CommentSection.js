@@ -101,10 +101,9 @@ export default function CommentSection({ movieId }) {
           Comments
         </h2>
 
-        {/* Comment Form */}
         <form onSubmit={handleSubmit} className="mb-8 md:mb-10 flex gap-3">
           {user && (
-            user.photoURL ? (
+            user.photoURL && user.photoURL.startsWith("http") ? (
               <Image
                 src={user.photoURL}
                 alt="avatar"
@@ -141,7 +140,7 @@ export default function CommentSection({ movieId }) {
           {topLevel.map((c) => (
             <div key={c.id} className="flex gap-3">
 
-              {c.photoURL ? (
+              {c.photoURL && c.photoURL.startsWith("http") ? (
                 <Image
                   src={c.photoURL}
                   alt="avatar"
@@ -190,7 +189,7 @@ export default function CommentSection({ movieId }) {
                   .map((r) => (
                     <div key={r.id} className="flex gap-3 mt-4 ml-6">
 
-                      {r.photoURL ? (
+                      {r.photoURL && r.photoURL.startsWith("http") ? (
                         <Image
                           src={r.photoURL}
                           alt="avatar"

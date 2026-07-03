@@ -472,109 +472,49 @@ export default function Home() {
 
   return (
     <div className="min-h-screen pb-20">
-      {loading && (
-        <div className="px-4 md:px-10 lg:px-16 pt-4 md:pt-6">
-          <div className="h-[80vh] bg-white/5 rounded-3xl animate-pulse" />
+      {loading ? (
+        <div className="space-y-12 pb-16">
+          {/* Main Hero Banner skeleton */}
+          <div className="h-[75vh] md:h-[92vh] w-full bg-white/5 animate-pulse -mt-20 md:-mt-24" />
+          
+          {/* Movie rows skeletons */}
+          <div className="px-4 md:px-8 lg:px-14 space-y-4">
+            <div className="h-8 bg-white/10 rounded w-48 animate-pulse" />
+            <div className="flex gap-6 overflow-x-hidden">
+              <div className="w-[160px] md:w-[220px] lg:w-[260px] aspect-[2/3] bg-white/5 rounded-3xl animate-pulse shrink-0" />
+              <div className="w-[160px] md:w-[220px] lg:w-[260px] aspect-[2/3] bg-white/5 rounded-3xl animate-pulse shrink-0" />
+              <div className="w-[160px] md:w-[220px] lg:w-[260px] aspect-[2/3] bg-white/5 rounded-3xl animate-pulse shrink-0" />
+              <div className="w-[160px] md:w-[220px] lg:w-[260px] aspect-[2/3] bg-white/5 rounded-3xl animate-pulse shrink-0" />
+              <div className="w-[160px] md:w-[220px] lg:w-[260px] aspect-[2/3] bg-white/5 rounded-3xl animate-pulse shrink-0" />
+            </div>
+          </div>
         </div>
-      )}
-
-      {!loading && (
+      ) : (
         <>
-          {/* Welcome Banner - Only show if not logged in */}
-          {!user && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="mx-4 md:mx-10 lg:mx-16 mt-6 md:mt-8"
-            >
-              <div className="glass-card rounded-2xl md:rounded-3xl p-6 md:p-8 lg:p-10 bg-gradient-to-br from-cyan-500/15 via-blue-500/10 to-purple-500/5 border border-cyan-400/20">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                  <div>
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.1 }}
-                      className="admin-kicker mb-2 text-cyan-300"
-                    >
-                      Welcome to Chakradhar OTT
-                    </motion.p>
-                    <motion.h2
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.2 }}
-                      className="text-2xl md:text-3xl font-black mb-2 bg-gradient-to-r from-cyan-300 to-blue-300 bg-clip-text text-transparent"
-                    >
-                      A cinematic way to watch
-                    </motion.h2>
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.3 }}
-                      className="text-sm md:text-base text-gray-300"
-                    >
-                      Sign in to enjoy personalized recommendations, watchlist, and exclusive premieres.
-                    </motion.p>
-                  </div>
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className="flex gap-3 flex-shrink-0"
-                  >
-                    <Link href="/login" className="admin-button admin-button-primary px-6 md:px-8 py-3 rounded-full font-semibold whitespace-nowrap">
-                      Sign In
-                    </Link>
-                  </motion.div>
-                </div>
-              </div>
-            </motion.div>
-          )}
+          <CinematicHero movie={hero} loading={loading} />
 
-          {/* Personalized Welcome for Logged-in Users */}
-          {user && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="mx-4 md:mx-10 lg:mx-16 mt-6 md:mt-8"
-            >
-              <div className="p-4 md:p-6">
-                <p className="admin-kicker mb-1 text-cyan-300">Welcome Back</p>
-                <h1 className="text-2xl md:text-3xl font-black">
-                  <span className="bg-gradient-to-r from-cyan-300 to-blue-300 bg-clip-text text-transparent">
-                    {user.displayName || user.email?.split("@")[0] || "Movie Lover"}
-                  </span>
-                </h1>
-                <p className="text-sm text-gray-400 mt-1">Continue where you left off or discover something new</p>
-              </div>
-            </motion.div>
-          )}
+          <PremiereRow premieres={premieres} scheduled={scheduledPremieresData} loading={loading} />
+
+          <MovieRow
+            title="Trending Now"
+            subtitle="Most watched titles on the platform"
+            movies={trending}
+            loading={loading}
+          />
+          <MovieRow
+            title="Editors' Choice"
+            subtitle="Handpicked spotlight picks"
+            movies={featured}
+            loading={loading}
+          />
+          <MovieRow
+            title="Latest Drops"
+            subtitle="Freshly released titles"
+            movies={newReleases}
+            loading={loading}
+          />
         </>
       )}
-
-      <CinematicHero movie={hero} loading={loading} />
-
-      <PremiereRow premieres={premieres} scheduled={scheduledPremieresData} loading={loading} />
-
-      <MovieRow
-        title="Trending Now"
-        subtitle="Most watched titles on the platform"
-        movies={trending}
-        loading={loading}
-      />
-      <MovieRow
-        title="Editors' Choice"
-        subtitle="Handpicked spotlight picks"
-        movies={featured}
-        loading={loading}
-      />
-      <MovieRow
-        title="Latest Drops"
-        subtitle="Freshly released titles"
-        movies={newReleases}
-        loading={loading}
-      />
     </div>
   );
 }

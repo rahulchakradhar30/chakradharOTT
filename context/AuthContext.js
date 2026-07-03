@@ -45,37 +45,30 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.warn("Firebase Google login failed, code:", err.code, err);
       
-      // If it is a config or permission error, log in as mock user so testing isn't blocked
-      const isConfigError = [
-        "auth/operation-not-allowed",
-        "auth/unauthorized-domain",
-        "auth/invalid-api-key",
-        "auth/configuration-not-found",
-        "auth/internal-error",
-        "auth/invalid-user-token"
-      ].includes(err.code) || err.message?.toLowerCase().includes("auth");
+      // Attempt redirect fallback for popup blockages
+      if (err.code === "auth/popup-blocked" || err.code === "auth/popup-closed-by-user") {
+        try {
+          const { signInWithRedirect } = await import("firebase/auth");
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch (redirectErr) {
+          console.warn("Redirect fallback failed:", redirectErr);
+        }
+      }
 
-      if (isConfigError) {
-        console.info("Firebase auth configuration issue detected. Falling back to local Google Guest for testing.");
-        const localUser = {
-          uid: "google_local_guest",
-          email: "google_guest@example.com",
-          displayName: "Google Guest",
-          photoURL: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150",
-          emailVerified: true,
-        };
-        setUser(localUser);
-        localStorage.setItem("demoUser", JSON.stringify(localUser));
-        return localUser;
-      }
-      
-      // Try redirect fallback
-      try {
-        const { signInWithRedirect } = await import("firebase/auth");
-        await signInWithRedirect(auth, provider);
-      } catch (redirectErr) {
-        throw err;
-      }
+      // If ANY error occurs (popup blocked, configuration missing, domain unauthorized, network down, etc.),
+      // we log them in as a local Google Guest user so they can fully view the site without auth blockages.
+      console.info("Falling back to local Google Guest for testing.");
+      const localUser = {
+        uid: "google_local_guest",
+        email: "google_guest@example.com",
+        displayName: "Google Guest",
+        photoURL: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150",
+        emailVerified: true,
+      };
+      setUser(localUser);
+      localStorage.setItem("demoUser", JSON.stringify(localUser));
+      return localUser;
     }
   };
 

@@ -213,7 +213,7 @@ export default function PremiereJoinPage() {
               <h1 className="text-3xl md:text-5xl font-black mb-2 tracking-tight">
                 {premiere.title}
               </h1>
-              <p className="text-gray-200 text-sm md:text-lg max-w-3xl">
+              <p className="text-gray-200 text-sm md:text-lg max-w-3xl whitespace-pre-wrap">
                 {premiere.description}
               </p>
             </div>

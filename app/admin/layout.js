@@ -8,6 +8,7 @@ const navItems = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/movies", label: "Movies" },
   { href: "/admin/premieres", label: "Premieres" },
+  { href: "/admin/posters", label: "Posters" },
   { href: "/admin/discovery", label: "Discovery" },
   { href: "/admin/genres", label: "Genres" },
   { href: "/admin/search-analytics", label: "Analytics" },

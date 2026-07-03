@@ -7,14 +7,19 @@ import { updateProfile } from "firebase/auth";
 import { auth, db } from "@/firebase";
 import { doc, getDoc, setDoc, Timestamp } from "firebase/firestore";
 import { motion } from "framer-motion";
+import ImageUploadSelector from "@/components/ImageUploadSelector";
 
 export default function EditProfilePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
-  const [bio, setBio] = useState(""); // ✅ NEW
+  const [bio, setBio] = useState("");
+  const [dob, setDob] = useState("");
+  const [photoURL, setPhotoURL] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -26,11 +31,20 @@ export default function EditProfilePage() {
       setName(user.displayName || "");
 
       const fetchUserData = async () => {
-        const snapshot = await getDoc(doc(db, "users", user.uid));
-        if (snapshot.exists()) {
-          const data = snapshot.data();
-          setMobile(data.mobile || "");
-          setBio(data.bio || ""); // ✅ NEW
+        try {
+          const snapshot = await getDoc(doc(db, "users", user.uid));
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+            setFirstName(data.firstName || "");
+            setLastName(data.lastName || "");
+            setName(data.name || user.displayName || "");
+            setMobile(data.mobile || "");
+            setBio(data.bio || "");
+            setDob(data.dob || "");
+            setPhotoURL(data.photoURL || user.photoURL || "");
+          }
+        } catch (err) {
+          console.error("Failed to load profile:", err);
         }
       };
 
@@ -44,18 +58,30 @@ export default function EditProfilePage() {
     try {
       setSaving(true);
 
-      // Update Firebase Auth name
-      await updateProfile(auth.currentUser, {
-        displayName: name,
-      });
+      const displayName = firstName
+        ? `${firstName} ${lastName}`.trim()
+        : name;
+
+      // Update Firebase Auth display name and photo
+      const authUpdates = { displayName };
+      if (photoURL && photoURL.startsWith("http")) {
+        authUpdates.photoURL = photoURL;
+      }
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, authUpdates);
+      }
 
       // Save to Firestore
       await setDoc(
         doc(db, "users", user.uid),
         {
-          name,
+          name: displayName,
+          firstName,
+          lastName,
           mobile,
           bio,
+          dob,
+          photoURL,
           email: user.email,
           updatedAt: Timestamp.now(),
         },
@@ -74,7 +100,10 @@ export default function EditProfilePage() {
   if (loading || !user) {
     return (
       <div className="min-h-screen text-white flex items-center justify-center">
-        <div className="admin-empty">Loading profile editor...</div>
+        <div className="glass-card rounded-3xl px-6 py-5 shadow-2xl text-center max-w-sm w-full">
+          <div className="mx-auto mb-4 h-10 w-10 rounded-full border-4 border-cyan-400/30 border-t-cyan-400 animate-spin" />
+          <p className="font-semibold">Loading profile editor...</p>
+        </div>
       </div>
     );
   }
@@ -94,9 +123,42 @@ export default function EditProfilePage() {
         </h1>
 
         <form onSubmit={handleSave} className="space-y-5">
+          {/* Profile Photo */}
+          <ImageUploadSelector
+            label="Profile Photo"
+            value={photoURL}
+            onChange={(val) => setPhotoURL(val)}
+            placeholder="Profile photo URL (or upload)"
+          />
+
+          {/* First & Last Name */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm mb-2 text-gray-400">First Name</label>
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="First name"
+                className="admin-input focus-ring"
+              />
+            </div>
+            <div>
+              <label className="block text-sm mb-2 text-gray-400">Last Name</label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Last name"
+                className="admin-input focus-ring"
+              />
+            </div>
+          </div>
+
+          {/* Display Name */}
           <div>
             <label className="block text-sm mb-2 text-gray-400">
-              Full Name
+              Display Name
             </label>
             <input
               type="text"
@@ -105,8 +167,23 @@ export default function EditProfilePage() {
               onChange={(e) => setName(e.target.value)}
               className="admin-input focus-ring"
             />
+            <p className="text-xs text-gray-500 mt-1">This is shown publicly on comments and reviews</p>
           </div>
 
+          {/* Date of Birth */}
+          <div>
+            <label className="block text-sm mb-2 text-gray-400">
+              Date of Birth
+            </label>
+            <input
+              type="date"
+              value={dob}
+              onChange={(e) => setDob(e.target.value)}
+              className="admin-input focus-ring"
+            />
+          </div>
+
+          {/* Mobile */}
           <div>
             <label className="block text-sm mb-2 text-gray-400">
               Mobile Number (Optional)
@@ -120,6 +197,7 @@ export default function EditProfilePage() {
             />
           </div>
 
+          {/* Bio */}
           <div>
             <label className="block text-sm mb-2 text-gray-400">
               Bio
@@ -139,7 +217,7 @@ export default function EditProfilePage() {
             <button
               type="submit"
               disabled={saving}
-              className="admin-button admin-button-primary disabled:opacity-70 w-full"
+              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 disabled:opacity-70 px-5 py-2.5 rounded-xl font-semibold w-full transition shadow-lg shadow-cyan-500/15"
             >
               {saving ? "Saving..." : "Save Changes"}
             </button>
@@ -147,7 +225,7 @@ export default function EditProfilePage() {
             <button
               type="button"
               onClick={() => router.push("/profile")}
-              className="admin-button admin-button-secondary w-full"
+              className="bg-white/10 hover:bg-white/20 px-5 py-2.5 rounded-xl font-semibold w-full transition"
             >
               Cancel
             </button>

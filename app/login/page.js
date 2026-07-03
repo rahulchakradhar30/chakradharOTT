@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { sendEmailVerification } from "firebase/auth";
@@ -43,18 +43,7 @@ export default function LoginPage() {
     setCaptchaCode(code);
   };
 
-  useState(() => {
-    // Generate initial captcha on mount
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    let code = "";
-    for (let i = 0; i < 5; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    // Set code dynamically in useEffect if window is defined
-  });
-
-  const { useEffect: useReactEffect } = require("react");
-  useReactEffect(() => {
+  useEffect(() => {
     if (mode === "register") {
       generateCaptcha();
     }

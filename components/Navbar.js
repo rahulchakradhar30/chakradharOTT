@@ -24,6 +24,7 @@ export default function Navbar() {
   const navLinks = [
     { href: "/", label: "Home", icon: "🏠" },
     { href: "/movies", label: "Movies", icon: "🎬" },
+    { href: "/posters", label: "Posters", icon: "🖼️" },
     { href: "/ai-assistant", label: "AI Guide", badge: "✦", icon: "🤖" },
     { href: "/trivia", label: "Trivia Arena", icon: "🏆" },
     { href: "/interactive-story", label: "Interactive Heist", badge: "🎮", icon: "🎮" },

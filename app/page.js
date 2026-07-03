@@ -378,6 +378,7 @@ export default function Home() {
   const [newReleases, setNewReleases] = useState([]);
   const [premieres, setPremieres] = useState([]);
   const [scheduledPremieresData, setScheduledPremieresData] = useState([]);
+  const [latestPosters, setLatestPosters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -471,6 +472,22 @@ export default function Home() {
         setTrending(trendingMovies);
         setFeatured(featuredMovies);
         setNewReleases(newMovies);
+
+        // Fetch latest posters
+        try {
+          const postersSnap = await getDocs(collection(db, "posters"));
+          const postersData = postersSnap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => {
+              const ta = a.createdAt?.toDate?.()?.getTime?.() || 0;
+              const tb = b.createdAt?.toDate?.()?.getTime?.() || 0;
+              return tb - ta;
+            })
+            .slice(0, 8);
+          setLatestPosters(postersData);
+        } catch (posterErr) {
+          console.warn("Posters fetch skipped:", posterErr);
+        }
       } catch (err) {
         console.error("Homepage error:", err);
         setError(true);
@@ -546,6 +563,51 @@ export default function Home() {
             movies={newReleases}
             loading={loading}
           />
+
+          {/* Latest Posters Section */}
+          {latestPosters.length > 0 && (
+            <section className="px-4 md:px-8 lg:px-14 py-8">
+              <SectionHeader title="Latest Posters" subtitle="Explore our curated movie poster collection" />
+              <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory">
+                {latestPosters.map((poster, idx) => (
+                  <Link
+                    key={poster.id}
+                    href={`/posters/${poster.id}`}
+                    className="group flex-shrink-0 snap-start"
+                  >
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="relative w-[160px] md:w-[200px] lg:w-[220px] aspect-[3/4] rounded-2xl overflow-hidden border border-white/15 group-hover:border-cyan-300/40 transition shadow-lg group-hover:shadow-cyan-500/10"
+                    >
+                      {poster.imageUrl?.startsWith("data:") ? (
+                        <img src={poster.imageUrl} alt={poster.caption || "Poster"} className="w-full h-full object-cover group-hover:scale-105 transition duration-700" />
+                      ) : poster.imageUrl ? (
+                        <Image
+                          src={poster.imageUrl}
+                          alt={poster.caption || "Poster"}
+                          fill
+                          sizes="220px"
+                          className="object-cover group-hover:scale-105 transition duration-700"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-cyan-900 to-blue-900 flex items-center justify-center text-4xl">🖼️</div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition duration-300 flex flex-col justify-end p-3">
+                        <p className="text-xs text-white line-clamp-2">{poster.caption || ""}</p>
+                        <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-300">
+                          <span>❤️ {poster.likesCount || 0}</span>
+                          <span>💬 {poster.commentsCount || 0}</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
         </>
       )}
     </div>

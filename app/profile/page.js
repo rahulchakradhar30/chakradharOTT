@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/firebase";
 import {
@@ -20,19 +20,21 @@ import {
   reauthenticateWithPopup,
   GoogleAuthProvider,
 } from "firebase/auth";
+import { updateProfile } from "firebase/auth";
+import { auth } from "@/firebase";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
 const TABS = [
-  "overview",
-  "activity",
-  "wishlist",
-  "tickets",
-  "payments",
-  "settings",
-  "security",
+  { key: "overview", label: "Overview", icon: "👤" },
+  { key: "activity", label: "Activity", icon: "📊" },
+  { key: "wishlist", label: "My List", icon: "❤️" },
+  { key: "tickets", label: "Tickets", icon: "🎟️" },
+  { key: "payments", label: "Payments", icon: "💳" },
+  { key: "settings", label: "Settings", icon: "⚙️" },
+  { key: "security", label: "Security", icon: "🔒" },
 ];
 
 const defaultSettings = {
@@ -60,12 +62,18 @@ export default function ProfilePage() {
 
   const [profile, setProfile] = useState({
     name: "",
+    firstName: "",
+    lastName: "",
     bio: "",
     mobile: "",
+    dob: "",
+    photoURL: "",
   });
 
   const [settings, setSettings] = useState(defaultSettings);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (user === null) {
@@ -87,13 +95,23 @@ export default function ProfilePage() {
           const userData = userSnap.data();
           setProfile({
             name: userData.name || user.displayName || "",
+            firstName: userData.firstName || "",
+            lastName: userData.lastName || "",
             bio: userData.bio || "",
             mobile: userData.mobile || "",
+            dob: userData.dob || "",
+            photoURL: userData.photoURL || user.photoURL || "",
           });
           setSettings({
             ...defaultSettings,
             ...(userData.settings || {}),
           });
+        } else {
+          setProfile((prev) => ({
+            ...prev,
+            name: user.displayName || "",
+            photoURL: user.photoURL || "",
+          }));
         }
 
         const [wishlistSnap, commentSnap, ratingSnap, watchSnap, ticketsSnap] = await Promise.all([
@@ -143,13 +161,66 @@ export default function ProfilePage() {
 
   const stats = useMemo(
     () => [
-      { label: "Wishlist", value: wishlist.length },
-      { label: "Comments", value: comments.length },
-      { label: "Ratings", value: ratings.length },
-      { label: "Tickets", value: tickets.length },
+      { label: "Wishlist", value: wishlist.length, color: "from-pink-500 to-rose-600" },
+      { label: "Comments", value: comments.length, color: "from-cyan-500 to-blue-600" },
+      { label: "Ratings", value: ratings.length, color: "from-amber-500 to-orange-600" },
+      { label: "Tickets", value: tickets.length, color: "from-emerald-500 to-green-600" },
     ],
     [wishlist.length, comments.length, ratings.length, tickets.length]
   );
+
+  const getAccountType = () => {
+    if (!user) return { label: "Guest", color: "bg-gray-600" };
+    if (user.uid?.startsWith("demo_")) return { label: "Demo Guest", color: "bg-amber-600" };
+    if (user.uid?.startsWith("google_local")) return { label: "Guest", color: "bg-amber-600" };
+    if (user.uid?.startsWith("local_")) return { label: "Email", color: "bg-blue-600" };
+    const provider = user.providerData?.[0]?.providerId;
+    if (provider === "google.com") return { label: "Google", color: "bg-red-600" };
+    return { label: "Email", color: "bg-blue-600" };
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.uid) return;
+
+    setUploadingPhoto(true);
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64Data = reader.result;
+      try {
+        const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+        let finalUrl = base64Data;
+
+        if (cloudName) {
+          const res = await fetch("/api/cloudinary/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ file: base64Data }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.secure_url) finalUrl = data.secure_url;
+          }
+        }
+
+        // Save to Firebase Auth
+        if (auth.currentUser) {
+          await updateProfile(auth.currentUser, { photoURL: finalUrl });
+        }
+
+        // Save to Firestore
+        await setDoc(doc(db, "users", user.uid), { photoURL: finalUrl }, { merge: true });
+
+        setProfile((prev) => ({ ...prev, photoURL: finalUrl }));
+      } catch (err) {
+        console.error("Photo upload failed:", err);
+        alert("Failed to upload photo. Please try again.");
+      } finally {
+        setUploadingPhoto(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSaveSettings = async () => {
     if (!user?.uid) return;
@@ -199,67 +270,108 @@ export default function ProfilePage() {
     }
   };
 
-  const getInitials = (email = "U") => email.slice(0, 2).toUpperCase();
+  const getInitials = (str = "U") => {
+    const parts = str.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return str.slice(0, 2).toUpperCase();
+  };
+
+  const displayName = profile.firstName
+    ? `${profile.firstName} ${profile.lastName}`.trim()
+    : profile.name || user?.displayName || "User";
+
+  const avatarUrl = profile.photoURL && profile.photoURL.startsWith("http") ? profile.photoURL : null;
 
   if (user === undefined || loadingPage) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="admin-empty">Loading profile...</div>
+        <div className="glass-card rounded-3xl px-6 py-5 shadow-2xl text-center max-w-sm w-full">
+          <div className="mx-auto mb-4 h-10 w-10 rounded-full border-4 border-cyan-400/30 border-t-cyan-400 animate-spin" />
+          <p className="font-semibold text-white">Loading profile...</p>
+        </div>
       </div>
     );
   }
 
   if (!user) return null;
 
+  const accountType = getAccountType();
+
   return (
     <div className="min-h-screen text-white px-4 md:px-8 lg:px-12 py-8 relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(0,212,255,0.12),_transparent_30%),radial-gradient(circle_at_bottom_left,_rgba(255,77,141,0.08),_transparent_24%)]" />
-      <div className="max-w-7xl mx-auto grid lg:grid-cols-[280px,1fr] gap-6">
+      <div className="max-w-7xl mx-auto grid lg:grid-cols-[300px,1fr] gap-6">
+
+        {/* SIDEBAR */}
         <aside className="relative z-10 glass-card rounded-[2rem] p-5 md:p-6 h-fit lg:sticky lg:top-24">
-          <div className="flex items-center gap-3 mb-6">
-            {user.photoURL ? (
-              <Image
-                src={user.photoURL}
-                alt="avatar"
-                width={52}
-                height={52}
-                className="rounded-full object-cover border border-cyan-300/40"
+          {/* Avatar + Upload */}
+          <div className="flex flex-col items-center mb-6">
+            <div className="relative group mb-4">
+              {avatarUrl ? (
+                <Image
+                  src={avatarUrl}
+                  alt="avatar"
+                  width={96}
+                  height={96}
+                  className="rounded-full object-cover w-24 h-24 border-[3px] border-cyan-400/50 shadow-lg shadow-cyan-500/20"
+                />
+              ) : (
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-400 to-blue-700 flex items-center justify-center font-black text-2xl border-[3px] border-cyan-400/50 shadow-lg shadow-cyan-500/20">
+                  {getInitials(displayName)}
+                </div>
+              )}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="absolute bottom-0 right-0 w-8 h-8 bg-cyan-500 hover:bg-cyan-400 rounded-full flex items-center justify-center text-xs font-bold transition shadow-lg border-2 border-[#0a1020] group-hover:scale-110"
+              >
+                {uploadingPhoto ? "…" : "📷"}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                className="hidden"
               />
-            ) : (
-              <div className="w-13 h-13 rounded-full bg-gradient-to-br from-cyan-400 to-blue-700 flex items-center justify-center font-bold">
-                {getInitials(user.email)}
-              </div>
-            )}
-            <div className="min-w-0">
-              <p className="font-semibold line-clamp-1">{profile.name || "Profile"}</p>
-              <p className="text-xs text-gray-400 break-all">{user.email}</p>
             </div>
+
+            <h3 className="font-bold text-lg text-center line-clamp-1">{displayName}</h3>
+            <p className="text-xs text-gray-400 mt-1 break-all text-center">{user.email}</p>
+
+            {/* Account Badge */}
+            <span className={`mt-2 text-[10px] uppercase tracking-[0.2em] font-bold px-3 py-1 rounded-full ${accountType.color} text-white`}>
+              {accountType.label} Account
+            </span>
           </div>
 
-          <div className="space-y-2 text-sm">
+          {/* Nav Tabs */}
+          <div className="space-y-1.5 text-sm">
             {TABS.map((tab) => (
               <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`w-full text-left px-4 py-2.5 rounded-2xl capitalize transition ${
-                  activeTab === tab
-                    ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white"
-                    : "hover:bg-white/10"
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`w-full text-left px-4 py-2.5 rounded-2xl capitalize transition flex items-center gap-3 ${
+                  activeTab === tab.key
+                    ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/15"
+                    : "hover:bg-white/10 text-gray-300"
                 }`}
               >
-                {tab}
+                <span className="text-base">{tab.icon}</span>
+                {tab.label}
               </button>
             ))}
           </div>
 
           <button
             onClick={logout}
-            className="mt-6 w-full admin-button admin-button-secondary"
+            className="mt-6 w-full bg-white/10 hover:bg-red-600/80 px-4 py-2.5 rounded-2xl transition text-sm font-semibold"
           >
             Logout
           </button>
         </aside>
 
+        {/* MAIN CONTENT */}
         <main>
           <AnimatePresence mode="wait">
             <motion.section
@@ -270,6 +382,7 @@ export default function ProfilePage() {
               transition={{ duration: 0.22 }}
               className="relative z-10 glass-card rounded-[2rem] p-5 md:p-8"
             >
+              {/* OVERVIEW TAB */}
               {activeTab === "overview" && (
                 <div className="space-y-8">
                   <div>
@@ -277,52 +390,73 @@ export default function ProfilePage() {
                     <h2 className="text-3xl md:text-4xl font-black tracking-tight">Account Overview</h2>
                   </div>
 
+                  {/* Stats Grid */}
                   <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     {stats.map((item) => (
-                      <div key={item.label} className="rounded-2xl border border-white/15 bg-black/20 p-4">
+                      <div key={item.label} className="rounded-2xl border border-white/15 bg-black/20 p-4 group hover:border-cyan-300/30 transition">
                         <p className="text-xs uppercase tracking-wide text-gray-400">{item.label}</p>
-                        <p className="text-2xl font-black mt-2">{item.value}</p>
+                        <p className={`text-3xl font-black mt-2 bg-gradient-to-r ${item.color} bg-clip-text text-transparent`}>{item.value}</p>
                       </div>
                     ))}
                   </div>
 
-                  <div className="rounded-2xl border border-white/15 bg-black/20 p-5 space-y-3">
-                    <p><span className="text-gray-400">Email:</span> {user.email}</p>
-                    <p><span className="text-gray-400">Name:</span> {profile.name || "Not set"}</p>
-                    <p><span className="text-gray-400">Bio:</span> {profile.bio || "No bio added"}</p>
-                    <p><span className="text-gray-400">Mobile:</span> {profile.mobile || "Not set"}</p>
+                  {/* Profile Details Card */}
+                  <div className="rounded-2xl border border-white/15 bg-black/20 p-6">
+                    <div className="flex flex-col md:flex-row gap-6">
+                      {/* Avatar Section */}
+                      <div className="flex-shrink-0 flex flex-col items-center">
+                        {avatarUrl ? (
+                          <Image
+                            src={avatarUrl}
+                            alt="avatar"
+                            width={120}
+                            height={120}
+                            className="rounded-2xl object-cover w-[120px] h-[120px] border border-white/15"
+                          />
+                        ) : (
+                          <div className="w-[120px] h-[120px] rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-700 flex items-center justify-center font-black text-3xl">
+                            {getInitials(displayName)}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Details Grid */}
+                      <div className="flex-1 grid sm:grid-cols-2 gap-4 text-sm">
+                        <InfoRow label="Full Name" value={displayName} />
+                        {profile.firstName && <InfoRow label="First Name" value={profile.firstName} />}
+                        {profile.lastName && <InfoRow label="Last Name" value={profile.lastName} />}
+                        <InfoRow label="Email" value={user.email} />
+                        <InfoRow label="Date of Birth" value={profile.dob ? new Date(profile.dob).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) : "Not set"} />
+                        <InfoRow label="Bio" value={profile.bio || "No bio added"} />
+                        <InfoRow label="Mobile" value={profile.mobile || "Not set"} />
+                        <InfoRow label="Account Type" value={accountType.label} />
+                      </div>
+                    </div>
+
                     <Link
                       href="/profile/edit"
-                      className="inline-block mt-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 px-4 py-2 rounded-lg text-sm font-semibold"
+                      className="inline-flex items-center gap-2 mt-6 bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 px-5 py-2.5 rounded-xl text-sm font-semibold transition shadow-lg shadow-cyan-500/15"
                     >
-                      Edit Profile
+                      ✏️ Edit Profile
                     </Link>
                   </div>
                 </div>
               )}
 
+              {/* ACTIVITY TAB */}
               {activeTab === "activity" && (
                 <div className="space-y-7">
                   <h2 className="text-2xl md:text-3xl font-black">Activity Feed</h2>
 
                   <div className="grid md:grid-cols-3 gap-4">
-                    <div className="rounded-2xl border border-white/15 bg-black/20 p-4">
-                      <p className="text-sm text-gray-300">Watch Events</p>
-                      <p className="text-2xl font-bold mt-2">{watchHistory.length}</p>
-                    </div>
-                    <div className="rounded-2xl border border-white/15 bg-black/20 p-4">
-                      <p className="text-sm text-gray-300">Comments Posted</p>
-                      <p className="text-2xl font-bold mt-2">{comments.length}</p>
-                    </div>
-                    <div className="rounded-2xl border border-white/15 bg-black/20 p-4">
-                      <p className="text-sm text-gray-300">Ratings Shared</p>
-                      <p className="text-2xl font-bold mt-2">{ratings.length}</p>
-                    </div>
+                    <StatCard label="Watch Events" value={watchHistory.length} icon="📺" />
+                    <StatCard label="Comments Posted" value={comments.length} icon="💬" />
+                    <StatCard label="Ratings Shared" value={ratings.length} icon="⭐" />
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="rounded-2xl border border-white/15 bg-black/20 p-4">
-                      <h3 className="font-semibold mb-3">Recent Watch IDs</h3>
+                      <h3 className="font-semibold mb-3 flex items-center gap-2">📺 Recent Watch IDs</h3>
                       {watchHistory.length === 0 ? (
                         <p className="text-sm text-gray-400">No watch history found.</p>
                       ) : (
@@ -335,7 +469,7 @@ export default function ProfilePage() {
                     </div>
 
                     <div className="rounded-2xl border border-white/15 bg-black/20 p-4">
-                      <h3 className="font-semibold mb-3">Recent Comments</h3>
+                      <h3 className="font-semibold mb-3 flex items-center gap-2">💬 Recent Comments</h3>
                       {comments.length === 0 ? (
                         <p className="text-sm text-gray-400">No comments yet.</p>
                       ) : (
@@ -350,11 +484,15 @@ export default function ProfilePage() {
                 </div>
               )}
 
+              {/* WISHLIST TAB */}
               {activeTab === "wishlist" && (
                 <div>
                   <h2 className="text-2xl md:text-3xl font-black mb-6">My List</h2>
                   {wishlist.length === 0 ? (
-                    <p className="text-gray-400">Your wishlist is empty.</p>
+                    <div className="text-center py-16">
+                      <p className="text-5xl mb-4">❤️</p>
+                      <p className="text-gray-400">Your wishlist is empty. Start adding movies you love!</p>
+                    </div>
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
                       {wishlist.map((movie) => (
@@ -376,11 +514,15 @@ export default function ProfilePage() {
                 </div>
               )}
 
+              {/* TICKETS TAB */}
               {activeTab === "tickets" && (
                 <div>
                   <h2 className="text-2xl md:text-3xl font-black mb-6">Ticket History</h2>
                   {tickets.length === 0 ? (
-                    <p className="text-gray-400">No tickets yet.</p>
+                    <div className="text-center py-16">
+                      <p className="text-5xl mb-4">🎟️</p>
+                      <p className="text-gray-400">No tickets yet. Book a premiere to get started!</p>
+                    </div>
                   ) : (
                     <div className="space-y-3">
                       {tickets.map((t) => (
@@ -390,7 +532,7 @@ export default function ProfilePage() {
                         >
                           <div>
                             <p className="font-semibold text-lg line-clamp-1">{t.title || "Premiere"}</p>
-                            <p className="text-sm text-gray-400">Code: {t.ticketCode || "NA"}</p>
+                            <p className="text-sm text-gray-400">Code: <span className="font-mono text-cyan-300">{t.ticketCode || "NA"}</span></p>
                             <p className="text-xs text-gray-500 mt-1">
                               Purchased: {t.purchasedAt?.toDate?.().toLocaleString?.() || "Not available"}
                             </p>
@@ -410,12 +552,16 @@ export default function ProfilePage() {
                 </div>
               )}
 
+              {/* PAYMENTS TAB */}
               {activeTab === "payments" && (
                 <div>
                   <h2 className="text-2xl md:text-3xl font-black mb-6">Payment History</h2>
 
                   {paymentHistory.length === 0 ? (
-                    <p className="text-gray-400">No payment history found.</p>
+                    <div className="text-center py-16">
+                      <p className="text-5xl mb-4">💳</p>
+                      <p className="text-gray-400">No payment history found.</p>
+                    </div>
                   ) : (
                     <div className="space-y-3">
                       {paymentHistory.map((payment) => (
@@ -449,6 +595,7 @@ export default function ProfilePage() {
                 </div>
               )}
 
+              {/* SETTINGS TAB */}
               {activeTab === "settings" && (
                 <div className="space-y-6">
                   <h2 className="text-2xl md:text-3xl font-black">Playback & Notification Settings</h2>
@@ -525,16 +672,18 @@ export default function ProfilePage() {
                 </div>
               )}
 
+              {/* SECURITY TAB */}
               {activeTab === "security" && (
                 <div className="space-y-5">
                   <h2 className="text-2xl md:text-3xl font-black">Security</h2>
                   <div className="rounded-2xl border border-red-500/35 bg-red-900/15 p-5">
+                    <h3 className="font-bold text-red-300 mb-2">⚠️ Danger Zone</h3>
                     <p className="text-sm text-gray-200 mb-4">
-                      Delete your account permanently. This action cannot be undone.
+                      Delete your account permanently. This action cannot be undone. All your data, watchlist, tickets, and comments will be erased.
                     </p>
                     <button
                       onClick={handleDeleteAccount}
-                      className="bg-red-700 hover:bg-red-600 px-5 py-2 rounded-lg font-semibold"
+                      className="bg-red-700 hover:bg-red-600 px-5 py-2 rounded-lg font-semibold transition"
                     >
                       Delete Account
                     </button>
@@ -549,6 +698,25 @@ export default function ProfilePage() {
   );
 }
 
+/* Sub-components */
+function InfoRow({ label, value }) {
+  return (
+    <div>
+      <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">{label}</p>
+      <p className="text-gray-100 font-medium">{value}</p>
+    </div>
+  );
+}
+
+function StatCard({ label, value, icon }) {
+  return (
+    <div className="rounded-2xl border border-white/15 bg-black/20 p-4">
+      <p className="text-sm text-gray-300 flex items-center gap-2">{icon} {label}</p>
+      <p className="text-2xl font-bold mt-2">{value}</p>
+    </div>
+  );
+}
+
 function SettingToggle({ label, hint, value, onChange }) {
   return (
     <div className="rounded-xl border border-white/15 bg-black/20 p-4 flex items-start justify-between gap-4">
@@ -559,7 +727,7 @@ function SettingToggle({ label, hint, value, onChange }) {
       <button
         type="button"
         onClick={() => onChange(!value)}
-        className={`relative h-7 w-12 rounded-full transition ${value ? "bg-cyan-500" : "bg-white/20"}`}
+        className={`relative h-7 w-12 rounded-full transition flex-shrink-0 ${value ? "bg-cyan-500" : "bg-white/20"}`}
         aria-pressed={value}
       >
         <span

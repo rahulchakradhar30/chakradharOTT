@@ -13,8 +13,8 @@ const CommentSection = dynamic(() => import("@/components/CommentSection"), {
   loading: () => <SectionSkeleton className="h-44" />,
 });
 
-const RatingSection = dynamic(() => import("@/components/RatingSection"), {
-  loading: () => <SectionSkeleton className="h-28" />,
+const RatingSection = dynamic(() => import("@/components/ReviewsAndRatings"), {
+  loading: () => <SectionSkeleton className="h-44" />,
 });
 
 /* =========================

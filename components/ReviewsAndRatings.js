@@ -20,7 +20,7 @@ import {
 import { motion } from "framer-motion";
 import Button from "@/components/Button";
 import FormInput from "@/components/FormInput";
-import { useToast } from "@/context/AuthContext";
+import { useToast } from "@/components/Toast";
 
 export default function ReviewsAndRatings({ movieId }) {
   const { user } = useAuth();
@@ -41,16 +41,21 @@ export default function ReviewsAndRatings({ movieId }) {
         
         // Get all reviews for movie
         const reviewsRef = collection(db, `movies/${movieId}/reviews`);
-        const reviewsSnap = await getDocs(
-          query(reviewsRef, orderBy("createdAt", "desc"), limit(20))
-        );
+        const reviewsSnap = await getDocs(reviewsRef);
 
         const reviewsData = reviewsSnap.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
 
-        setReviews(reviewsData);
+        // Sort reviews client-side to avoid composite index requirements
+        const sortedReviews = reviewsData.sort((a, b) => {
+          const timeA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+          const timeB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+          return timeB - timeA;
+        });
+
+        setReviews(sortedReviews);
 
         // Calculate average rating
         if (reviewsData.length > 0) {
@@ -88,18 +93,12 @@ export default function ReviewsAndRatings({ movieId }) {
       e.preventDefault();
 
       if (!user) {
-        addToast?.({
-          type: "error",
-          message: "Please login to submit a review",
-        });
+        addToast?.("Please login to submit a review", "error");
         return;
       }
 
       if (!userRating) {
-        addToast?.({
-          type: "warning",
-          message: "Please select a rating",
-        });
+        addToast?.("Please select a rating", "warning");
         return;
       }
 
@@ -124,27 +123,27 @@ export default function ReviewsAndRatings({ movieId }) {
           { merge: true }
         );
 
-        addToast?.({
-          type: "success",
-          message: "Review submitted successfully!",
-        });
+        addToast?.("Review submitted successfully!", "success");
 
         // Reload reviews
         const reviewsRef = collection(db, `movies/${movieId}/reviews`);
-        const reviewsSnap = await getDocs(
-          query(reviewsRef, orderBy("createdAt", "desc"))
-        );
+        const reviewsSnap = await getDocs(reviewsRef);
         const reviewsData = reviewsSnap.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
-        setReviews(reviewsData);
+
+        // Sort reviews client-side to avoid composite index requirements
+        const sortedReviews = reviewsData.sort((a, b) => {
+          const timeA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+          const timeB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+          return timeB - timeA;
+        });
+
+        setReviews(sortedReviews);
       } catch (err) {
         console.error("Error submitting review:", err);
-        addToast?.({
-          type: "error",
-          message: "Failed to submit review",
-        });
+        addToast?.("Failed to submit review", "error");
       } finally {
         setSubmitting(false);
       }

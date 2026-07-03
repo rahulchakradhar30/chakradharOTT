@@ -72,46 +72,45 @@ export default function PremiereRoomPage() {
 
   const messageListRef = useRef(null);
 
-  /* FETCH PREMIERE */
+  /* FETCH & SUBSCRIBE TO PREMIERE */
   useEffect(() => {
     if (!id) return;
 
-    const fetchPremiere = async () => {
-      try {
-        const snap = await getDoc(doc(db, "premieres", id));
-        if (snap.exists()) {
-          const data = snap.data();
-          setPremiere({ id: snap.id, ...data });
-          setNotFound(false);
+    const docRef = doc(db, "premieres", id);
 
-          // Verify ticket requirements
-          if (data.ticketRequired) {
-            if (user?.uid) {
-              const ticketQuery = query(
-                collection(db, "users", user.uid, "tickets"),
-                where("premiereId", "==", String(id))
-              );
-              const ticketSnap = await getDocs(ticketQuery);
-              setHasTicket(!ticketSnap.empty);
-            } else {
-              setHasTicket(false);
-            }
+    const unsubscribe = onSnapshot(docRef, async (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setPremiere({ id: snap.id, ...data });
+        setNotFound(false);
+
+        // Verify ticket requirements
+        if (data.ticketRequired) {
+          if (user?.uid) {
+            const ticketQuery = query(
+              collection(db, "users", user.uid, "tickets"),
+              where("premiereId", "==", String(id))
+            );
+            const ticketSnap = await getDocs(ticketQuery);
+            setHasTicket(!ticketSnap.empty);
           } else {
-            setHasTicket(true);
+            setHasTicket(false);
           }
         } else {
-          setNotFound(true);
+          setHasTicket(true);
         }
-      } catch (err) {
-        console.error("Error fetching premiere:", err);
+      } else {
         setNotFound(true);
-      } finally {
-        setTicketChecking(false);
-        setLoading(false);
       }
-    };
+      setTicketChecking(false);
+      setLoading(false);
+    }, (err) => {
+      console.error("Error subscribing to premiere in room:", err);
+      setNotFound(true);
+      setLoading(false);
+    });
 
-    fetchPremiere();
+    return () => unsubscribe();
   }, [id, user?.uid]);
 
   /* CHECK IF PREMIERE IS LIVE */
@@ -136,7 +135,9 @@ export default function PremiereRoomPage() {
         const hours = Math.floor(diff / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-        setCountdown(`${hours}h ${minutes}m ${seconds}s`);
+        
+        const pad = (num) => String(num).padStart(2, "0");
+        setCountdown(`${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`);
       }
     };
 

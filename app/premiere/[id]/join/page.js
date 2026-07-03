@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { db } from "@/firebase";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, onSnapshot } from "firebase/firestore";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -31,70 +31,68 @@ export default function PremiereJoinPage() {
       return;
     }
 
-    const fetchPremiere = async () => {
-      try {
-        const docRef = doc(db, "premieres", String(id));
-        const docSnap = await getDoc(docRef);
+    const docRef = doc(db, "premieres", String(id));
 
-        if (!docSnap.exists()) {
-          setError("Premiere not found");
-          return;
-        }
-
-        const data = docSnap.data();
-        setPremieres({ id: docSnap.id, ...data });
-        setError(null);
-
-        // Check if user has a ticket when required
-        if (data.ticketRequired) {
-          if (user?.uid) {
-            const ticketQuery = query(
-              collection(db, "users", user.uid, "tickets"),
-              where("premiereId", "==", String(id))
-            );
-            const ticketSnap = await getDocs(ticketQuery);
-            setHasTicket(!ticketSnap.empty);
-          } else {
-            setHasTicket(false);
-          }
-        } else {
-          setHasTicket(true);
-        }
-        setTicketChecking(false);
-
-        // Optional removal check should never break page loading.
-        if (user?.uid) {
-          try {
-            const removedRef = doc(db, "premieres", String(id), "removed_users", user.uid);
-            const removedSnap = await getDoc(removedRef);
-
-            if (removedSnap.exists()) {
-              const removedData = removedSnap.data();
-              setIsRemoved(true);
-              setRemovalReason(removedData.reason || "You have been removed");
-            } else {
-              setIsRemoved(false);
-              setRemovalReason("");
-            }
-          } catch (removedErr) {
-            console.warn("Removed-user check skipped:", removedErr);
-          }
-        } else {
-          setIsRemoved(false);
-          setRemovalReason("");
-        }
-      } catch (err) {
-        console.error("Error fetching premiere:", err);
-        setError("Failed to load premiere");
-      } finally {
+    const unsubscribe = onSnapshot(docRef, async (docSnap) => {
+      if (!docSnap.exists()) {
+        setError("Premiere not found");
         setLoading(false);
+        return;
       }
-    };
 
-    fetchPremiere();
+      const data = docSnap.data();
+      setPremieres({ id: docSnap.id, ...data });
+      setError(null);
+
+      // Check if user has a ticket when required
+      if (data.ticketRequired) {
+        if (user?.uid) {
+          const ticketQuery = query(
+            collection(db, "users", user.uid, "tickets"),
+            where("premiereId", "==", String(id))
+          );
+          const ticketSnap = await getDocs(ticketQuery);
+          setHasTicket(!ticketSnap.empty);
+        } else {
+          setHasTicket(false);
+        }
+      } else {
+        setHasTicket(true);
+      }
+      setTicketChecking(false);
+
+      // Optional removal check should never break page loading.
+      if (user?.uid) {
+        try {
+          const removedRef = doc(db, "premieres", String(id), "removed_users", user.uid);
+          const removedSnap = await getDoc(removedRef);
+
+          if (removedSnap.exists()) {
+            const removedData = removedSnap.data();
+            setIsRemoved(true);
+            setRemovalReason(removedData.reason || "You have been removed");
+          } else {
+            setIsRemoved(false);
+            setRemovalReason("");
+          }
+        } catch (removedErr) {
+          console.warn("Removed-user check skipped:", removedErr);
+        }
+      } else {
+        setIsRemoved(false);
+        setRemovalReason("");
+      }
+      setLoading(false);
+    }, (err) => {
+      console.error("Error subscribing to premiere:", err);
+      setError("Failed to load premiere");
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [id, user?.uid]);
 
-  // Update countdown timer
+  // Update countdown timer with zero-padded digits
   useEffect(() => {
     if (!premiere) return;
 
@@ -116,7 +114,13 @@ export default function PremiereJoinPage() {
         const hours = Math.floor(diff / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-        setTimeUntilStart({ hours, minutes, seconds });
+
+        const pad = (num) => String(num).padStart(2, "0");
+        setTimeUntilStart({
+          hours: pad(hours),
+          minutes: pad(minutes),
+          seconds: pad(seconds)
+        });
       }
     };
 

@@ -8,6 +8,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import { normalizeYouTubeEmbed } from "@/lib/youtube";
 
 export default function EditMovie({ params }) {
   const router = useRouter();
@@ -40,33 +41,6 @@ export default function EditMovie({ params }) {
     fetchMovie();
   }, [movieId]);
 
-  const convertToEmbed = (url) => {
-    if (!url) return "";
-
-    try {
-      if (url.includes("/embed/")) return url;
-
-      if (url.includes("watch?v=")) {
-        const videoId = url.split("watch?v=")[1].split("&")[0];
-        return `https://www.youtube.com/embed/${videoId}`;
-      }
-
-      if (url.includes("youtu.be/")) {
-        const videoId = url.split("youtu.be/")[1].split("?")[0];
-        return `https://www.youtube.com/embed/${videoId}`;
-      }
-
-      if (url.includes("/shorts/")) {
-        const videoId = url.split("/shorts/")[1].split("?")[0];
-        return `https://www.youtube.com/embed/${videoId}`;
-      }
-
-      return url;
-    } catch {
-      return url;
-    }
-  };
-
   const handleChange = (field, value) => {
     setMovie((prev) => ({
       ...prev,
@@ -77,7 +51,7 @@ export default function EditMovie({ params }) {
   const handleSave = async () => {
     setLoading(true);
 
-    const finalEmbed = convertToEmbed(movie.embedLink);
+    const finalEmbed = normalizeYouTubeEmbed(movie.embedLink);
 
     await updateDoc(doc(db, "movies", movieId), {
       ...movie,
@@ -92,7 +66,7 @@ export default function EditMovie({ params }) {
 
   if (!movie) {
     return (
-      <div className="text-gray-400 text-sm">
+      <div className="admin-empty text-sm max-w-md">
         Loading movie data...
       </div>
     );
@@ -102,17 +76,14 @@ export default function EditMovie({ params }) {
     <div className="space-y-10 max-w-4xl mx-auto">
 
       {/* HEADER */}
-      <div>
-        <h1 className="text-2xl md:text-4xl font-bold tracking-tight">
-          Edit Movie
-        </h1>
-        <p className="text-gray-400 mt-2 text-sm md:text-base">
-          Update movie details
-        </p>
+      <div className="admin-section">
+        <p className="admin-kicker">Content Studio</p>
+        <h1 className="admin-title">Edit movie</h1>
+        <p className="admin-lead">Update copy, media, and publishing flags without leaving the admin flow.</p>
       </div>
 
       {/* FORM CONTAINER */}
-      <div className="bg-zinc-900/80 backdrop-blur-lg border border-white/10 rounded-2xl p-6 md:p-10 shadow-xl space-y-6">
+      <div className="admin-surface rounded-[1.75rem] p-6 md:p-10 shadow-xl space-y-6">
 
         {/* BASIC INFO */}
         <div className="space-y-5">
@@ -121,7 +92,7 @@ export default function EditMovie({ params }) {
             type="text"
             value={movie.title || ""}
             onChange={(e) => handleChange("title", e.target.value)}
-            className="w-full p-3 bg-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+            className="admin-input focus-ring"
             placeholder="Title"
           />
 
@@ -129,7 +100,7 @@ export default function EditMovie({ params }) {
             type="text"
             value={movie.tagline || ""}
             onChange={(e) => handleChange("tagline", e.target.value)}
-            className="w-full p-3 bg-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+            className="admin-input focus-ring"
             placeholder="Tagline"
           />
 
@@ -137,7 +108,7 @@ export default function EditMovie({ params }) {
             type="text"
             value={movie.director || ""}
             onChange={(e) => handleChange("director", e.target.value)}
-            className="w-full p-3 bg-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+            className="admin-input focus-ring"
             placeholder="Director Name"
           />
 
@@ -145,7 +116,7 @@ export default function EditMovie({ params }) {
             rows="4"
             value={movie.description || ""}
             onChange={(e) => handleChange("description", e.target.value)}
-            className="w-full p-3 bg-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+            className="admin-textarea focus-ring"
             placeholder="Description"
           />
 
@@ -158,7 +129,7 @@ export default function EditMovie({ params }) {
             type="text"
             value={movie.embedLink || ""}
             onChange={(e) => handleChange("embedLink", e.target.value)}
-            className="w-full p-3 bg-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+            className="admin-input focus-ring"
             placeholder="YouTube Link"
           />
 
@@ -166,7 +137,7 @@ export default function EditMovie({ params }) {
             type="text"
             value={movie.posterImage || ""}
             onChange={(e) => handleChange("posterImage", e.target.value)}
-            className="w-full p-3 bg-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+            className="admin-input focus-ring"
             placeholder="Poster Image URL"
           />
 
@@ -174,7 +145,7 @@ export default function EditMovie({ params }) {
             type="text"
             value={movie.bannerImage || ""}
             onChange={(e) => handleChange("bannerImage", e.target.value)}
-            className="w-full p-3 bg-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+            className="admin-input focus-ring"
             placeholder="Banner Image URL"
           />
 
@@ -187,7 +158,7 @@ export default function EditMovie({ params }) {
             type="text"
             value={movie.genre || ""}
             onChange={(e) => handleChange("genre", e.target.value)}
-            className="w-full p-3 bg-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+            className="admin-input focus-ring"
             placeholder="Genre"
           />
 
@@ -195,7 +166,7 @@ export default function EditMovie({ params }) {
             type="date"
             value={movie.releaseDate || ""}
             onChange={(e) => handleChange("releaseDate", e.target.value)}
-            className="w-full p-3 bg-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+            className="admin-input focus-ring"
           />
 
         </div>
@@ -231,7 +202,7 @@ export default function EditMovie({ params }) {
         <button
           onClick={handleSave}
           disabled={loading}
-          className="w-full md:w-auto bg-green-600 hover:bg-green-700 px-8 py-3 rounded-lg transition disabled:opacity-60"
+          className="admin-button admin-button-primary w-full md:w-auto disabled:opacity-60"
         >
           {loading ? "Saving..." : "Save Changes"}
         </button>

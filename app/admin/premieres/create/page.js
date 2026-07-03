@@ -4,36 +4,7 @@ import { useState } from "react";
 import { db } from "@/firebase";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-
-/* 🎥 YOUTUBE CONVERTER */
-function convertToEmbed(url) {
-  try {
-    if (!url) return "";
-
-    if (url.includes("embed")) return url;
-
-    let videoId = "";
-
-    // Handle youtu.be/VIDEO_ID format
-    if (url.includes("youtu.be/")) {
-      videoId = url.split("youtu.be/")[1]?.split("?")[0]?.split("&")[0];
-    }
-    // Handle youtube.com/watch?v=VIDEO_ID format
-    else if (url.includes("v=")) {
-      videoId = url.split("v=")[1]?.split("&")[0];
-    }
-
-    if (!videoId) {
-      console.error("Could not extract video ID from:", url);
-      return url;
-    }
-
-    return `https://www.youtube.com/embed/${videoId}`;
-  } catch (err) {
-    console.error("YouTube converter error:", err);
-    return url;
-  }
-}
+import { normalizeYouTubeEmbed } from "@/lib/youtube";
 
 export default function CreatePremierePage() {
   const router = useRouter();
@@ -72,7 +43,7 @@ export default function CreatePremierePage() {
     try {
       setLoading(true);
 
-      const embed = convertToEmbed(form.embedLink);
+      const embed = normalizeYouTubeEmbed(form.embedLink);
 
       const docRef = await addDoc(collection(db, "premieres"), {
         title: form.title,
@@ -104,20 +75,22 @@ export default function CreatePremierePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0B0F] text-white px-4 md:px-16 py-10">
+    <div className="space-y-10 max-w-4xl mx-auto">
 
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="admin-section">
+        <p className="admin-kicker">Live Events</p>
+        <h1 className="admin-title">Create premiere</h1>
+        <p className="admin-lead">Set the live stream, access policy, and ticket rules in one place.</p>
+      </div>
 
-        <h1 className="text-2xl font-semibold">
-          Create Premiere
-        </h1>
+      <div className="admin-surface rounded-[1.75rem] p-6 md:p-10 shadow-xl space-y-6">
 
         {/* TITLE */}
         <input
           name="title"
           placeholder="Premiere Title"
           onChange={handleChange}
-          className="w-full bg-white/10 border border-white/10 p-3 rounded-lg"
+          className="admin-input focus-ring"
         />
 
         {/* DESCRIPTION */}
@@ -125,7 +98,7 @@ export default function CreatePremierePage() {
           name="description"
           placeholder="Description (optional)"
           onChange={handleChange}
-          className="w-full bg-white/10 border border-white/10 p-3 rounded-lg"
+          className="admin-textarea focus-ring"
         />
 
         {/* YOUTUBE LINK */}
@@ -133,7 +106,7 @@ export default function CreatePremierePage() {
           name="embedLink"
           placeholder="Paste ANY YouTube Link"
           onChange={handleChange}
-          className="w-full bg-white/10 border border-white/10 p-3 rounded-lg"
+          className="admin-input focus-ring"
         />
 
         {/* BANNER */}
@@ -141,7 +114,7 @@ export default function CreatePremierePage() {
           name="bannerImage"
           placeholder="Banner Image URL (optional)"
           onChange={handleChange}
-          className="w-full bg-white/10 border border-white/10 p-3 rounded-lg"
+          className="admin-input focus-ring"
         />
 
         {/* START TIME */}
@@ -149,7 +122,7 @@ export default function CreatePremierePage() {
           type="datetime-local"
           name="startTime"
           onChange={handleChange}
-          className="w-full bg-white/10 border border-white/10 p-3 rounded-lg"
+          className="admin-input focus-ring"
         />
 
         {/* DISPLAY TIME (EARLY ACCESS) */}
@@ -161,7 +134,7 @@ export default function CreatePremierePage() {
             type="datetime-local"
             name="displayTime"
             onChange={handleChange}
-            className="w-full bg-white/10 border border-white/10 p-3 rounded-lg"
+            className="admin-input focus-ring"
           />
           <p className="text-xs text-gray-400">
             If set, premiere appears on homepage from this time. If blank, uses start time.
@@ -169,7 +142,7 @@ export default function CreatePremierePage() {
         </div>
 
         {/* PAID */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 admin-panel p-4 rounded-2xl">
           <input type="checkbox" name="ticketRequired" onChange={handleChange} />
           <label>Paid Premiere</label>
         </div>
@@ -180,7 +153,7 @@ export default function CreatePremierePage() {
             type="number"
             placeholder="Ticket Price"
             onChange={handleChange}
-            className="w-full bg-white/10 border border-white/10 p-3 rounded-lg"
+            className="admin-input focus-ring"
           />
         )}
 
@@ -194,7 +167,7 @@ export default function CreatePremierePage() {
             type="number"
             placeholder="e.g., 100, 500, or 0 for unlimited"
             onChange={handleChange}
-            className="w-full bg-white/10 border border-white/10 p-3 rounded-lg"
+            className="admin-input focus-ring"
             min="0"
           />
           <p className="text-xs text-gray-400">
@@ -212,7 +185,7 @@ export default function CreatePremierePage() {
             type="number"
             placeholder="e.g., 50 free tickets"
             onChange={handleChange}
-            className="w-full bg-white/10 border border-white/10 p-3 rounded-lg"
+            className="admin-input focus-ring"
             min="0"
           />
           <p className="text-xs text-gray-400">
@@ -222,7 +195,7 @@ export default function CreatePremierePage() {
 
         {/* COUNT ADMIN QUOTA IN REVENUE */}
         {form.adminQuota > 0 && (
-          <div className="flex items-center gap-3 bg-white/5 p-3 rounded border border-white/10">
+          <div className="flex items-center gap-3 admin-panel p-3 rounded-2xl">
             <input
               type="checkbox"
               name="countAdminQuotaInRevenue"
@@ -235,7 +208,7 @@ export default function CreatePremierePage() {
         <button
           onClick={handleCreate}
           disabled={loading}
-          className="bg-red-600 px-6 py-3 rounded-lg hover:bg-red-700 transition w-full"
+          className="admin-button admin-button-primary w-full disabled:opacity-60"
         >
           {loading ? "Creating..." : "Create Premiere"}
         </button>

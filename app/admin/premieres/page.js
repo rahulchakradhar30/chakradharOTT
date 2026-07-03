@@ -96,62 +96,68 @@ export default function AdminPremieresPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0B0F] text-white px-4 md:px-10 py-8">
+    <div className="space-y-10">
 
       {/* HEADER */}
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
-          🎬 Manage Premieres
-        </h1>
+      <div className="admin-toolbar items-end">
+        <div className="admin-section max-w-2xl">
+          <p className="admin-kicker">Live Events</p>
+          <h1 className="admin-title">Premiere management</h1>
+          <p className="admin-lead">Track active sessions, review history, and jump into a premiere’s detail page for tickets, room access, and lifecycle controls.</p>
+        </div>
 
         <Link
           href="/admin/premieres/create"
-          className="bg-red-600 px-5 py-2 rounded-full hover:bg-red-700 transition text-sm shadow-lg hover:scale-105"
+          className="admin-button admin-button-primary"
         >
           + Create Premiere
         </Link>
       </div>
 
       {/* TABS */}
-      <div className="flex gap-2 mb-8 border-b border-white/10 pb-4">
+      <div className="admin-surface rounded-3xl p-2 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+        <div className="flex gap-2">
         <button
           onClick={() => setActiveTab("active")}
-          className={`px-4 py-2 font-semibold transition flex items-center gap-2 ${
+          className={`px-4 py-2 font-semibold transition flex items-center gap-2 rounded-2xl ${
             activeTab === "active"
-              ? "text-red-600 border-b-2 border-red-600"
+              ? "bg-cyan-500/15 text-cyan-200 border border-cyan-300/20"
               : "text-gray-400 hover:text-white"
           }`}
         >
           Active Premieres
-          <span className="bg-red-600 text-white text-xs px-2 py-1 rounded-full">
+          <span className="admin-chip border-cyan-300/20 bg-cyan-500/10 text-cyan-100">
             {activePremieres.length}
           </span>
         </button>
 
         <button
           onClick={() => setActiveTab("history")}
-          className={`px-4 py-2 font-semibold transition flex items-center gap-2 ${
+          className={`px-4 py-2 font-semibold transition flex items-center gap-2 rounded-2xl ${
             activeTab === "history"
-              ? "text-red-600 border-b-2 border-red-600"
+              ? "bg-cyan-500/15 text-cyan-200 border border-cyan-300/20"
               : "text-gray-400 hover:text-white"
           }`}
         >
-          📚 History
-          <span className="bg-gray-600 text-white text-xs px-2 py-1 rounded-full">
+          History
+          <span className="admin-chip bg-white/8 text-gray-200">
             {archivedPremieres.length}
           </span>
         </button>
+        </div>
+
+        <p className="text-xs text-gray-400 px-2">Archive or restore items without losing the detail history.</p>
       </div>
 
       {/* LOADING */}
       {loading && (
-        <p className="text-gray-400">Loading premieres...</p>
+        <div className="admin-empty">Loading premieres...</div>
       )}
 
       {/* EMPTY STATE */}
       {!loading && displayedPremieres.length === 0 && (
-        <div className="text-center text-gray-400 mt-20">
-          <p className="text-lg mb-2">
+        <div className="admin-empty text-center mt-10">
+          <p className="text-lg mb-2 text-white">
             {activeTab === "active"
               ? "No active premieres"
               : "No archived premieres"}
@@ -166,15 +172,15 @@ export default function AdminPremieresPage() {
 
       {/* GRID */}
       {!loading && displayedPremieres.length > 0 && (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
 
           {displayedPremieres.map((premiere) => (
             <div
               key={premiere.id}
-              className={`rounded-2xl p-5 transition group hover:scale-[1.02] border ${
+              className={`admin-surface rounded-[1.75rem] p-5 transition group hover:-translate-y-1 border ${
                 activeTab === "active"
-                  ? "bg-white/5 border-white/10 hover:bg-white/10"
-                  : "bg-white/5 border-white/10 hover:bg-white/10 opacity-75"
+                  ? "border-white/10"
+                  : "border-white/10 opacity-80"
               }`}
             >
               {/* CLICKABLE AREA */}
@@ -183,19 +189,19 @@ export default function AdminPremieresPage() {
                 className="block mb-3"
               >
                 {/* TITLE */}
-                <h2 className="text-lg font-semibold mb-2 group-hover:text-white">
+                <h2 className="text-lg font-semibold mb-2 group-hover:text-cyan-100 transition">
                   {premiere.title || "Untitled Premiere"}
                 </h2>
 
                 {/* STATUS */}
                 <div className="mb-3">
                   <span
-                    className={`text-xs px-2 py-1 rounded-full ${
+                    className={`admin-chip text-xs ${
                       premiere.status === "live"
-                        ? "bg-red-600"
+                        ? "border-rose-300/20 bg-rose-500/15 text-rose-100"
                         : premiere.status === "ended"
-                        ? "bg-gray-600"
-                        : "bg-yellow-600"
+                        ? "border-white/10 bg-white/5 text-gray-200"
+                        : "border-amber-300/20 bg-amber-500/10 text-amber-100"
                     }`}
                   >
                     {premiere.status || "scheduled"}
@@ -229,20 +235,20 @@ export default function AdminPremieresPage() {
                 {activeTab === "active" ? (
                   <button
                     onClick={() => setArchiveModal(premiere.id)}
-                    className="flex-1 bg-yellow-600/20 hover:bg-yellow-600/30 border border-yellow-600/30 text-yellow-400 hover:text-yellow-300 text-xs py-2 rounded transition"
+                    className="flex-1 admin-button bg-amber-500/10 text-amber-100 border border-amber-300/20 text-xs py-2"
                   >
-                    🗂️ Archive
+                    Archive
                   </button>
                 ) : (
                   <>
                     <button
                       onClick={() => handleRestore(premiere.id)}
-                      className="flex-1 bg-green-600/20 hover:bg-green-600/30 border border-green-600/30 text-green-400 hover:text-green-300 text-xs py-2 rounded transition"
+                      className="flex-1 admin-button bg-emerald-500/10 text-emerald-100 border border-emerald-300/20 text-xs py-2"
                     >
-                      🔄 Restore
+                      Restore
                     </button>
                     <p className="flex-1 text-xs text-gray-500 flex items-center">
-                      📅 {premiere.archivedAt?.toDate?.().toLocaleDateString?.()}
+                      {premiere.archivedAt?.toDate?.().toLocaleDateString?.()}
                     </p>
                   </>
                 )}
@@ -256,10 +262,10 @@ export default function AdminPremieresPage() {
       {/* ARCHIVE CONFIRMATION MODAL */}
       {archiveModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-[#0B0B0F] border border-white/20 rounded-2xl max-w-md w-full p-6 space-y-4">
-            <h2 className="text-xl font-bold">Archive Premiere?</h2>
+          <div className="admin-surface rounded-[1.75rem] max-w-md w-full p-6 space-y-4">
+            <h2 className="text-xl font-bold">Archive premiere?</h2>
 
-            <div className="p-3 bg-yellow-600/20 border border-yellow-600/30 rounded">
+            <div className="p-3 bg-amber-500/10 border border-amber-300/20 rounded-2xl">
               <p className="text-sm text-gray-300">
                 {premieres.find((p) => p.id === archiveModal)?.title}
               </p>
@@ -273,13 +279,13 @@ export default function AdminPremieresPage() {
               <button
                 onClick={() => handleArchive(archiveModal)}
                 disabled={archiving}
-                className="flex-1 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 px-4 py-2 rounded-lg font-semibold transition"
+                className="flex-1 admin-button admin-button-primary disabled:opacity-60"
               >
-                {archiving ? "Archiving..." : "🗂️ Archive"}
+                {archiving ? "Archiving..." : "Archive"}
               </button>
               <button
                 onClick={() => setArchiveModal(null)}
-                className="flex-1 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg font-semibold transition"
+                className="flex-1 admin-button admin-button-secondary"
               >
                 Cancel
               </button>

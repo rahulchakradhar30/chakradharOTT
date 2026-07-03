@@ -154,27 +154,28 @@ export default function CommentManager({ params }) {
   const replies = comments.filter((c) => c.parentId);
 
   return (
-    <div className="space-y-10 max-w-5xl mx-auto">
+    <div className="space-y-10 max-w-6xl mx-auto">
 
       {/* HEADER */}
-      <div>
-        <h1 className="text-2xl md:text-4xl font-bold tracking-tight">
-          Comments
-        </h1>
-        <p className="text-gray-400 mt-2 text-sm md:text-base">
-          Managing comments for: {movieTitle}
-        </p>
+      <div className="admin-toolbar items-end">
+        <div className="admin-section max-w-3xl">
+          <p className="admin-kicker">Comment Moderation</p>
+          <h1 className="admin-title">Comments</h1>
+          <p className="admin-lead">Managing comments for: {movieTitle}</p>
+        </div>
+
+        <div className="admin-chip">{comments.length} total</div>
       </div>
 
       {/* BULK CONTROLS */}
       <div className="flex flex-wrap gap-3">
-        <button onClick={selectAll} className="bg-blue-600 px-4 py-2 rounded-lg text-sm">
+        <button onClick={selectAll} className="admin-button admin-button-secondary px-4 py-2 text-sm">
           Select All
         </button>
-        <button onClick={clearSelection} className="bg-zinc-700 px-4 py-2 rounded-lg text-sm">
+        <button onClick={clearSelection} className="admin-button admin-button-secondary px-4 py-2 text-sm">
           Clear
         </button>
-        <button onClick={deleteSelected} className="bg-red-600 px-4 py-2 rounded-lg text-sm">
+        <button onClick={deleteSelected} className="admin-button px-4 py-2 text-sm bg-rose-500/15 text-rose-100 border border-rose-300/20">
           Delete Selected
         </button>
       </div>
@@ -182,13 +183,13 @@ export default function CommentManager({ params }) {
       {/* COMMENTS */}
       <div className="space-y-8">
 
-        {loading && <p className="text-gray-400 text-sm">Loading comments...</p>}
+        {loading && <div className="admin-empty">Loading comments...</div>}
 
         {!loading && topLevel.map((comment) => (
           <div key={comment.id} className="space-y-4">
 
             {/* MAIN COMMENT */}
-            <div className="bg-zinc-900/80 backdrop-blur-lg border border-white/10 p-5 rounded-2xl shadow-lg">
+            <div className="admin-surface border border-white/10 p-5 rounded-[1.75rem] shadow-lg">
 
               <div className="flex flex-col md:flex-row md:justify-between gap-4">
 
@@ -203,7 +204,7 @@ export default function CommentManager({ params }) {
 
                   <div className="break-words">
                     {comment.isAdmin && (
-                      <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full mr-2">
+                      <span className="admin-chip border-amber-300/20 bg-amber-500/10 text-amber-100 mr-2">
                         Admin
                       </span>
                     )}
@@ -222,21 +223,21 @@ export default function CommentManager({ params }) {
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => editComment(comment.id, comment.comment)}
-                    className="bg-yellow-600 px-3 py-1 rounded text-xs md:text-sm"
+                    className="admin-button admin-button-secondary px-3 py-2 text-xs md:text-sm"
                   >
                     Edit
                   </button>
 
                   <button
                     onClick={() => deleteSingle(comment.id)}
-                    className="bg-red-600 px-3 py-1 rounded text-xs md:text-sm"
+                    className="admin-button px-3 py-2 text-xs md:text-sm bg-rose-500/15 text-rose-100 border border-rose-300/20"
                   >
                     Delete
                   </button>
 
                   <button
                     onClick={() => setReplyTo(comment.id)}
-                    className="bg-green-600 px-3 py-1 rounded text-xs md:text-sm"
+                    className="admin-button admin-button-primary px-3 py-2 text-xs md:text-sm"
                   >
                     Reply
                   </button>
@@ -248,16 +249,16 @@ export default function CommentManager({ params }) {
 
             {/* REPLY BOX */}
             {replyTo === comment.id && (
-              <div className="ml-4 md:ml-12 bg-zinc-900/60 p-4 rounded-xl space-y-3">
+              <div className="ml-4 md:ml-12 admin-panel p-4 rounded-2xl space-y-3">
                 <textarea
-                  className="w-full p-3 bg-zinc-800 rounded-lg"
+                  className="admin-textarea"
                   placeholder="Admin reply..."
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                 />
                 <button
                   onClick={() => sendReply(comment.id)}
-                  className="bg-green-600 px-5 py-2 rounded-lg text-sm"
+                  className="admin-button admin-button-primary px-5 py-2 text-sm"
                 >
                   Send Reply
                 </button>
@@ -270,7 +271,7 @@ export default function CommentManager({ params }) {
               .map((reply) => (
                 <div
                   key={reply.id}
-                  className="ml-6 md:ml-16 bg-zinc-800/80 p-4 rounded-xl flex flex-col md:flex-row md:justify-between gap-3"
+                  className="ml-6 md:ml-16 admin-panel p-4 rounded-2xl flex flex-col md:flex-row md:justify-between gap-3"
                 >
                   <div className="break-words">
                     {reply.isAdmin && (
@@ -288,7 +289,7 @@ export default function CommentManager({ params }) {
 
                   <button
                     onClick={() => deleteSingle(reply.id)}
-                    className="bg-red-600 px-3 py-1 rounded text-xs md:text-sm self-start md:self-center"
+                    className="admin-button px-3 py-2 text-xs md:text-sm self-start md:self-center bg-rose-500/15 text-rose-100 border border-rose-300/20"
                   >
                     Delete
                   </button>

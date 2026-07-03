@@ -1,118 +1,205 @@
 "use client";
 
 import { useState } from "react";
-import { db } from "@/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { motion } from "framer-motion";
+import FormInput from "@/components/FormInput";
+import Button from "@/components/Button";
+import { useToast } from "@/components/Toast";
 
 export default function ContactPage() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
+  const { addToast } = useToast();
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    message: "",
+  });
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+
+  // Email validation regex
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  // Validate form
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.name.trim()) {
+      newErrors.name = "Name is required";
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = "Name must be at least 2 characters";
+    }
+
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!emailRegex.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+
+    if (!formData.message.trim()) {
+      newErrors.message = "Message is required";
+    } else if (formData.message.trim().length < 10) {
+      newErrors.message = "Message must be at least 10 characters";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!name || !email || !message) {
-      alert("Please fill all fields");
+    if (!validateForm()) {
+      addToast("Please fix the errors in the form", "warning");
       return;
     }
 
     try {
       setLoading(true);
 
-      await addDoc(collection(db, "contacts"), {
-        name,
-        email,
-        message,
-        createdAt: serverTimestamp(),
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          website: "",
+          name: formData.name,
+          email: formData.email,
+          message: formData.message,
+        }),
       });
 
-      setSuccess(true);
-      setName("");
-      setEmail("");
-      setMessage("");
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to send message");
+      }
 
+      addToast("Message sent successfully! We'll get back to you soon.", "success");
+      setFormData({ name: "", email: "", message: "" });
+      setErrors({});
     } catch (err) {
       console.error(err);
-      alert("Something went wrong");
+      addToast(err.message || "Failed to send message. Please try again.", "error");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0B0F] text-white px-4 md:px-16 py-10">
+    <div className="min-h-screen text-white px-4 md:px-10 lg:px-16 py-10 relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(0,212,255,0.14),_transparent_30%),radial-gradient(circle_at_bottom_left,_rgba(255,174,51,0.12),_transparent_28%)]" />
+      <motion.div
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="relative z-10 max-w-3xl mx-auto space-y-8"
+      >
+        <div className="glass-card rounded-[2rem] p-6 md:p-8">
+          <p className="admin-kicker mb-2">Support</p>
+          <h1 className="text-3xl md:text-5xl font-black tracking-tight">
+            Contact Us
+          </h1>
 
-      <div className="max-w-3xl mx-auto space-y-8">
+          <p className="text-gray-300 text-sm mt-3">
+            Have questions, feedback, or collaboration ideas? We&apos;d love to hear from you.
+          </p>
 
-        <h1 className="text-2xl md:text-4xl font-bold">
-          Contact Us
-        </h1>
-
-        <p className="text-gray-400 text-sm">
-          Have questions, feedback, or collaboration ideas? Reach out to us.
-        </p>
-
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-6">
-
-          {success && (
-            <p className="text-green-500 text-sm">
-              Message sent successfully.
-            </p>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-
-            {/* NAME */}
-            <input
-              type="text"
-              placeholder="Your Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full bg-zinc-800 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600"
+          <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+            <FormInput
+              label="Full Name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="Enter your name"
+              error={errors.name}
+              required
+              icon="👤"
             />
 
-            {/* EMAIL */}
-            <input
+            <FormInput
+              label="Email Address"
+              name="email"
               type="email"
-              placeholder="Your Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-zinc-800 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="your@email.com"
+              error={errors.email}
+              required
+              icon="📧"
             />
 
-            {/* MESSAGE */}
-            <textarea
-              placeholder="Your Message"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              rows="5"
-              className="w-full bg-zinc-800 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600"
-            />
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-300">
+                Message <span className="text-red-400">*</span>
+              </label>
+              <textarea
+                name="message"
+                value={formData.message}
+                onChange={handleChange}
+                placeholder="Tell us what's on your mind..."
+                rows="5"
+                className={`
+                  w-full px-4 py-3 bg-white/5 border rounded-lg text-white placeholder-gray-500 
+                  transition duration-200 resize-none
+                  focus:outline-none focus:ring-2 focus:ring-offset-0 focus:bg-white/10
+                  ${
+                    errors.message
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-white/20 focus:ring-blue-500"
+                  }
+                `}
+              />
+              {errors.message && (
+                <motion.p
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-xs text-red-400"
+                >
+                  {errors.message}
+                </motion.p>
+              )}
+            </div>
 
-            {/* BUTTON */}
-            <button
+            <Button
               type="submit"
-              disabled={loading}
-              className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-full w-full transition"
+              variant="primary"
+              size="full"
+              loading={loading}
             >
-              {loading ? "Sending..." : "Send Message"}
-            </button>
-
+              Send Message
+            </Button>
           </form>
-
         </div>
 
-        {/* EXTRA CONTACT INFO */}
-        <div className="text-sm text-gray-400 space-y-2">
-          <p>Email: thefifthagefilms@gmail.com</p>
-          <p>Platform: Chakradhar OTT</p>
+        <div className="glass-card rounded-2xl p-5 text-sm text-gray-300 space-y-3 relative z-10">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">📧</span>
+            <p>thefifthagefilms@gmail.com</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">⏱️</span>
+            <p>Response within 24 hours</p>
+          </div>
+          <div className="h-px bg-white/10 my-3" />
+          <p className="text-xs text-gray-500">
+            Your message helps us improve the platform. Thank you for reaching out!
+          </p>
         </div>
 
-      </div>
-
+      </motion.div>
     </div>
   );
 }

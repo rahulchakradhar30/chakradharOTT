@@ -149,47 +149,48 @@ export default function JoinPremierePage() {
   /* AUTH */
   if (!user) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        Login required.
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="admin-surface rounded-[1.75rem] p-6 text-center max-w-md w-full">
+          <p className="admin-kicker mb-2">Access required</p>
+          <h1 className="text-2xl font-bold mb-2">Login required</h1>
+          <p className="text-sm text-gray-400">Sign in to continue to the premiere access flow.</p>
+        </div>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        Loading...
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="admin-empty">Loading premiere access...</div>
       </div>
     );
   }
 
   if (!premiere) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        Premiere not found
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="admin-empty">Premiere not found</div>
       </div>
     );
   }
 
   /* 💰 PAID PREMIERE */
-  if (premiere.paymentRequired) {
+  if (premiere.ticketRequired) {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="admin-surface rounded-[1.75rem] p-6 md:p-8 max-w-md w-full text-center space-y-4">
+          <p className="admin-kicker">Paid Premiere</p>
+          <h1 className="text-2xl font-bold">Purchase access</h1>
+          <p className="text-gray-400 text-sm">Price: ₹{premiere.ticketPrice || 0}</p>
 
-        <h1 className="text-xl font-semibold">
-          Paid Premiere
-        </h1>
-
-        <p className="text-gray-400 text-sm">
-          Price: ₹{premiere.ticketPrice || 0}
-        </p>
-
-        <button
-          className="bg-red-600 px-6 py-3 rounded-lg"
-          onClick={handlePayment}
-        >
-          Buy Ticket
-        </button>
+          <button
+            className="admin-button admin-button-primary w-full"
+            onClick={handlePayment}
+          >
+            Buy Ticket
+          </button>
+        </div>
 
       </div>
     );
@@ -197,9 +198,9 @@ export default function JoinPremierePage() {
 
   /* 🎟 FREE TICKET UI */
   return (
-    <div className="min-h-screen bg-[#0B0B0F] text-white flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center px-4">
 
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-6 w-full max-w-md space-y-5">
+      <div className="admin-surface rounded-[1.75rem] p-6 w-full max-w-md space-y-5 text-center">
 
         <h1 className="text-xl font-semibold text-center">
           Enter Ticket
@@ -210,7 +211,7 @@ export default function JoinPremierePage() {
           placeholder="XXXX-XXXX"
           value={ticket}
           onChange={(e) => setTicket(e.target.value.toUpperCase())}
-          className="w-full bg-white/10 border border-white/10 px-4 py-3 rounded-lg text-center tracking-widest"
+          className="admin-input focus-ring text-center tracking-widest"
         />
 
         {error && (
@@ -221,7 +222,7 @@ export default function JoinPremierePage() {
 
         <button
           onClick={handleJoin}
-          className="w-full bg-red-600 py-3 rounded-lg"
+          className="admin-button admin-button-primary w-full"
         >
           Join Premiere
         </button>

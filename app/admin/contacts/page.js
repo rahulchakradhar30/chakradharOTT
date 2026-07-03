@@ -100,18 +100,24 @@ export default function AdminContactsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0B0F] text-white px-4 md:px-10 py-8">
+    <div className="space-y-10">
 
-      <h1 className="text-2xl md:text-3xl font-semibold mb-8">
-        📥 Contact Messages
-      </h1>
+      <div className="admin-toolbar items-end">
+        <div className="admin-section max-w-2xl">
+          <p className="admin-kicker">Support Desk</p>
+          <h1 className="admin-title">Contact messages</h1>
+          <p className="admin-lead">Review inbound messages, reply directly from the inbox, and keep the conversation history tidy.</p>
+        </div>
+
+        <div className="admin-chip">{messages.length} conversations</div>
+      </div>
 
       {loading && (
-        <p className="text-gray-400">Loading messages...</p>
+        <div className="admin-empty">Loading messages...</div>
       )}
 
       {!loading && messages.length === 0 && (
-        <p className="text-gray-400">No messages yet.</p>
+        <div className="admin-empty text-center">No messages yet.</div>
       )}
 
       <div className="space-y-6">
@@ -119,14 +125,14 @@ export default function AdminContactsPage() {
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-3"
+            className="admin-surface rounded-[1.75rem] p-5 md:p-6 space-y-4"
           >
 
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
 
               <div>
-                <p className="font-semibold">{msg.name}</p>
-                <p className="text-xs text-gray-400">
+                <p className="font-semibold text-lg">{msg.name}</p>
+                <p className="text-sm text-gray-400">
                   {msg.email}
                 </p>
               </div>
@@ -136,14 +142,14 @@ export default function AdminContactsPage() {
                 {/* ✅ REPLY BUTTON */}
                 <button
                   onClick={() => handleReplyOpen(msg.email)}
-                  className="text-xs bg-green-600 px-3 py-1 rounded"
+                  className="admin-button admin-button-primary px-3 py-2 text-xs"
                 >
                   Reply
                 </button>
 
                 <button
                   onClick={() => handleDelete(msg.id)}
-                  className="text-xs bg-red-600 px-3 py-1 rounded"
+                  className="admin-button px-3 py-2 text-xs bg-rose-500/15 text-rose-100 border border-rose-300/20"
                 >
                   Delete
                 </button>
@@ -171,7 +177,7 @@ export default function AdminContactsPage() {
       {replyOpen && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
 
-          <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6 w-full max-w-md space-y-4">
+          <div className="admin-surface rounded-[1.75rem] p-6 w-full max-w-md space-y-4">
 
             <h2 className="text-lg font-semibold">
               Reply to {selectedEmail}
@@ -181,14 +187,14 @@ export default function AdminContactsPage() {
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               placeholder="Type your reply..."
-              className="w-full bg-zinc-800 p-3 rounded-lg h-32"
+              className="admin-textarea h-32"
             />
 
             <div className="flex justify-end gap-3">
 
               <button
                 onClick={() => setReplyOpen(false)}
-                className="px-4 py-2 text-sm bg-white/10 rounded"
+                className="admin-button admin-button-secondary px-4 py-2 text-sm"
               >
                 Cancel
               </button>
@@ -196,7 +202,7 @@ export default function AdminContactsPage() {
               <button
                 onClick={handleSendReply}
                 disabled={sending}
-                className="px-4 py-2 text-sm bg-green-600 rounded"
+                className="admin-button admin-button-primary px-4 py-2 text-sm"
               >
                 {sending ? "Sending..." : "Send"}
               </button>

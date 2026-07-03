@@ -8,13 +8,13 @@ import {
   deleteDoc,
   doc,
   updateDoc,
-  serverTimestamp,
 } from "firebase/firestore";
 import Link from "next/link";
 
 export default function MoviesManagement() {
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     const fetchMovies = async () => {
@@ -29,12 +29,26 @@ export default function MoviesManagement() {
     fetchMovies();
   }, []);
 
+  const visibleMovies = movies.filter((movie) => {
+    const term = search.trim().toLowerCase();
+    if (!term) return true;
+
+    return [movie.title, movie.genre, movie.director]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(term));
+  });
+
   const handleDelete = async (id) => {
     const confirmDelete = confirm("Are you sure you want to delete this movie?");
     if (!confirmDelete) return;
 
-    await deleteDoc(doc(db, "movies", id));
-    setMovies((prev) => prev.filter((m) => m.id !== id));
+    try {
+      await deleteDoc(doc(db, "movies", id));
+      setMovies((prev) => prev.filter((m) => m.id !== id));
+    } catch (error) {
+      console.error("Delete failed:", error);
+      alert("Failed to delete movie");
+    }
   };
 
   /* 🔁 Generic toggle for any field (isFeatured, isTrending) */
@@ -42,8 +56,6 @@ export default function MoviesManagement() {
     try {
       await updateDoc(doc(db, "movies", id), {
         [field]: !currentValue,
-        // ensure releaseDate exists/updates for sorting if needed
-        releaseDate: serverTimestamp(),
       });
 
       setMovies((prev) =>
@@ -70,7 +82,6 @@ export default function MoviesManagement() {
       // set selected as hero + update releaseDate
       await updateDoc(doc(db, "movies", id), {
         isHero: true,
-        releaseDate: serverTimestamp(),
       });
 
       // update UI
@@ -89,71 +100,107 @@ export default function MoviesManagement() {
     <div className="space-y-10">
 
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-        <h1 className="text-2xl md:text-4xl font-bold tracking-tight">
-          Movies Management
-        </h1>
+      <div className="admin-toolbar items-end">
+        <div className="admin-section max-w-2xl">
+          <p className="admin-kicker">Content Library</p>
+          <h1 className="admin-title">Movies management</h1>
+          <p className="admin-lead">Keep the catalog organized, feature the right titles, and jump to analytics or comments from each entry.</p>
+        </div>
 
-        <Link
-          href="/admin/movies/create"
-          className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg transition text-sm font-medium"
-        >
-          + Upload New Movie
-        </Link>
+        <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+          <div className="min-w-[240px] flex-1 sm:flex-none">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search title, genre, director"
+              className="admin-input focus-ring"
+            />
+          </div>
+
+          <Link
+            href="/admin/movies/create"
+            className="admin-button admin-button-primary"
+          >
+            + Upload New Movie
+          </Link>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        {[
+          ["Total", movies.length],
+          ["Visible", visibleMovies.length],
+          ["Featured", movies.filter((movie) => movie.isFeatured).length],
+          ["Trending", movies.filter((movie) => movie.isTrending).length],
+        ].map(([label, value]) => (
+          <div key={label} className="admin-surface rounded-3xl p-4">
+            <p className="text-xs uppercase tracking-[0.22em] text-gray-400">{label}</p>
+            <p className="mt-2 text-2xl font-bold">{value}</p>
+          </div>
+        ))}
       </div>
 
       {/* LIST */}
       <div className="space-y-6">
 
         {loading && (
-          <div className="text-gray-400 text-sm">
+          <div className="admin-empty">
             Loading movies...
           </div>
         )}
 
-        {!loading && movies.length === 0 && (
-          <div className="text-gray-500 text-sm">
-            No movies uploaded yet.
+        {!loading && visibleMovies.length === 0 && (
+          <div className="admin-empty text-center">
+            {search ? "No movies match your search." : "No movies uploaded yet."}
           </div>
         )}
 
-        {movies.map((movie) => (
+        {visibleMovies.map((movie) => (
           <div
             key={movie.id}
-            className="bg-zinc-900/80 backdrop-blur-md border border-white/10 p-6 rounded-2xl shadow-lg space-y-5"
+            className="admin-surface p-5 md:p-6 rounded-[1.75rem] shadow-lg space-y-5"
           >
 
             {/* TITLE + ACTIONS */}
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <h2 className="text-lg md:text-xl font-semibold">
-                {movie.title}
-              </h2>
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {movie.isHero && <span className="admin-chip border-cyan-300/30 bg-cyan-500/10 text-cyan-100">Hero</span>}
+                  {movie.isTrending && <span className="admin-chip border-emerald-300/30 bg-emerald-500/10 text-emerald-100">Trending</span>}
+                  {movie.isFeatured && <span className="admin-chip border-amber-300/30 bg-amber-500/10 text-amber-100">Featured</span>}
+                </div>
+
+                <div>
+                  <h2 className="text-lg md:text-xl font-semibold">{movie.title}</h2>
+                  <p className="text-sm text-gray-400 mt-1">{movie.genre || "No genre"} {movie.director ? `• ${movie.director}` : ""}</p>
+                </div>
+              </div>
 
               <div className="flex flex-wrap gap-2">
                 <Link
                   href={`/admin/movies/edit/${movie.id}`}
-                  className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-xs md:text-sm"
+                  className="admin-button admin-button-secondary px-3 py-2 text-xs md:text-sm"
                 >
                   Edit
                 </Link>
 
                 <Link
                   href={`/admin/analytics/${movie.id}`}
-                  className="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded text-xs md:text-sm"
+                  className="admin-button admin-button-secondary px-3 py-2 text-xs md:text-sm"
                 >
                   Analytics
                 </Link>
 
                 <Link
                   href={`/admin/comments/${movie.id}`}
-                  className="bg-yellow-600 hover:bg-yellow-700 px-3 py-1 rounded text-xs md:text-sm"
+                  className="admin-button admin-button-secondary px-3 py-2 text-xs md:text-sm"
                 >
                   Comments
                 </Link>
 
                 <button
                   onClick={() => handleDelete(movie.id)}
-                  className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-xs md:text-sm"
+                  className="admin-button px-3 py-2 text-xs md:text-sm bg-rose-500/15 text-rose-100 border border-rose-300/20"
                 >
                   Delete
                 </button>
@@ -161,16 +208,14 @@ export default function MoviesManagement() {
             </div>
 
             {/* STATUS TOGGLES */}
-            <div className="flex flex-wrap gap-4 text-sm">
+            <div className="flex flex-wrap gap-3 text-sm">
 
               {/* ⭐ HERO */}
               <button
                 onClick={() => setHeroMovie(movie.id)}
-                className={`px-4 py-1 rounded-full text-xs font-medium ${
-                  movie.isHero ? "bg-red-600" : "bg-zinc-700"
-                }`}
+                className={`admin-chip transition ${movie.isHero ? "border-rose-300/30 bg-rose-500/15 text-rose-100" : "bg-white/5 text-gray-300"}`}
               >
-                ⭐ Hero
+                ⭐ Hero {movie.isHero ? "On" : "Off"}
               </button>
 
               {/* 🔥 TRENDING */}
@@ -182,11 +227,9 @@ export default function MoviesManagement() {
                     !!movie.isTrending
                   )
                 }
-                className={`px-4 py-1 rounded-full text-xs font-medium ${
-                  movie.isTrending ? "bg-green-700" : "bg-zinc-700"
-                }`}
+                className={`admin-chip transition ${movie.isTrending ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "bg-white/5 text-gray-300"}`}
               >
-                Trending
+                Trending {movie.isTrending ? "On" : "Off"}
               </button>
 
               {/* 🎯 FEATURED */}
@@ -198,11 +241,9 @@ export default function MoviesManagement() {
                     !!movie.isFeatured
                   )
                 }
-                className={`px-4 py-1 rounded-full text-xs font-medium ${
-                  movie.isFeatured ? "bg-green-700" : "bg-zinc-700"
-                }`}
+                className={`admin-chip transition ${movie.isFeatured ? "border-amber-300/30 bg-amber-500/15 text-amber-100" : "bg-white/5 text-gray-300"}`}
               >
-                Featured
+                Featured {movie.isFeatured ? "On" : "Off"}
               </button>
 
             </div>

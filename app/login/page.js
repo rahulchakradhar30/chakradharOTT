@@ -3,11 +3,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { sendEmailVerification, signOut } from "firebase/auth";
-import { auth } from "@/firebase";
+import { sendEmailVerification } from "firebase/auth";
+import { motion } from "framer-motion";
+import FormInput from "@/components/FormInput";
+import Button from "@/components/Button";
+import { useToast } from "@/components/Toast";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { addToast } = useToast();
   const {
     loginWithGoogle,
     loginWithEmail,
@@ -15,198 +19,205 @@ export default function LoginPage() {
     resetPassword,
   } = useAuth();
 
-  const [mode, setMode] = useState("login"); // login | register
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState("login");
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [verificationMessage, setVerificationMessage] = useState(""); // ✅ NEW
+  const [message, setMessage] = useState("");
 
-  /* ---------------- GOOGLE LOGIN ---------------- */
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Invalid email address";
+    }
+
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    } else if (formData.password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleGoogle = async () => {
     try {
       setLoading(true);
       await loginWithGoogle();
+      addToast("Logged in successfully!", "success");
       router.push("/");
     } catch (err) {
-      console.error("Google Error:", err);
-      alert(err.message);
+      addToast(err.message || "Google sign-in failed", "error");
     } finally {
       setLoading(false);
     }
   };
-
-  /* ---------------- EMAIL LOGIN / REGISTER ---------------- */
 
   const handleEmailAuth = async (e) => {
     e.preventDefault();
 
+    if (!validateForm()) {
+      addToast("Please fix the errors in the form", "warning");
+      return;
+    }
+
     try {
       setLoading(true);
-      setVerificationMessage(""); // ✅ Clear previous messages
+      setMessage("");
 
       if (mode === "login") {
-        await loginWithEmail(email, password);
+        const cred = await loginWithEmail(formData.email, formData.password);
 
-        // ✅ FIXED: Check verification AFTER login
-        if (!auth.currentUser.emailVerified) {
-          // Logout immediately to keep state consistent
-          await signOut(auth);
-
-          // Show message with resend option
-          setVerificationMessage(
-            "Email not verified. Check your inbox for verification link. Resend email?"
-          );
-
-          // Resend verification email
-          try {
-            await sendEmailVerification(auth.currentUser);
-            alert("Verification email resent. Check your inbox or spam folder.");
-          } catch (err) {
-            console.error("Resend error:", err);
-          }
-
-          setEmail("");
-          setPassword("");
+        if (!cred.user.emailVerified) {
+          await sendEmailVerification(cred.user);
+          setMessage("Email not verified. A fresh verification link has been sent.");
+          addToast("Please verify your email", "warning");
           return;
         }
-      } else {
-        await registerWithEmail(email, password);
 
-        // Send verification email
-        await sendEmailVerification(auth.currentUser);
-
-        alert(
-          "Account created! Verification email sent. Please check your inbox or spam folder."
-        );
-        setMode("login");
-        setEmail("");
-        setPassword("");
+        addToast("Logged in successfully!", "success");
+        router.push("/");
         return;
       }
 
-      router.push("/");
+      const cred = await registerWithEmail(formData.email, formData.password);
+      await sendEmailVerification(cred.user);
+      setMessage("Account created. Please verify your email before login.");
+      setMode("login");
+      setFormData({ ...formData, password: "" });
+      addToast("Account created! Check your email for verification.", "success");
     } catch (err) {
-      console.error("Auth Error:", err);
-      alert(err.message);
+      const errorMessage = err.message || "Authentication failed";
+      addToast(errorMessage, "error");
     } finally {
       setLoading(false);
     }
   };
 
-  /* ---------------- FORGOT PASSWORD ---------------- */
-
   const handleForgotPassword = async () => {
-    if (!email) {
-      alert("Enter your email first.");
+    if (!formData.email) {
+      addToast("Enter your email first", "warning");
       return;
     }
 
     try {
-      await resetPassword(email);
-      alert("Password reset email sent.");
+      await resetPassword(formData.email);
+      addToast("Password reset link sent to your email", "success");
+      setMessage("Check your email for the password reset link.");
     } catch (err) {
-      console.error("Reset Error:", err);
-      alert(err.message);
+      addToast(err.message || "Failed to send reset email", "error");
     }
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center px-6">
-
-      <div className="w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-2xl">
-
-        <h1 className="text-3xl font-bold mb-6 text-center">
+    <div className="min-h-screen flex items-center justify-center px-4 py-10 text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(0,212,255,0.18),_transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(255,77,141,0.12),_transparent_30%)]" />
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className="relative z-10 w-full max-w-md glass-card rounded-[2rem] p-6 md:p-8 shadow-2xl"
+      >
+        <p className="admin-kicker mb-2">Chakradhar Stream</p>
+        <h1 className="text-3xl font-black mb-6 tracking-tight">
           {mode === "login" ? "Welcome Back" : "Create Account"}
         </h1>
 
-        {/* GOOGLE LOGIN */}
-        <button
+        <Button
           onClick={handleGoogle}
           disabled={loading}
-          className="w-full mb-6 bg-white text-black py-3 rounded-xl font-medium hover:opacity-90 transition"
+          variant="secondary"
+          size="full"
+          className="mb-5 bg-white text-black hover:bg-white/90"
         >
-          Continue with Google
-        </button>
+          🔐 Continue with Google
+        </Button>
 
-        <div className="text-center text-gray-400 mb-6 text-sm">
-          OR
-        </div>
+        <div className="text-center text-gray-400 mb-5 text-sm font-medium">or continue with email</div>
 
-        {/* ✅ VERIFICATION MESSAGE */}
-        {verificationMessage && (
-          <div className="bg-yellow-600/20 border border-yellow-500/50 text-yellow-200 p-4 rounded-xl mb-6 text-sm">
-            <p className="mb-3">{verificationMessage}</p>
-            <button
-              type="button"
-              onClick={async () => {
-                if (email && auth.currentUser) {
-                  try {
-                    await sendEmailVerification(auth.currentUser);
-                    alert("Verification email resent!");
-                  } catch (err) {
-                    alert("Error resending email");
-                  }
-                }
-              }}
-              className="w-full bg-yellow-600 hover:bg-yellow-700 px-3 py-2 rounded text-xs transition"
-            >
-              Resend Verification Email
-            </button>
-          </div>
-        )}
-
-        {/* EMAIL FORM */}
-        <form onSubmit={handleEmailAuth} className="space-y-4">
-
-          <input
-            type="email"
-            placeholder="Email"
-            required
-            disabled={loading}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full bg-zinc-800 p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-600"
-          />
-
-          <input
-            type="password"
-            placeholder="Password"
-            required
-            disabled={loading}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-zinc-800 p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-600"
-          />
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-red-600 hover:bg-red-700 py-3 rounded-xl transition"
+        {message ? (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 rounded-xl border border-cyan-300/30 bg-cyan-500/10 p-3 text-sm text-cyan-100 flex items-start gap-2"
           >
-            {mode === "login" ? "Login" : "Register"}
-          </button>
+            <span className="mt-0.5">ℹ️</span>
+            <span>{message}</span>
+          </motion.div>
+        ) : null}
 
+        <form onSubmit={handleEmailAuth} className="space-y-5">
+          <FormInput
+            label="Email Address"
+            name="email"
+            type="email"
+            placeholder="your@email.com"
+            value={formData.email}
+            onChange={handleChange}
+            error={errors.email}
+            disabled={loading}
+            icon="📧"
+            required
+          />
+
+          <FormInput
+            label="Password"
+            name="password"
+            type="password"
+            placeholder="••••••••"
+            value={formData.password}
+            onChange={handleChange}
+            error={errors.password}
+            disabled={loading}
+            icon="🔒"
+            required
+          />
+
+          <Button
+            type="submit"
+            variant="primary"
+            size="full"
+            loading={loading}
+            disabled={loading}
+          >
+            {mode === "login" ? "Sign In" : "Create Account"}
+          </Button>
         </form>
 
-        {mode === "login" && (
+        {mode === "login" ? (
           <button
+            type="button"
             onClick={handleForgotPassword}
-            className="text-sm text-gray-400 mt-4 block mx-auto hover:text-white"
+            className="text-sm text-gray-300 mt-4 block mx-auto hover:text-cyan-300 transition font-medium"
           >
-            Forgot Password?
+            Forgot your password?
           </button>
-        )}
+        ) : null}
 
-        <div className="mt-6 text-center text-sm text-gray-400">
+        <div className="mt-6 text-center text-sm text-gray-300">
           {mode === "login" ? (
             <>
-              Don’t have an account?{" "}
+              New here?{" "}
               <button
                 onClick={() => setMode("register")}
                 className="text-white underline"
               >
-                Register
+                Create account
               </button>
             </>
           ) : (
@@ -221,8 +232,7 @@ export default function LoginPage() {
             </>
           )}
         </div>
-
-      </div>
+      </motion.div>
     </div>
   );
 }

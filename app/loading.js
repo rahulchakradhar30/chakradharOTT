@@ -1,33 +1,23 @@
 export default function Loading() {
   return (
-    <div className="bg-black text-white min-h-screen animate-pulse">
-
-      {/* Navbar Spacer */}
-      <div className="h-[80px]" />
-
-      {/* Hero Skeleton */}
-      <div className="h-[55vh] bg-zinc-900" />
-
-      {/* Rows */}
-      <div className="px-6 md:px-16 py-14 space-y-20">
-
+    <div className="min-h-screen animate-pulse">
+      <div className="h-[74vh] md:h-[88vh] rounded-b-[2rem] md:rounded-b-[3rem] bg-white/5" />
+      <div className="px-4 md:px-10 lg:px-16 py-12 space-y-14">
         {[1, 2, 3].map((row) => (
           <div key={row}>
-            <div className="h-6 w-40 bg-zinc-800 mb-8 rounded" />
+            <div className="h-8 w-56 bg-white/10 mb-6 rounded-lg" />
 
             <div className="flex gap-6 overflow-hidden">
               {[1, 2, 3, 4, 5].map((item) => (
                 <div
                   key={item}
-                  className="w-[200px] h-[300px] bg-zinc-800 rounded-2xl"
+                  className="w-[180px] md:w-[240px] h-[280px] md:h-[340px] bg-white/10 rounded-2xl"
                 />
               ))}
             </div>
           </div>
         ))}
-
       </div>
-
     </div>
   );
 }

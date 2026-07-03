@@ -129,39 +129,45 @@ export default function MovieAnalytics() {
   };
 
   return (
-    <div className="bg-black text-white min-h-screen p-12">
+    <div className="space-y-10">
 
-      <h1 className="text-4xl font-bold mb-12">
-        {movie.title} — Studio Analytics
-      </h1>
+      <div className="admin-toolbar items-end">
+        <div className="admin-section max-w-3xl">
+          <p className="admin-kicker">Movie Intelligence</p>
+          <h1 className="admin-title">{movie.title} analytics</h1>
+          <p className="admin-lead">Review the real data, understand the boost layer, and adjust the display metrics with fewer surprises.</p>
+        </div>
+
+        <div className="admin-chip">Studio analytics</div>
+      </div>
 
       {/* KPI GRID */}
-      <div className="grid md:grid-cols-4 gap-6 mb-12">
+      <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-5">
 
-        <div className="bg-zinc-900 p-6 rounded-xl shadow-xl">
-          <p className="text-gray-400 text-sm">Real Views</p>
-          <p className="text-3xl font-bold">
+        <div className="admin-surface p-6 rounded-3xl shadow-xl">
+          <p className="text-gray-400 text-sm uppercase tracking-[0.2em]">Real Views</p>
+          <p className="admin-metric-value mt-2">
             {viewsReal.toLocaleString()}
           </p>
         </div>
 
-        <div className="bg-zinc-900 p-6 rounded-xl shadow-xl">
-          <p className="text-gray-400 text-sm">Total Displayed Views</p>
-          <p className="text-3xl font-bold text-green-400">
+        <div className="admin-surface p-6 rounded-3xl shadow-xl">
+          <p className="text-gray-400 text-sm uppercase tracking-[0.2em]">Total Displayed Views</p>
+          <p className="admin-metric-value mt-2 text-emerald-300">
             {totalViews.toLocaleString()}
           </p>
         </div>
 
-        <div className="bg-zinc-900 p-6 rounded-xl shadow-xl">
-          <p className="text-gray-400 text-sm">Real Rating</p>
-          <p className="text-3xl font-bold">
+        <div className="admin-surface p-6 rounded-3xl shadow-xl">
+          <p className="text-gray-400 text-sm uppercase tracking-[0.2em]">Real Rating</p>
+          <p className="admin-metric-value mt-2">
             {realRatingAverage.toFixed(2)}
           </p>
         </div>
 
-        <div className="bg-zinc-900 p-6 rounded-xl shadow-xl">
-          <p className="text-gray-400 text-sm">Engagement Ratio</p>
-          <p className="text-3xl font-bold text-yellow-400">
+        <div className="admin-surface p-6 rounded-3xl shadow-xl">
+          <p className="text-gray-400 text-sm uppercase tracking-[0.2em]">Engagement Ratio</p>
+          <p className="admin-metric-value mt-2 text-amber-300">
             {engagement.toFixed(2)}%
           </p>
           <p className="text-xs text-gray-500">
@@ -172,11 +178,12 @@ export default function MovieAnalytics() {
       </div>
 
       {/* MANIPULATION PANEL */}
-      <div className="bg-zinc-900 p-8 rounded-xl shadow-xl max-w-xl">
+      <div className="admin-surface p-8 rounded-[1.75rem] shadow-xl max-w-2xl">
 
-        <h2 className="text-2xl font-semibold mb-6">
+        <h2 className="text-2xl font-semibold mb-2">
           Manipulate Metrics
         </h2>
+        <p className="text-sm text-gray-400 mb-6">Use these adjustments carefully. They only change display values.</p>
 
         <div className="space-y-4">
 
@@ -186,7 +193,7 @@ export default function MovieAnalytics() {
               type="number"
               value={boostInput}
               onChange={(e) => setBoostInput(e.target.value)}
-              className="w-full p-3 bg-zinc-800 rounded"
+              className="admin-input focus-ring"
             />
           </div>
 
@@ -199,7 +206,7 @@ export default function MovieAnalytics() {
               onChange={(e) =>
                 setRatingBoostInput(e.target.value)
               }
-              className="w-full p-3 bg-zinc-800 rounded"
+              className="admin-input focus-ring"
             />
           </div>
 
@@ -211,21 +218,21 @@ export default function MovieAnalytics() {
               onChange={(e) =>
                 setRatingCountBoostInput(e.target.value)
               }
-              className="w-full p-3 bg-zinc-800 rounded"
+              className="admin-input focus-ring"
             />
           </div>
 
           <div className="flex gap-4 pt-4">
             <button
               onClick={handleSave}
-              className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded"
+              className="admin-button admin-button-primary"
             >
               Save Boost
             </button>
 
             <button
               onClick={handleReset}
-              className="bg-red-600 hover:bg-red-700 px-6 py-2 rounded"
+              className="admin-button px-6 py-2 bg-rose-500/15 text-rose-100 border border-rose-300/20"
             >
               Reset All Boosts
             </button>

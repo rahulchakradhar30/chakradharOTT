@@ -3,6 +3,10 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { Resend } from "resend";
+import { hashOtp } from "@/lib/adminAuth";
+import { enforceRateLimit, getClientIp } from "@/lib/rateLimit";
+import { isValidEmail, normalizeEmail } from "@/lib/validation";
+import { logServerEvent } from "@/lib/auditLog";
 
 // Lazy initialize Resend only when API is called
 function getResendClient() {
@@ -14,7 +18,23 @@ function getResendClient() {
   return new Resend(process.env.RESEND_API_KEY);
 }
 
+  function getAllowedAdminEmails() {
+    const fromEnv = String(process.env.ADMIN_ALLOWED_EMAILS || "")
+      .split(",")
+      .map((v) => v.trim().toLowerCase())
+      .filter(Boolean);
+
+    if (fromEnv.length > 0) return fromEnv;
+
+    return [
+      "thefifthagefilms@gmail.com",
+      "rahulchakradharperepogu@gmail.com",
+    ];
+  }
+
 export async function POST(req) {
+  const ip = getClientIp(req);
+
   try {
     if (!process.env.RESEND_API_KEY) {
       return NextResponse.json(
@@ -24,11 +44,53 @@ export async function POST(req) {
     }
 
     const { email } = await req.json();
+    const normalizedEmail = normalizeEmail(email);
 
-    if (!email) {
+    const ipLimiter = await enforceRateLimit({
+      scope: "otp_send_ip",
+      subject: ip,
+      limit: 20,
+      windowMs: 10 * 60 * 1000,
+    });
+
+    if (!ipLimiter.allowed) {
       return NextResponse.json(
-        { success: false, error: "Email required" },
+        { success: false, error: "Too many requests." },
+        { status: 429 }
+      );
+    }
+
+    if (!isValidEmail(normalizedEmail)) {
+      return NextResponse.json(
+        { success: false, error: "Valid email required" },
         { status: 400 }
+      );
+    }
+
+      const allowedEmails = getAllowedAdminEmails();
+      if (!allowedEmails.includes(normalizedEmail)) {
+        await logServerEvent("admin_otp_send_failed", {
+          ip,
+          email: normalizedEmail,
+          message: "unauthorized_email",
+        });
+        return NextResponse.json(
+          { success: false, error: "Unauthorized" },
+          { status: 403 }
+        );
+      }
+
+    const emailLimiter = await enforceRateLimit({
+      scope: "otp_send_email",
+      subject: normalizedEmail,
+      limit: 8,
+      windowMs: 15 * 60 * 1000,
+    });
+
+    if (!emailLimiter.allowed) {
+      return NextResponse.json(
+        { success: false, error: "Too many OTP requests. Try later." },
+        { status: 429 }
       );
     }
 
@@ -37,7 +99,7 @@ export async function POST(req) {
     // 🔎 Get all OTPs for this email (no orderBy to avoid index requirement)
     const snapshot = await adminDb
       .collection("admin_otps")
-      .where("email", "==", email)
+      .where("email", "==", normalizedEmail)
       .get();
 
     const docs = snapshot.docs.map((doc) => doc.data());
@@ -70,10 +132,11 @@ export async function POST(req) {
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpHash = hashOtp(normalizedEmail, otp);
 
     await adminDb.collection("admin_otps").add({
-      email,
-      otp,
+      email: normalizedEmail,
+      otpHash,
       attempts: 0,
       createdAt: now,
       expiresAt: now + 5 * 60 * 1000,
@@ -83,7 +146,7 @@ export async function POST(req) {
 
     await resend.emails.send({
       from: "Chakradhar OTT <onboarding@resend.dev>",
-      to: email,
+      to: normalizedEmail,
       subject: "Admin OTP Verification",
       html: `
         <div style="font-family: sans-serif;">
@@ -93,10 +156,19 @@ export async function POST(req) {
       `,
     });
 
+    await logServerEvent("admin_otp_sent", {
+      ip,
+      email: normalizedEmail,
+    });
+
     return NextResponse.json({ success: true });
 
   } catch (error) {
     console.error("SEND OTP ERROR:", error);
+    await logServerEvent("admin_otp_send_failed", {
+      ip,
+      message: error?.message || "Unknown",
+    });
     return NextResponse.json(
       { success: false, error: "Server error" },
       { status: 500 }

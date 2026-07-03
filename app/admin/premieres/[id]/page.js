@@ -16,9 +16,19 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 function generateTicketCode() {
-  const part1 = Math.random().toString(36).substring(2, 6).toUpperCase();
-  const part2 = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `${part1}-${part2}`;
+  const bytes = new Uint8Array(6);
+  if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
+    window.crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let out = "";
+  for (let i = 0; i < bytes.length; i++) {
+    out += chars[bytes[i] % chars.length];
+  }
+  return `${out.slice(0, 3)}-${out.slice(3)}`;
 }
 
 export default function AdminPremiereDetail() {
@@ -82,7 +92,7 @@ export default function AdminPremiereDetail() {
         archivedAt: Timestamp.now(),
       });
 
-      alert("✅ Premiere archived successfully!");
+      alert("Premiere archived successfully.");
       router.push("/admin/premieres");
     } catch (err) {
       console.error("Error archiving premiere:", err);
@@ -148,10 +158,10 @@ export default function AdminPremiereDetail() {
           used: !currentStatus,
         }
       );
-      alert("✅ Ticket marked " + (!currentStatus ? "used" : "unused"));
+      alert("Ticket marked " + (!currentStatus ? "used" : "unused"));
     } catch (err) {
       console.error("Error updating ticket:", err);
-      alert("❌ Failed: " + (err.message || "Unknown error"));
+      alert("Failed: " + (err.message || "Unknown error"));
       // Revert to previous state
       setTickets(previousTickets);
     } finally {
@@ -183,10 +193,10 @@ export default function AdminPremiereDetail() {
           approvedAt: !currentStatus ? Timestamp.now() : null,
         }
       );
-      alert("✅ Ticket " + (!currentStatus ? "approved" : "approval revoked"));
+      alert("Ticket " + (!currentStatus ? "approved" : "approval revoked"));
     } catch (err) {
       console.error("Error updating ticket approval:", err);
-      alert("❌ Failed: " + (err.message || "Unknown error"));
+      alert("Failed: " + (err.message || "Unknown error"));
       // Revert to previous state
       setTickets(previousTickets);
     } finally {
@@ -205,20 +215,22 @@ export default function AdminPremiereDetail() {
   }
 
   return (
-    <div className="p-6 md:p-10 text-white space-y-8 bg-[#0B0B0F] min-h-screen">
+    <div className="space-y-10">
 
       {/* HEADER */}
-      <div className="flex justify-between items-center flex-wrap gap-4">
-        <h1 className="text-2xl md:text-3xl font-bold">
-          {premiere.title}
-        </h1>
+      <div className="admin-toolbar items-end">
+        <div className="admin-section max-w-3xl">
+          <p className="admin-kicker">Live Event</p>
+          <h1 className="admin-title">{premiere.title}</h1>
+          <p className="admin-lead">Control status, tickets, and the live room from one page.</p>
+        </div>
 
-        <span className={`text-xs px-3 py-1 rounded-full ${
+        <span className={`admin-chip ${
           premiere.status === "live"
-            ? "bg-red-600"
+            ? "border-rose-300/20 bg-rose-500/15 text-rose-100"
             : premiere.status === "ended"
-            ? "bg-gray-600"
-            : "bg-yellow-600"
+            ? "border-white/10 bg-white/5 text-gray-200"
+            : "border-amber-300/20 bg-amber-500/10 text-amber-100"
         }`}>
           {premiere.status || "scheduled"}
         </span>
@@ -227,42 +239,42 @@ export default function AdminPremiereDetail() {
       {/* EDIT BUTTON */}
       <Link
         href={`/admin/premieres/${id}/edit`}
-        className="inline-block bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-semibold transition"
+        className="admin-button admin-button-primary inline-flex"
       >
-        ✏️ Edit Details
+        Edit Details
       </Link>
 
       {/* CONTROLS */}
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
+      <div className="admin-surface rounded-[1.75rem] p-6 space-y-4">
 
         <div className="flex gap-3 flex-wrap">
 
           <button
             onClick={() => updateStatus("live")}
-            className="bg-green-600 px-4 py-2 rounded-lg text-sm"
+            className="admin-button bg-emerald-500/15 text-emerald-100 border border-emerald-300/20 px-4 py-2 text-sm"
           >
             ▶ Start
           </button>
 
           <button
             onClick={() => updateStatus("ended")}
-            className="bg-gray-700 px-4 py-2 rounded-lg text-sm"
+            className="admin-button admin-button-secondary px-4 py-2 text-sm"
           >
             ⛔ End
           </button>
 
           <button
             onClick={() => setArchiveModal(true)}
-            className="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-lg text-sm transition"
+            className="admin-button bg-amber-500/15 text-amber-100 border border-amber-300/20 px-4 py-2 text-sm"
           >
-            🗂️ Archive
+            Archive
           </button>
 
           <Link
             href={`/admin/premieres/${id}/room`}
-            className="bg-blue-600 px-4 py-2 rounded-lg text-sm"
+            className="admin-button admin-button-secondary px-4 py-2 text-sm"
           >
-            🎥 Room
+            Room
           </Link>
 
         </div>
@@ -284,7 +296,7 @@ export default function AdminPremiereDetail() {
       </div>
 
       {/* GENERATE */}
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+      <div className="admin-surface rounded-[1.75rem] p-6">
 
         <h2 className="text-lg font-semibold mb-4">
           Generate Tickets
@@ -298,13 +310,13 @@ export default function AdminPremiereDetail() {
             onChange={(e) =>
               setTicketCount(Number(e.target.value))
             }
-            className="bg-zinc-800 p-3 rounded w-32"
+            className="admin-input focus-ring w-32"
             min="1"
           />
 
           <button
             onClick={handleGenerate}
-            className="bg-red-600 px-5 py-3 rounded-full"
+            className="admin-button admin-button-primary px-5 py-3"
           >
             {loading ? "Generating..." : "Generate"}
           </button>
@@ -315,8 +327,8 @@ export default function AdminPremiereDetail() {
 
       {/* PAYMENT REVENUE */}
       {premiere?.ticketRequired && (
-        <div className="bg-gradient-to-r from-yellow-600/20 to-orange-600/20 border border-yellow-600/30 rounded-2xl p-6">
-          <h2 className="text-lg font-semibold mb-4">💰 Payment Revenue</h2>
+        <div className="admin-panel rounded-[1.75rem] p-6">
+          <h2 className="text-lg font-semibold mb-4">Payment Revenue</h2>
 
           <div className="grid md:grid-cols-3 gap-4 mb-6">
             <div>
@@ -343,7 +355,7 @@ export default function AdminPremiereDetail() {
           {/* ADMIN QUOTA INFO */}
           {premiere?.adminQuota > 0 && (
             <div className="bg-white/10 border border-white/10 rounded-lg p-4 space-y-3">
-              <p className="font-semibold text-sm">🎟️ Admin Quota</p>
+              <p className="font-semibold text-sm">Admin Quota</p>
               <div className="flex justify-between text-sm">
                 <span>Quota Available:</span>
                 <span className="font-mono">{premiere.adminQuota}</span>
@@ -370,7 +382,7 @@ export default function AdminPremiereDetail() {
           {/* TICKET LIMIT INFO */}
           {premiere?.ticketLimit > 0 && (
             <div className="bg-white/10 border border-white/10 rounded-lg p-4 mt-4 space-y-2">
-              <p className="font-semibold text-sm">🎫 Ticket Limit</p>
+              <p className="font-semibold text-sm">Ticket Limit</p>
               <div className="flex justify-between text-sm">
                 <span>Max Capacity:</span>
                 <span className="font-mono">{premiere.ticketLimit}</span>
@@ -386,7 +398,7 @@ export default function AdminPremiereDetail() {
                 </span>
               </div>
               {(premiere.ticketsSold || 0) >= premiere.ticketLimit && (
-                <p className="text-xs text-red-400 mt-2">🔴 Capacity Reached - No more tickets available</p>
+                <p className="text-xs text-red-400 mt-2">Capacity reached - no more tickets available</p>
               )}
             </div>
           )}
@@ -394,7 +406,7 @@ export default function AdminPremiereDetail() {
       )}
 
       {/* TICKETS */}
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+      <div className="admin-surface rounded-[1.75rem] p-6">
 
         <h2 className="text-lg font-semibold mb-4">
           Tickets ({tickets.length})
@@ -411,10 +423,10 @@ export default function AdminPremiereDetail() {
           {tickets.map((ticket) => (
             <div
               key={ticket.id}
-              className={`p-4 rounded-xl border ${
+              className={`p-4 rounded-2xl border ${
                 ticket.used
-                  ? "border-red-600 bg-red-900/30"
-                  : "border-green-600 bg-green-900/20"
+                  ? "border-rose-300/20 bg-rose-500/10"
+                  : "border-emerald-300/20 bg-emerald-500/10"
               }`}
             >
               <p className="font-mono text-sm mb-2">
@@ -431,7 +443,7 @@ export default function AdminPremiereDetail() {
 
               {/* APPROVAL STATUS */}
               {ticket.paymentId && (
-                <div className="mb-3 flex items-center gap-2 text-xs bg-white/5 px-2 py-1 rounded">
+                <div className="mb-3 flex items-center gap-2 text-xs bg-white/5 px-2 py-1 rounded-full w-fit">
                   {ticket.approved ? (
                     <span className="text-green-400">✅ Approved</span>
                   ) : (
@@ -447,7 +459,7 @@ export default function AdminPremiereDetail() {
                     toggleUsed(ticket.id, ticket.used)
                   }
                   disabled={updatingTickets[ticket.id]}
-                  className="text-xs bg-white/10 px-3 py-1 rounded hover:bg-white/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="admin-button admin-button-secondary px-3 py-2 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {updatingTickets[ticket.id] ? "Updating..." : (ticket.used ? "Mark Unused" : "Mark Used")}
                 </button>
@@ -458,10 +470,10 @@ export default function AdminPremiereDetail() {
                       toggleApproval(ticket.id, ticket.approved)
                     }
                     disabled={updatingTickets[ticket.id]}
-                    className={`text-xs px-3 py-1 rounded transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                    className={`admin-button px-3 py-2 text-xs transition disabled:opacity-50 disabled:cursor-not-allowed ${
                       ticket.approved
-                        ? "bg-red-600/50 hover:bg-red-600"
-                        : "bg-green-600/50 hover:bg-green-600"
+                        ? "bg-rose-500/15 text-rose-100 border border-rose-300/20"
+                        : "bg-emerald-500/15 text-emerald-100 border border-emerald-300/20"
                     }`}
                   >
                     {updatingTickets[ticket.id] ? "Updating..." : (ticket.approved ? "Revoke" : "Approve")}
@@ -470,7 +482,7 @@ export default function AdminPremiereDetail() {
 
                 <button
                   onClick={() => copyTicket(ticket.code)}
-                  className="text-xs bg-blue-600 px-3 py-1 rounded hover:bg-blue-700 transition"
+                  className="admin-button admin-button-secondary px-3 py-2 text-xs"
                 >
                   Copy
                 </button>
@@ -487,10 +499,10 @@ export default function AdminPremiereDetail() {
       {/* ARCHIVE CONFIRMATION MODAL */}
       {archiveModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-[#0B0B0F] border border-white/20 rounded-2xl max-w-md w-full p-6 space-y-4">
+          <div className="admin-surface rounded-[1.75rem] max-w-md w-full p-6 space-y-4">
             <h2 className="text-xl font-bold">Archive Premiere?</h2>
 
-            <div className="p-3 bg-yellow-600/20 border border-yellow-600/30 rounded">
+            <div className="p-3 bg-amber-500/10 border border-amber-300/20 rounded-2xl">
               <p className="text-sm text-gray-300">{premiere.title}</p>
             </div>
 
@@ -502,13 +514,13 @@ export default function AdminPremiereDetail() {
               <button
                 onClick={handleArchive}
                 disabled={archiving}
-                className="flex-1 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 px-4 py-2 rounded-lg font-semibold transition"
+                className="flex-1 admin-button admin-button-primary disabled:opacity-60"
               >
-                {archiving ? "Archiving..." : "🗂️ Archive"}
+                {archiving ? "Archiving..." : "Archive"}
               </button>
               <button
                 onClick={() => setArchiveModal(false)}
-                className="flex-1 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg font-semibold transition"
+                className="flex-1 admin-button admin-button-secondary"
               >
                 Cancel
               </button>

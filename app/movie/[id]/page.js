@@ -3,10 +3,19 @@ export const revalidate = 60;
 
 import { notFound } from "next/navigation";
 import { adminDb } from "@/lib/firebaseAdmin";
-import CommentSection from "@/components/CommentSection";
-import RatingSection from "@/components/RatingSection";
+import Image from "next/image";
+import dynamic from "next/dynamic";
 import ViewTracker from "@/components/ViewTracker";
 import WishlistButton from "@/components/WishlistButton";
+import MovieVideoSection from "@/components/MovieVideoSection";
+
+const CommentSection = dynamic(() => import("@/components/CommentSection"), {
+  loading: () => <SectionSkeleton className="h-44" />,
+});
+
+const RatingSection = dynamic(() => import("@/components/RatingSection"), {
+  loading: () => <SectionSkeleton className="h-28" />,
+});
 
 /* =========================
    METADATA
@@ -61,105 +70,94 @@ export default async function MovieDetail({ params }) {
 
   const movie = snapshot.data() || {};
 
+  const title = toText(movie.title, "Untitled");
+  const tagline = toText(movie.tagline, "");
+  const description = toText(movie.description, "");
+  const genre = toText(movie.genre, "Genre not set");
+  const releaseDate = toDisplayDate(movie.releaseDate, "Release date pending");
+  const director = toText(movie.director, "Not Available");
+  const embedLink = toText(movie.embedLink, "");
+
   const viewsReal = movie.viewsReal || 0;
   const viewsBoost = movie.viewsBoost || 0;
   const totalViews = viewsReal + viewsBoost;
+  const banner = toText(movie.bannerImage || movie.posterImage, "/homepage-banner.jpg");
 
   return (
-    <div className="bg-black text-white min-h-screen relative overflow-hidden">
-
+    <div className="min-h-screen relative overflow-hidden text-white">
       <ViewTracker movieId={id} />
 
-      {/* HERO */}
-      <section className="relative h-[65vh] md:h-[80vh] flex items-end">
-
-        <div
-          className="absolute inset-0 bg-cover bg-center scale-105"
-          style={{
-            backgroundImage: `url(${movie.bannerImage || "/homepage-banner.jpg"})`,
-          }}
+      <section className="relative h-[72vh] md:h-[86vh] flex items-end rounded-b-[2rem] md:rounded-b-[3rem] overflow-hidden">
+        <Image
+          src={banner}
+          alt={title || "Movie banner"}
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
         />
 
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#050915] via-[#050915]/85 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#04070f] via-[#04070f]/55 to-transparent" />
 
-        <div className="relative z-10 w-full px-6 md:px-16 pb-10 md:pb-20">
-          <div className="max-w-5xl bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 md:p-10 shadow-[0_0_80px_rgba(0,0,0,0.6)]">
-
+        <div className="relative z-10 w-full px-4 md:px-10 lg:px-16 pb-8 md:pb-16 animate-fadeUp">
+          <div className="max-w-5xl glass-card rounded-[2rem] p-5 md:p-8 shadow-[0_10px_70px_rgba(0,0,0,0.35)]">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-
               <div>
-                <h1 className="text-3xl md:text-6xl font-bold mb-4 tracking-tight">
-                  {movie.title || "Untitled"}
+                <p className="admin-kicker mb-3">Now Streaming</p>
+                <h1 className="text-3xl md:text-6xl font-black mb-3 tracking-tight leading-[0.96]">
+                  {title}
                 </h1>
 
-                {movie.tagline && (
-                  <p className="text-gray-300 text-sm md:text-lg mb-4">
-                    {movie.tagline}
+                {tagline && (
+                  <p className="text-gray-200/90 text-sm md:text-lg mb-4 max-w-3xl">
+                    {tagline}
                   </p>
                 )}
 
-                <div className="flex flex-wrap gap-4 text-xs md:text-sm text-gray-400">
-                  <span>{movie.genre || "—"}</span>
-                  <span>{movie.releaseDate || "—"}</span>
-                  <span>{totalViews.toLocaleString()} views</span>
+                <div className="flex flex-wrap gap-2 text-xs md:text-sm text-gray-200/90">
+                  <span className="admin-chip">{genre}</span>
+                  <span className="admin-chip">{releaseDate}</span>
+                  <span className="admin-chip">{totalViews.toLocaleString()} views</span>
                 </div>
               </div>
 
-              {/* ❤️ Wishlist Button */}
               <div className="mt-4 md:mt-0">
                 <WishlistButton
                   movie={{
                     id,
-                    title: movie.title,
-                    posterImage: movie.posterImage || movie.bannerImage,
+                    title,
+                    posterImage: toText(movie.posterImage || movie.bannerImage, ""),
                   }}
                 />
               </div>
-
             </div>
-
           </div>
         </div>
       </section>
 
-      {/* MAIN CONTENT */}
-      <section className="px-4 md:px-16 py-12 md:py-20 space-y-14">
+      <section className="px-4 md:px-10 lg:px-16 py-10 md:py-14 space-y-10">
+        <MovieVideoSection
+          movieId={id}
+          title={title}
+          embedLink={embedLink}
+          videoUrl={toText(movie.videoUrl, "")}
+          posterImage={banner}
+        />
 
-        {/* VIDEO */}
-        <div className="relative rounded-3xl overflow-hidden border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.03] backdrop-blur-2xl shadow-[0_0_80px_rgba(0,0,0,0.7)]">
-          <div className="aspect-video">
-            {movie.embedLink ? (
-              <iframe
-                src={movie.embedLink}
-                className="w-full h-full rounded-3xl"
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="strict-origin-when-cross-origin"
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                Video not available
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* RATING */}
-        <div className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-xl">
+        <section className="glass-card rounded-[2rem] p-6 md:p-8 shadow-xl transition duration-500 hover:border-blue-300/40">
           <RatingSection movieId={id} />
-        </div>
+        </section>
 
-        {/* INFO GRID */}
-        <div className="grid lg:grid-cols-3 gap-10">
-
-          <div className="lg:col-span-2 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 md:p-10 shadow-xl">
-            <h2 className="text-xl md:text-2xl font-semibold mb-6">
+        <section className="grid lg:grid-cols-3 gap-6 md:gap-8">
+          <div className="lg:col-span-2 glass-card rounded-[2rem] p-6 md:p-8 shadow-xl transition duration-500 hover:border-pink-300/30">
+            <h2 className="text-xl md:text-2xl font-semibold mb-5">
               About the Movie
             </h2>
 
-            <div className="text-gray-300 text-sm md:text-base leading-relaxed max-h-[300px] overflow-y-auto pr-2">
-              {movie.description
-                ? movie.description.split("\n").map((line, index) => (
+            <div className="text-gray-200/90 text-sm md:text-base leading-relaxed max-h-[300px] overflow-y-auto pr-2">
+              {description
+                ? description.split("\n").map((line, index) => (
                     <p key={index} className="mb-4">
                       {line}
                     </p>
@@ -168,25 +166,26 @@ export default async function MovieDetail({ params }) {
             </div>
           </div>
 
-          <div className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-xl space-y-6">
-            <Info label="Genre" value={movie.genre} />
-            <Info label="Release Date" value={movie.releaseDate} />
-            <Info label="Director" value={movie.director} />
+          <div className="glass-card rounded-[2rem] p-6 md:p-8 shadow-xl space-y-6 transition duration-500 hover:border-cyan-300/40">
+            <Info label="Genre" value={genre} />
+            <Info label="Release Date" value={releaseDate} />
+            <Info label="Director" value={director} />
           </div>
+        </section>
 
-        </div>
-
-        {/* COMMENTS */}
-        <div className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 md:p-10 shadow-xl">
+        <section className="glass-card rounded-[2rem] p-6 md:p-8 shadow-xl transition duration-500 hover:border-blue-300/35">
           <CommentSection movieId={id} />
-        </div>
-
+        </section>
       </section>
     </div>
   );
 }
 
 /* ========================= */
+
+function SectionSkeleton({ className = "h-24" }) {
+  return <div className={`rounded-2xl bg-white/10 animate-pulse ${className}`} />;
+}
 
 function Info({ label, value }) {
   return (
@@ -199,4 +198,43 @@ function Info({ label, value }) {
       </p>
     </div>
   );
+}
+
+function toText(value, fallback = "") {
+  if (value === null || value === undefined) return fallback;
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return fallback;
+}
+
+function toDisplayDate(value, fallback = "Release date pending") {
+  if (value === null || value === undefined) return fallback;
+
+  if (typeof value === "string") {
+    return value.trim() || fallback;
+  }
+
+  if (value instanceof Date) {
+    return value.toLocaleDateString();
+  }
+
+  if (typeof value?.toDate === "function") {
+    const converted = value.toDate();
+    if (converted instanceof Date && !Number.isNaN(converted.getTime())) {
+      return converted.toLocaleDateString();
+    }
+  }
+
+  if (
+    typeof value === "object" &&
+    typeof value._seconds === "number" &&
+    typeof value._nanoseconds === "number"
+  ) {
+    const converted = new Date(value._seconds * 1000 + Math.floor(value._nanoseconds / 1e6));
+    if (!Number.isNaN(converted.getTime())) {
+      return converted.toLocaleDateString();
+    }
+  }
+
+  return fallback;
 }

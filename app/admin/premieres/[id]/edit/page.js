@@ -5,31 +5,7 @@ import { db } from "@/firebase";
 import { doc, getDoc, updateDoc, Timestamp } from "firebase/firestore";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-
-/* 🎥 YOUTUBE CONVERTER */
-function convertToEmbed(url) {
-  try {
-    if (!url) return "";
-    if (url.includes("embed")) return url;
-
-    let videoId = "";
-    if (url.includes("youtu.be/")) {
-      videoId = url.split("youtu.be/")[1]?.split("?")[0]?.split("&")[0];
-    } else if (url.includes("v=")) {
-      videoId = url.split("v=")[1]?.split("&")[0];
-    }
-
-    if (!videoId) {
-      console.error("Could not extract video ID from:", url);
-      return url;
-    }
-
-    return `https://www.youtube.com/embed/${videoId}`;
-  } catch (err) {
-    console.error("YouTube converter error:", err);
-    return url;
-  }
-}
+import { normalizeYouTubeEmbed } from "@/lib/youtube";
 
 export default function EditPremierePage() {
   const params = useParams();
@@ -103,7 +79,7 @@ export default function EditPremierePage() {
     try {
       setSaving(true);
 
-      const embed = convertToEmbed(form.embedLink);
+      const embed = normalizeYouTubeEmbed(form.embedLink);
 
       const updateData = {
         title: form.title,
@@ -132,30 +108,35 @@ export default function EditPremierePage() {
 
   if (loading) {
     return (
-      <div className="bg-[#0B0B0F] text-white min-h-screen flex items-center justify-center">
-        <p className="text-gray-400">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="admin-empty">Loading...</div>
       </div>
     );
   }
 
   if (!premiere) {
     return (
-      <div className="bg-[#0B0B0F] text-white min-h-screen flex items-center justify-center">
-        <p className="text-red-500">Premiere not found</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="admin-empty text-red-300">Premiere not found</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0B0F] text-white px-4 md:px-16 py-10">
-      <div className="max-w-2xl mx-auto space-y-6">
-        <h1 className="text-3xl font-semibold">Edit Premiere</h1>
+    <div className="space-y-10 max-w-4xl mx-auto">
+      <div className="admin-section">
+        <p className="admin-kicker">Live Events</p>
+        <h1 className="admin-title">Edit premiere</h1>
+        <p className="admin-lead">Refine the live event details without touching ticket rules or performance data.</p>
+      </div>
 
-        <div className="bg-yellow-600/20 border border-yellow-600/30 rounded-lg p-4 mb-6">
+      <div className="admin-panel rounded-2xl p-4 mb-2">
           <p className="text-yellow-200 text-sm">
             📝 You can edit this premiere details anytime. Changes will reflect immediately in the live room.
           </p>
         </div>
+
+      <div className="admin-surface rounded-[1.75rem] p-6 md:p-10 shadow-xl space-y-6">
 
         {/* TITLE */}
         <div>
@@ -165,7 +146,7 @@ export default function EditPremierePage() {
             value={form.title}
             onChange={handleChange}
             placeholder="Premiere Title"
-            className="w-full bg-white/10 border border-white/10 p-3 rounded-lg"
+            className="admin-input focus-ring"
           />
         </div>
 
@@ -177,7 +158,7 @@ export default function EditPremierePage() {
             value={form.description}
             onChange={handleChange}
             placeholder="Description (optional)"
-            className="w-full bg-white/10 border border-white/10 p-3 rounded-lg h-24"
+            className="admin-textarea focus-ring h-24"
           />
         </div>
 
@@ -189,7 +170,7 @@ export default function EditPremierePage() {
             value={form.embedLink}
             onChange={handleChange}
             placeholder="Paste ANY YouTube Link"
-            className="w-full bg-white/10 border border-white/10 p-3 rounded-lg"
+            className="admin-input focus-ring"
           />
           <p className="text-xs text-gray-400 mt-1">⚠️ Changing this will update the video in the live room</p>
         </div>
@@ -202,7 +183,7 @@ export default function EditPremierePage() {
             value={form.bannerImage}
             onChange={handleChange}
             placeholder="Banner Image URL (optional)"
-            className="w-full bg-white/10 border border-white/10 p-3 rounded-lg"
+            className="admin-input focus-ring"
           />
         </div>
 
@@ -215,7 +196,7 @@ export default function EditPremierePage() {
               name="displayTime"
               value={form.displayTime}
               onChange={handleChange}
-              className="w-full bg-white/10 border border-white/10 p-3 rounded-lg"
+              className="admin-input focus-ring"
             />
             <p className="text-xs text-gray-400 mt-1">When to show on homepage</p>
           </div>
@@ -227,14 +208,14 @@ export default function EditPremierePage() {
               name="startTime"
               value={form.startTime}
               onChange={handleChange}
-              className="w-full bg-white/10 border border-white/10 p-3 rounded-lg"
+              className="admin-input focus-ring"
             />
             <p className="text-xs text-gray-400 mt-1">When premiere goes live</p>
           </div>
         </div>
 
         {/* TICKET INFO (READ-ONLY) */}
-        <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+        <div className="admin-panel rounded-2xl p-4">
           <p className="text-sm text-gray-300 mb-3">
             💳 <span className="font-semibold">Ticket Settings (cannot edit)</span>
           </p>
@@ -271,14 +252,14 @@ export default function EditPremierePage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 px-6 py-3 rounded-lg font-semibold transition"
+            className="admin-button admin-button-primary flex-1 disabled:opacity-60"
           >
             {saving ? "Saving..." : "💾 Save Changes"}
           </button>
 
           <Link
             href={`/admin/premieres/${id}`}
-            className="flex-1 bg-white/10 hover:bg-white/20 px-6 py-3 rounded-lg font-semibold text-center transition"
+            className="admin-button admin-button-secondary flex-1 text-center"
           >
             Cancel
           </Link>

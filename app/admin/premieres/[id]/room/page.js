@@ -6,12 +6,10 @@ import {
   doc,
   getDoc,
   collection,
-  addDoc,
   serverTimestamp,
   query,
   orderBy,
   onSnapshot,
-  updateDoc,
   setDoc,
   deleteDoc,
   Timestamp,
@@ -20,7 +18,9 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
 export default function PremiereRoomPage() {
-  const { id } = useParams();
+  const params = useParams();
+  const rawId = params?.id;
+  const id = Array.isArray(rawId) ? rawId[0] : rawId;
   const { user } = useAuth();
 
   const [premiere, setPremiere] = useState(null);
@@ -36,6 +36,10 @@ export default function PremiereRoomPage() {
   const [showViewers, setShowViewers] = useState(false);
   const [selectedUserToRemove, setSelectedUserToRemove] = useState(null);
   const [removalReason, setRemovalReason] = useState("");
+  const [adminSession, setAdminSession] = useState({ authenticated: false, email: "" });
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [statusUpdating, setStatusUpdating] = useState(false);
+  const [chatActionLoading, setChatActionLoading] = useState(false);
 
   // ✅ HOST STATE
   const [isHost, setIsHost] = useState(false);
@@ -44,31 +48,149 @@ export default function PremiereRoomPage() {
   useEffect(() => {
     if (!id) return;
 
-    const fetchPremiere = async () => {
-      const snap = await getDoc(doc(db, "premieres", id));
-      if (snap.exists()) {
-        setPremiere({ id: snap.id, ...snap.data() });
-      }
+    if (!user) {
       setLoading(false);
+      return;
+    }
+
+    const fetchPremiere = async () => {
+      try {
+        const snap = await getDoc(doc(db, "premieres", id));
+        if (snap.exists()) {
+          setPremiere({ id: snap.id, ...snap.data() });
+        }
+      } catch (err) {
+        console.warn("Premiere fetch skipped (client permissions):", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchPremiere();
-  }, [id]);
+  }, [id, user]);
+
+  /* CHECK ADMIN SESSION */
+  useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const res = await fetch("/api/admin/session", {
+          method: "GET",
+          cache: "no-store",
+          credentials: "include",
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (data?.authenticated) {
+          setAdminSession({ authenticated: true, email: data.email || "admin" });
+        }
+      } catch {
+        // keep graceful fallback
+      } finally {
+        setCheckingSession(false);
+      }
+    };
+
+    loadSession();
+  }, []);
+
+  /* ADMIN SESSION ROOM STATE FALLBACK */
+  useEffect(() => {
+    if (!id || !adminSession.authenticated || user) return;
+
+    const fetchRoomState = async () => {
+      try {
+        const res = await fetch(`/api/admin/premieres/${id}/room-actions`, {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (!data?.success) return;
+
+        setPremiere(data.premiere || null);
+        setMessages(data.messages || []);
+        setPinned((data.messages || []).find((m) => m.pinned) || null);
+        setViewers(data.viewers || []);
+        setViewerCount((data.viewers || []).length);
+        setLoading(false);
+      } catch (err) {
+        console.warn("Admin room state polling failed:", err);
+      }
+    };
+
+    fetchRoomState();
+    const interval = setInterval(fetchRoomState, 3000);
+    return () => clearInterval(interval);
+  }, [id, adminSession.authenticated, user]);
 
   /* CHECK HOST */
   useEffect(() => {
-    if (!user || !id) return;
+    if (!user || !id || adminSession.authenticated) {
+      setIsHost(false);
+      return;
+    }
 
     const hostRef = doc(db, "premieres", id, "hosts", user.uid);
 
-    const unsub = onSnapshot(hostRef, (snap) => {
-      if (snap.exists()) setIsHost(true);
-      else if (user.email === "thefifthagefilms@gmail.com") setIsHost(true);
-      else setIsHost(false);
-    });
+    const unsub = onSnapshot(
+      hostRef,
+      (snap) => {
+        setIsHost(snap.exists());
+      },
+      (err) => {
+        console.warn("Host listener blocked:", err?.message || err);
+        setIsHost(false);
+      }
+    );
 
     return () => unsub();
-  }, [user, id]);
+  }, [user, id, adminSession.authenticated]);
+
+  const canModerate = isHost || adminSession.authenticated;
+
+  const callAdminRoomAction = async (payload) => {
+    const response = await fetch(`/api/admin/premieres/${id}/room-actions`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(data?.error || "Action failed");
+    }
+
+    return data;
+  };
+
+  const getAuthor = () => {
+    if (user?.uid) {
+      return {
+        userId: user.uid,
+        name: user.displayName || user.email || "User",
+        isOfficial: canModerate,
+      };
+    }
+
+    if (adminSession.authenticated) {
+      return {
+        userId: `admin:${adminSession.email || "session"}`,
+        name: "Official Admin",
+        isOfficial: true,
+      };
+    }
+
+    return null;
+  };
 
   /* VIEWERS */
   useEffect(() => {
@@ -78,88 +200,135 @@ export default function PremiereRoomPage() {
 
     setDoc(viewerRef, {
       userId: user.uid,
-      joinedAt: new Date(),
+      joinedAt: serverTimestamp(),
     });
 
-    return () => deleteDoc(viewerRef);
+    return () => {
+      deleteDoc(viewerRef).catch(() => {});
+    };
   }, [user, id]);
 
   useEffect(() => {
+    if (!id || !user) return;
+
     const ref = collection(db, "premieres", id, "viewers");
 
-    const unsub = onSnapshot(ref, (snap) => {
-      setViewerCount(snap.size);
-      // ✅ Fetch viewers list
-      const viewerList = snap.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setViewers(viewerList);
-    });
+    const unsub = onSnapshot(
+      ref,
+      (snap) => {
+        setViewerCount(snap.size);
+        const viewerList = snap.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setViewers(viewerList);
+      },
+      (err) => {
+        console.warn("Viewers listener blocked:", err?.message || err);
+      }
+    );
 
     return () => unsub();
-  }, [id]);
+  }, [id, user]);
 
   /* CHAT */
   useEffect(() => {
+    if (!id || !user) return;
+
     const q = query(
       collection(db, "premieres", id, "messages"),
       orderBy("createdAt", "asc")
     );
 
-    const unsub = onSnapshot(q, (snap) => {
-      const data = snap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const data = snap.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
 
-      setMessages(data);
-      setPinned(data.find((m) => m.pinned));
-    });
+        setMessages(data);
+        setPinned(data.find((m) => m.pinned));
+      },
+      (err) => {
+        console.warn("Messages listener blocked:", err?.message || err);
+      }
+    );
 
     return () => unsub();
-  }, [id]);
+  }, [id, user]);
 
   /* SEND */
   const sendMessage = async () => {
     if (!input.trim()) return;
+    const author = getAuthor();
+    if (!author) return alert("Login required");
 
     const now = Date.now();
-    if (now - lastSent < 2000) return alert("Slow down…");
+    if (now - lastSent < 2000) return alert("Slow down");
 
     setLastSent(now);
 
-    await addDoc(collection(db, "premieres", id, "messages"), {
-      text: input,
-      name: user.displayName || "User",
-      userId: user.uid,
-      createdAt: serverTimestamp(),
-      pinned: false,
-    });
+    try {
+      setChatActionLoading(true);
 
-    setInput("");
+      if (adminSession.authenticated) {
+        await callAdminRoomAction({ action: "message", text: input });
+      } else {
+        // Fallback for Firebase-authenticated host users.
+        const { addDoc, collection } = await import("firebase/firestore");
+        await addDoc(collection(db, "premieres", id, "messages"), {
+          text: input,
+          name: author.name,
+          userId: author.userId,
+          isOfficial: author.isOfficial,
+          createdAt: serverTimestamp(),
+          pinned: false,
+        });
+      }
+
+      setInput("");
+    } catch (err) {
+      console.error("Failed to send admin message:", err);
+      alert(err?.message || "Failed to send message.");
+    } finally {
+      setChatActionLoading(false);
+    }
   };
 
   /* PIN */
   const pinMessage = async (msgId) => {
-    const old = messages.filter((m) => m.pinned);
-
-    for (let m of old) {
-      await updateDoc(
-        doc(db, "premieres", id, "messages", m.id),
-        { pinned: false }
-      );
+    try {
+      if (adminSession.authenticated) {
+        await callAdminRoomAction({ action: "pin", messageId: msgId });
+      } else {
+        const { updateDoc } = await import("firebase/firestore");
+        const old = messages.filter((m) => m.pinned);
+        for (const message of old) {
+          await updateDoc(doc(db, "premieres", id, "messages", message.id), { pinned: false });
+        }
+        await updateDoc(doc(db, "premieres", id, "messages", msgId), { pinned: true });
+      }
+    } catch (err) {
+      console.error("Failed to pin message:", err);
+      alert(err?.message || "Failed to pin message.");
     }
-
-    await updateDoc(
-      doc(db, "premieres", id, "messages", msgId),
-      { pinned: true }
-    );
   };
 
   /* DELETE */
   const deleteMessage = async (msgId) => {
-    await deleteDoc(doc(db, "premieres", id, "messages", msgId));
+    try {
+      if (adminSession.authenticated) {
+        await callAdminRoomAction({ action: "delete", messageId: msgId });
+      } else {
+        const { deleteDoc } = await import("firebase/firestore");
+        await deleteDoc(doc(db, "premieres", id, "messages", msgId));
+      }
+    } catch (err) {
+      console.error("Failed to delete message:", err);
+      alert(err?.message || "Failed to delete message.");
+    }
   };
 
   /* MAKE HOST */
@@ -179,7 +348,7 @@ export default function PremiereRoomPage() {
       await deleteDoc(doc(db, "premieres", id, "viewers", userId));
 
       // Optional: Store removal record
-      if (removalReason || removalReason !== "") {
+      if (removalReason && removalReason.trim() !== "") {
         await setDoc(
           doc(db, "premieres", id, "removed_users", userId),
           {
@@ -191,7 +360,7 @@ export default function PremiereRoomPage() {
         );
       }
 
-      alert(`✅ User removed${removalReason ? ": " + removalReason : ""}`);
+      alert(`User removed${removalReason ? ": " + removalReason : ""}`);
       setSelectedUserToRemove(null);
       setRemovalReason("");
     } catch (err) {
@@ -200,66 +369,123 @@ export default function PremiereRoomPage() {
     }
   };
 
-  if (!user) {
-    return <div className="text-white p-10">Login required</div>;
+  const setPremiereStatus = async (nextStatus) => {
+    if (!id || !canModerate) return;
+    try {
+      setStatusUpdating(true);
+
+      if (adminSession.authenticated) {
+        await callAdminRoomAction({ action: "status", status: nextStatus });
+      } else {
+        const { updateDoc } = await import("firebase/firestore");
+        const payload = {
+          status: nextStatus,
+          updatedAt: serverTimestamp(),
+        };
+        if (nextStatus === "live") payload.startedAt = serverTimestamp();
+        if (nextStatus === "ended") payload.endTime = serverTimestamp();
+        await updateDoc(doc(db, "premieres", id), payload);
+      }
+
+      setPremiere((prev) => ({ ...(prev || {}), status: nextStatus }));
+    } catch (err) {
+      console.error("Failed to update premiere status:", err);
+      alert(err?.message || "Could not update live status.");
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
+  if (checkingSession && !user) {
+    return <div className="min-h-screen flex items-center justify-center px-4"><div className="admin-empty">Checking admin session...</div></div>;
+  }
+
+  if (!user && !adminSession.authenticated) {
+    return <div className="min-h-screen flex items-center justify-center px-4"><div className="admin-empty">Login required</div></div>;
   }
 
   if (loading) {
-    return <div className="text-white p-10">Loading...</div>;
+    return <div className="min-h-screen flex items-center justify-center px-4"><div className="admin-empty">Loading...</div></div>;
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0B0F] text-white">
+    <div className="min-h-screen text-white">
 
       {/* HEADER */}
-      <div className="flex justify-between p-4 border-b border-white/10 items-center">
+      <div className="admin-surface sticky top-0 z-20 flex justify-between p-4 md:p-5 border-b border-white/10 items-center backdrop-blur-xl">
 
-        <h1>{premiere.title}</h1>
+        <div>
+          <p className="admin-kicker">Premiere room</p>
+          <h1 className="text-lg md:text-2xl font-bold">{premiere.title}</h1>
+        </div>
 
         <div className="flex gap-3 items-center">
-          <span className="bg-red-600 px-2 py-1 text-xs rounded">
-            LIVE
+          <span className={`px-2 py-1 text-xs rounded ${premiere?.status === "live" ? "bg-gradient-to-r from-red-500 to-pink-600" : "bg-white/15 border border-white/15"}`}>
+            {(premiere?.status || "scheduled").toUpperCase()}
           </span>
+
+          {canModerate && (
+            <>
+              <button
+                onClick={() => setPremiereStatus("live")}
+                disabled={statusUpdating}
+                className="admin-button admin-button-primary px-3 py-2 text-xs disabled:opacity-60"
+              >
+                Go Live
+              </button>
+              <button
+                onClick={() => setPremiereStatus("ended")}
+                disabled={statusUpdating}
+                className="admin-button admin-button-secondary px-3 py-2 text-xs disabled:opacity-60"
+              >
+                End Stream
+              </button>
+            </>
+          )}
 
           <button
             onClick={() => setShowViewers(!showViewers)}
-            className="bg-white/10 hover:bg-white/20 px-3 py-1 text-xs rounded transition cursor-pointer flex items-center gap-2"
+            className="admin-button admin-button-secondary px-3 py-2 text-xs cursor-pointer"
           >
-            👀 {viewerCount}
+            Viewers {viewerCount}
           </button>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6 p-4">
+      <div className="grid lg:grid-cols-[1.45fr_0.95fr] gap-6 p-4 md:p-6">
 
         {/* VIDEO */}
-        <div className="lg:col-span-2 aspect-video">
+        <div className="admin-surface rounded-[1.75rem] overflow-hidden aspect-video">
           <iframe
             src={premiere.embedLink}
             className="w-full h-full"
+            title={premiere.title || "Premiere stream"}
+            referrerPolicy="strict-origin-when-cross-origin"
+            allowFullScreen
+            sandbox="allow-scripts allow-same-origin allow-presentation"
           />
         </div>
 
         {/* CHAT */}
-        <div className="bg-white/5 p-4 rounded">
+        <div className="admin-surface rounded-[1.75rem] p-4 flex flex-col">
 
           {pinned && (
-            <div className="bg-yellow-600 p-2 mb-2 text-xs">
+            <div className="bg-amber-500/15 border border-amber-300/20 p-3 mb-3 text-xs rounded-2xl">
               📌 {pinned.text}
             </div>
           )}
 
-          <div className="h-[400px] overflow-y-auto space-y-2">
+          <div className="h-[400px] overflow-y-auto space-y-2 hide-scrollbar">
 
             {messages.map((m) => (
-              <div key={m.id} className="flex justify-between">
+              <div key={m.id} className="flex justify-between gap-3 rounded-2xl border border-white/8 bg-white/5 p-3">
 
                 <div>
                   <p className="text-xs text-gray-400">{m.name}</p>
                   <p>{m.text}</p>
                 </div>
 
-                {isHost && (
+                {canModerate && (
                   <div className="flex gap-2 text-xs">
                     <button onClick={() => pinMessage(m.id)}>📌</button>
                     <button onClick={() => deleteMessage(m.id)}>❌</button>
@@ -276,13 +502,14 @@ export default function PremiereRoomPage() {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              className="flex-1 bg-white/10 p-2"
+              className="admin-input focus-ring flex-1"
             />
             <button
               onClick={sendMessage}
-              className="bg-red-600 px-3"
+              disabled={chatActionLoading}
+              className="admin-button admin-button-primary px-3"
             >
-              Send
+              {chatActionLoading ? "Sending..." : "Send"}
             </button>
           </div>
 
@@ -292,7 +519,7 @@ export default function PremiereRoomPage() {
 
       {/* VIEWERS SIDEBAR */}
       {showViewers && (
-        <div className="fixed right-0 top-0 bottom-0 w-80 bg-[#0B0B0F] border-l border-white/10 p-4 space-y-4 overflow-y-auto">
+        <div className="fixed right-0 top-0 bottom-0 w-80 admin-surface border-l border-white/10 p-4 space-y-4 overflow-y-auto z-30">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">Active Viewers ({viewers.length})</h2>
             <button
@@ -311,7 +538,7 @@ export default function PremiereRoomPage() {
             {viewers.map((viewer) => (
               <div
                 key={viewer.id}
-                className="bg-white/5 border border-white/10 rounded-lg p-3 flex justify-between items-center"
+                className="bg-white/5 border border-white/10 rounded-2xl p-3 flex justify-between items-center"
               >
                 <div className="text-sm">
                   <p className="font-mono break-all">{viewer.id}</p>
@@ -320,12 +547,12 @@ export default function PremiereRoomPage() {
                   </p>
                 </div>
 
-                {isHost && viewer.id !== user?.uid && (
+                {canModerate && viewer.id !== user?.uid && (
                   <button
                     onClick={() => setSelectedUserToRemove(viewer.id)}
-                    className="bg-red-600 hover:bg-red-700 px-2 py-1 text-xs rounded transition"
+                    className="admin-button px-2 py-1 text-xs bg-rose-500/15 text-rose-100 border border-rose-300/20"
                   >
-                    ❌
+                    Remove
                   </button>
                 )}
               </div>
@@ -337,10 +564,10 @@ export default function PremiereRoomPage() {
       {/* REMOVAL MODAL */}
       {selectedUserToRemove && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-[#0B0B0F] border border-white/20 rounded-2xl max-w-md w-full p-6 space-y-4">
+          <div className="admin-surface rounded-[1.75rem] max-w-md w-full p-6 space-y-4">
             <h2 className="text-xl font-bold">Remove User from Session?</h2>
 
-            <div className="p-3 bg-red-600/20 border border-red-600/30 rounded">
+            <div className="p-3 bg-rose-500/10 border border-rose-300/20 rounded-2xl">
               <p className="text-sm text-gray-300 break-all">{selectedUserToRemove}</p>
             </div>
 
@@ -352,7 +579,7 @@ export default function PremiereRoomPage() {
                 value={removalReason}
                 onChange={(e) => setRemovalReason(e.target.value)}
                 placeholder="e.g., Spam, Inappropriate behavior, etc."
-                className="w-full bg-white/10 border border-white/10 p-3 rounded-lg text-sm"
+                className="admin-textarea focus-ring text-sm"
                 rows="3"
               />
             </div>
@@ -360,7 +587,7 @@ export default function PremiereRoomPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => removeUser(selectedUserToRemove)}
-                className="flex-1 bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold transition"
+                className="admin-button admin-button-primary flex-1"
               >
                 Remove User
               </button>
@@ -369,7 +596,7 @@ export default function PremiereRoomPage() {
                   setSelectedUserToRemove(null);
                   setRemovalReason("");
                 }}
-                className="flex-1 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg font-semibold transition"
+                className="admin-button admin-button-secondary flex-1"
               >
                 Cancel
               </button>

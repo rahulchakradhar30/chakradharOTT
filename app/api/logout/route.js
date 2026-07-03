@@ -5,8 +5,9 @@ export async function POST() {
 
   response.cookies.set("admin-session", "", {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
     maxAge: 0,
+    sameSite: "lax",
     path: "/",
   });
 

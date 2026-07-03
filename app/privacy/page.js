@@ -1,24 +1,32 @@
 "use client";
 
+import { motion } from "framer-motion";
+
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-[#0B0B0F] text-white px-4 md:px-16 py-10">
+    <div className="min-h-screen text-white px-4 md:px-10 lg:px-16 py-10 relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(0,212,255,0.14),_transparent_30%),radial-gradient(circle_at_bottom_left,_rgba(255,174,51,0.12),_transparent_28%)]" />
+      <motion.div
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="relative z-10 max-w-4xl mx-auto space-y-6"
+      >
+        <div className="glass-card rounded-[2rem] p-6 md:p-8">
+          <p className="admin-kicker mb-2">Policy</p>
+          <h1 className="text-3xl md:text-5xl font-black tracking-tight">
+            Privacy Policy
+          </h1>
 
-      <div className="max-w-4xl mx-auto space-y-6">
+          <p className="text-gray-300 text-sm mt-2">
+            Chakradhar OTT Platform
+          </p>
 
-        <h1 className="text-2xl md:text-4xl font-bold">
-          Privacy Policy
-        </h1>
+          <p className="text-gray-400 text-xs mt-1">
+            Last Updated: April 17, 2026
+          </p>
 
-        <p className="text-gray-400 text-sm">
-          Chakradhar OTT Platform
-        </p>
-
-        <p className="text-gray-500 text-xs">
-          Last Updated: [Insert Date]
-        </p>
-
-        <div className="space-y-6 text-sm leading-relaxed text-gray-300">
+          <div className="space-y-6 text-sm leading-relaxed text-gray-200 mt-8">
 
           <section>
             <h2 className="font-semibold text-white">1. Introduction</h2>
@@ -112,16 +120,15 @@ export default function PrivacyPage() {
             <p>Platform: Chakradhar OTT</p>
           </section>
 
-          <div className="mt-10 text-xs text-gray-500 border-t border-white/10 pt-6">
+          <div className="mt-10 text-xs text-gray-400 border-t border-white/10 pt-6">
             <p>
               Your privacy matters to us. We are committed to protecting your data and maintaining transparency.
             </p>
           </div>
 
+          </div>
         </div>
-
-      </div>
-
+      </motion.div>
     </div>
   );
 }

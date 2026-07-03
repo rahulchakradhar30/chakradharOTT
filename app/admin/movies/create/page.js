@@ -4,6 +4,7 @@ import { useState } from "react";
 import { db } from "@/firebase";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import { normalizeYouTubeEmbed } from "@/lib/youtube";
 
 export default function CreateMovie() {
   const router = useRouter();
@@ -25,33 +26,6 @@ export default function CreateMovie() {
     isTrending: false,
   });
 
-  const convertToEmbed = (url) => {
-    if (!url) return "";
-
-    try {
-      if (url.includes("/embed/")) return url;
-
-      if (url.includes("watch?v=")) {
-        const videoId = url.split("watch?v=")[1].split("&")[0];
-        return `https://www.youtube.com/embed/${videoId}`;
-      }
-
-      if (url.includes("youtu.be/")) {
-        const videoId = url.split("youtu.be/")[1].split("?")[0];
-        return `https://www.youtube.com/embed/${videoId}`;
-      }
-
-      if (url.includes("/shorts/")) {
-        const videoId = url.split("/shorts/")[1].split("?")[0];
-        return `https://www.youtube.com/embed/${videoId}`;
-      }
-
-      return url;
-    } catch {
-      return url;
-    }
-  };
-
   const handleChange = (field, value) => {
     setForm((prev) => ({
       ...prev,
@@ -63,7 +37,7 @@ export default function CreateMovie() {
     e.preventDefault();
     setLoading(true);
 
-    const finalEmbed = convertToEmbed(form.embedLink);
+    const finalEmbed = normalizeYouTubeEmbed(form.embedLink);
 
     await addDoc(collection(db, "movies"), {
       ...form,
@@ -77,22 +51,19 @@ export default function CreateMovie() {
   };
 
   return (
-    <div className="space-y-10 max-w-4xl mx-auto">
+    <div className="space-y-10 max-w-5xl mx-auto">
 
       {/* HEADER */}
-      <div>
-        <h1 className="text-2xl md:text-4xl font-bold tracking-tight">
-          Upload New Movie
-        </h1>
-        <p className="text-gray-400 mt-2 text-sm md:text-base">
-          Add new movie details to your platform
-        </p>
+      <div className="admin-section">
+        <p className="admin-kicker">Content Studio</p>
+        <h1 className="admin-title">Upload new movie</h1>
+        <p className="admin-lead">Add new movie details, media links, and visibility flags in one clean flow.</p>
       </div>
 
       {/* FORM */}
       <form
         onSubmit={handleSubmit}
-        className="bg-zinc-900/80 backdrop-blur-lg border border-white/10 rounded-2xl p-6 md:p-10 shadow-xl space-y-6"
+        className="admin-surface rounded-[1.75rem] p-6 md:p-10 shadow-xl space-y-6"
       >
 
         {/* BASIC INFO */}
@@ -100,30 +71,30 @@ export default function CreateMovie() {
 
           <input
             type="text"
-            placeholder="Title"
+            placeholder="Movie title"
             required
-            className="w-full p-3 bg-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+            className="admin-input focus-ring"
             onChange={(e) => handleChange("title", e.target.value)}
           />
 
           <input
             type="text"
             placeholder="Tagline"
-            className="w-full p-3 bg-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+            className="admin-input focus-ring"
             onChange={(e) => handleChange("tagline", e.target.value)}
           />
 
           <input
             type="text"
-            placeholder="Director Name"
-            className="w-full p-3 bg-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+            placeholder="Director name"
+            className="admin-input focus-ring"
             onChange={(e) => handleChange("director", e.target.value)}
           />
 
           <textarea
             placeholder="Description"
             rows="4"
-            className="w-full p-3 bg-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+            className="admin-textarea focus-ring"
             onChange={(e) => handleChange("description", e.target.value)}
           />
 
@@ -134,9 +105,9 @@ export default function CreateMovie() {
 
           <input
             type="text"
-            placeholder="Paste ANY YouTube Link"
+            placeholder="Paste any YouTube link"
             required
-            className="w-full p-3 bg-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+            className="admin-input focus-ring"
             onChange={(e) => handleChange("embedLink", e.target.value)}
           />
 
@@ -144,7 +115,7 @@ export default function CreateMovie() {
             type="text"
             placeholder="Poster Image URL"
             required
-            className="w-full p-3 bg-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+            className="admin-input focus-ring"
             onChange={(e) => handleChange("posterImage", e.target.value)}
           />
 
@@ -152,7 +123,7 @@ export default function CreateMovie() {
             type="text"
             placeholder="Banner Image URL"
             required
-            className="w-full p-3 bg-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+            className="admin-input focus-ring"
             onChange={(e) => handleChange("bannerImage", e.target.value)}
           />
 
@@ -164,13 +135,13 @@ export default function CreateMovie() {
           <input
             type="text"
             placeholder="Genre"
-            className="w-full p-3 bg-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+            className="admin-input focus-ring"
             onChange={(e) => handleChange("genre", e.target.value)}
           />
 
           <input
             type="date"
-            className="w-full p-3 bg-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+            className="admin-input focus-ring"
             onChange={(e) => handleChange("releaseDate", e.target.value)}
           />
 
@@ -205,7 +176,7 @@ export default function CreateMovie() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full md:w-auto bg-green-600 hover:bg-green-700 px-8 py-3 rounded-lg transition disabled:opacity-60"
+          className="admin-button admin-button-primary w-full md:w-auto disabled:opacity-60"
         >
           {loading ? "Uploading..." : "Upload Movie"}
         </button>

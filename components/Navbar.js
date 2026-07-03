@@ -20,6 +20,15 @@ export default function Navbar() {
   const dropdownRef = useRef(null);
   const profileRef = useRef(null);
 
+  const navLinks = [
+    { href: "/", label: "Home" },
+    { href: "/movies", label: "Movies" },
+    { href: "/ai-assistant", label: "AI Guide ✦" },
+    { href: "/trivia", label: "Trivia Arena" },
+    { href: "/interactive-story", label: "Interactive Story 🎮" },
+    { href: "/contact", label: "Contact" },
+  ];
+
   /* Scroll */
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -94,34 +103,44 @@ export default function Navbar() {
       transition={{ duration: 0.5 }}
       className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 ${
         scrolled
-          ? "bg-black/80 backdrop-blur-xl border-b border-white/10"
-          : "bg-gradient-to-b from-black/80 to-transparent"
+          ? "bg-[#050814]/80 backdrop-blur-2xl border-b border-white/10"
+          : "bg-gradient-to-b from-[#04060f]/85 to-transparent"
       }`}
     >
-      <div className="px-4 md:px-14 py-4">
-
-        {/* ONE ROW FLEX LAYOUT */}
-        <div className="flex items-center gap-3">
-
-          {/* Logo */}
+      <div className="px-4 md:px-8 lg:px-14 py-4">
+        <div className="flex items-center gap-3 md:gap-6">
           <Link
             href="/"
-            className="text-lg md:text-3xl font-bold text-white whitespace-nowrap"
+            className="whitespace-nowrap tracking-tight"
           >
-            Chakradhar <span className="text-red-600">OTT</span>
+            <span className="text-lg md:text-2xl font-black">CHAKRADHAR</span>{" "}
+            <span className="bg-gradient-to-r from-cyan-300 via-blue-300 to-pink-300 bg-clip-text text-transparent font-black text-lg md:text-2xl">
+              STREAM
+            </span>
           </Link>
 
-          {/* Search - Flex Grow Center */}
+          <div className="hidden lg:flex items-center gap-2 text-sm text-gray-300">
+            {navLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="px-3 py-2 rounded-full hover:bg-white/10 transition"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+
           <div
-            className="relative flex-1 max-w-xl"
+            className="relative flex-1 max-w-2xl"
             ref={dropdownRef}
           >
             <input
               type="text"
-              placeholder="Search movies..."
+              placeholder="Search movies, genres, or cast"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-full px-4 py-2 text-sm text-white focus:outline-none focus:border-red-600"
+              className="focus-ring w-full bg-white/5 md:bg-white/8 border border-white/10 rounded-full px-4 md:px-5 py-2.5 text-sm text-white placeholder:text-gray-400 focus:outline-none"
             />
 
             <AnimatePresence>
@@ -130,16 +149,27 @@ export default function Navbar() {
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  className="absolute top-12 w-full bg-black/95 border border-white/10 rounded-xl shadow-xl max-h-64 overflow-y-auto"
+                  className="absolute top-[3.4rem] w-full max-h-80 overflow-y-auto rounded-2xl bg-[#080c1c]/95 border border-white/10 backdrop-blur-xl shadow-2xl"
                 >
                   {results.map((movie) => (
                     <Link
                       key={movie.id}
                       href={`/movie/${movie.id}`}
                       onClick={() => setQuery("")}
-                      className="block px-4 py-3 text-sm hover:bg-white/10 transition"
+                      className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-white/10 transition"
                     >
-                      {movie.title}
+                      <div className="relative w-10 h-14 rounded overflow-hidden shrink-0">
+                        <Image
+                          src={movie.posterImage || "https://images.unsplash.com/photo-1524985069026-dd778a71c7b4"}
+                          alt={movie.title || "Movie"}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      <div>
+                        <p className="font-medium text-white line-clamp-1">{movie.title}</p>
+                        <p className="text-xs text-gray-400">Open details</p>
+                      </div>
                     </Link>
                   ))}
                 </motion.div>
@@ -147,12 +177,11 @@ export default function Navbar() {
             </AnimatePresence>
           </div>
 
-          {/* Profile */}
           <div className="relative" ref={profileRef}>
             {!user ? (
               <Link
                 href="/login"
-                className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-full text-xs md:text-sm transition whitespace-nowrap"
+                className="whitespace-nowrap bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 px-4 py-2 rounded-full text-xs md:text-sm font-semibold transition"
               >
                 Login
               </Link>
@@ -170,10 +199,10 @@ export default function Navbar() {
                       alt="profile"
                       width={36}
                       height={36}
-                      className="rounded-full object-cover w-9 h-9 border border-white/20"
+                      className="rounded-full object-cover w-9 h-9 border border-cyan-300/40"
                     />
                   ) : (
-                    <div className="w-9 h-9 rounded-full bg-red-600 flex items-center justify-center text-white text-sm font-semibold">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-blue-700 flex items-center justify-center text-white text-sm font-semibold">
                       {getInitials(
                         user.displayName || user.email
                       )}
@@ -187,20 +216,27 @@ export default function Navbar() {
                       initial={{ opacity: 0, y: -6 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
-                      className="absolute right-0 mt-3 w-44 bg-black/95 border border-white/10 rounded-xl shadow-xl"
+                      className="absolute right-0 mt-3 w-48 bg-[#080c1c]/95 border border-white/10 rounded-xl shadow-xl backdrop-blur-xl overflow-hidden"
                     >
                       <Link
-                        href="/profile"
-                        className="block px-4 py-3 text-sm hover:bg-white/10 transition"
+                        href="/dashboard"
+                        className="block px-4 py-3 text-sm hover:bg-white/10 transition border-b border-white/5"
                       >
-                        My Profile
+                        📊 Dashboard
+                      </Link>
+
+                      <Link
+                        href="/profile"
+                        className="block px-4 py-3 text-sm hover:bg-white/10 transition border-b border-white/5"
+                      >
+                        👤 My Profile
                       </Link>
 
                       <button
                         onClick={logout}
-                        className="w-full text-left px-4 py-3 text-sm hover:bg-white/10 transition"
+                        className="w-full text-left px-4 py-3 text-sm hover:bg-white/10 transition text-red-400"
                       >
-                        Logout
+                        🚪 Logout
                       </button>
                     </motion.div>
                   )}
@@ -208,7 +244,6 @@ export default function Navbar() {
               </>
             )}
           </div>
-
         </div>
       </div>
     </motion.nav>

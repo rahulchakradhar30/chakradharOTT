@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { db } from "@/firebase";
 import {
   doc,
   getDoc,
   collection,
   addDoc,
+  setDoc,
   serverTimestamp,
   query,
   orderBy,
@@ -15,9 +16,34 @@ import {
 } from "firebase/firestore";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import Link from "next/link";
+
+const REACTION_OPTIONS = [
+  { key: "fire", emoji: "🔥", label: "Fire" },
+  { key: "clap", emoji: "👏", label: "Clap" },
+  { key: "heart", emoji: "❤️", label: "Heart" },
+  { key: "wow", emoji: "😮", label: "Wow" },
+  { key: "party", emoji: "🎉", label: "Party" },
+];
+
+function getViewerLabel(viewerId, currentUserId) {
+  if (!viewerId) return "Guest";
+  if (viewerId === currentUserId) return "You";
+  return viewerId.slice(0, 8);
+}
+
+function getInitials(name = "G") {
+  const normalized = String(name).trim();
+  if (!normalized) return "GU";
+  const parts = normalized.split(" ").filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+}
 
 export default function PremiereRoomPage() {
-  const { id } = useParams();
+  const params = useParams();
+  const rawId = params?.id;
+  const id = Array.isArray(rawId) ? rawId[0] : rawId;
   const { user } = useAuth();
 
   const [premiere, setPremiere] = useState(null);
@@ -32,9 +58,14 @@ export default function PremiereRoomPage() {
   const [viewerCount, setViewerCount] = useState(0);
   const [viewers, setViewers] = useState([]);
   const [showViewers, setShowViewers] = useState(false);
+  const [reactionCounts, setReactionCounts] = useState({});
+  const [reactionBurst, setReactionBurst] = useState([]);
 
   const [isLive, setIsLive] = useState(false);
   const [countdown, setCountdown] = useState("");
+  const [postingReaction, setPostingReaction] = useState(false);
+
+  const messageListRef = useRef(null);
 
   /* FETCH PREMIERE */
   useEffect(() => {
@@ -61,16 +92,21 @@ export default function PremiereRoomPage() {
 
   /* CHECK IF PREMIERE IS LIVE */
   useEffect(() => {
-    if (!premiere?.scheduledFor) return;
+    if (!premiere) return;
 
     const updateLiveStatus = () => {
-      const scheduledTime = premiere.scheduledFor.toDate?.() || new Date(premiere.scheduledFor);
+      const scheduledTime = premiere.startTime?.toDate?.() || new Date(premiere.startTime);
       const now = new Date();
-      const diff = scheduledTime - now;
+      const isStatusLive = premiere.status === "live";
+      const hasValidSchedule = scheduledTime instanceof Date && !Number.isNaN(scheduledTime.getTime());
+      const diff = hasValidSchedule ? scheduledTime - now : null;
 
-      if (diff <= 0) {
+      if (isStatusLive || (typeof diff === "number" && diff <= 0)) {
         setIsLive(true);
         setCountdown("");
+      } else if (!hasValidSchedule) {
+        setIsLive(false);
+        setCountdown("TBA");
       } else {
         setIsLive(false);
         const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -94,9 +130,11 @@ export default function PremiereRoomPage() {
     // Register viewer
     const registerViewer = async () => {
       try {
-        await addDoc(collection(db, "premieres", id, "viewers"), {
+        await setDoc(viewerRef, {
           userId: user.uid,
-          joinedAt: new Date(),
+          name: user.displayName || user.email || "Viewer",
+          photoURL: user.photoURL || "",
+          joinedAt: serverTimestamp(),
         });
       } catch (err) {
         console.error("Error registering viewer:", err);
@@ -117,43 +155,95 @@ export default function PremiereRoomPage() {
 
   /* TRACK VIEWERS COUNT */
   useEffect(() => {
-    if (!id) return;
+    if (!id || !user) return;
 
     const ref = collection(db, "premieres", id, "viewers");
 
-    const unsub = onSnapshot(ref, (snap) => {
-      setViewerCount(snap.size);
-      const viewerList = snap.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setViewers(viewerList);
-    });
+    const unsub = onSnapshot(
+      ref,
+      (snap) => {
+        setViewerCount(snap.size);
+        const viewerList = snap.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setViewers(viewerList);
+      },
+      (err) => {
+        console.warn("Viewers listener blocked:", err?.message || err);
+      }
+    );
 
     return () => unsub();
-  }, [id]);
+  }, [id, user]);
+
+  /* LOAD REACTIONS */
+  useEffect(() => {
+    if (!id || !user) return;
+
+    const ref = collection(db, "premieres", id, "reactions");
+    const unsub = onSnapshot(
+      ref,
+      (snap) => {
+        const counts = {};
+        const fresh = [];
+        const now = Date.now();
+
+        snap.docs.forEach((d) => {
+          const data = d.data();
+          const key = data?.type;
+          if (!key) return;
+
+          counts[key] = (counts[key] || 0) + 1;
+
+          const created = data?.createdAt?.toDate?.();
+          if (created && now - created.getTime() < 4000) {
+            fresh.push({
+              id: d.id,
+              type: key,
+              emoji: data.emoji,
+            });
+          }
+        });
+
+        setReactionCounts(counts);
+        setReactionBurst(fresh.slice(-10));
+      },
+      (err) => {
+        console.warn("Reactions listener blocked:", err?.message || err);
+      }
+    );
+
+    return () => unsub();
+  }, [id, user]);
 
   /* LOAD MESSAGES */
   useEffect(() => {
-    if (!id) return;
+    if (!id || !user) return;
 
     const q = query(
       collection(db, "premieres", id, "messages"),
       orderBy("createdAt", "asc")
     );
 
-    const unsub = onSnapshot(q, (snap) => {
-      const data = snap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const data = snap.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
 
-      setMessages(data);
-      setPinned(data.find((m) => m.pinned));
-    });
+        setMessages(data);
+        setPinned(data.find((m) => m.pinned));
+      },
+      (err) => {
+        console.warn("Messages listener blocked:", err?.message || err);
+      }
+    );
 
     return () => unsub();
-  }, [id]);
+  }, [id, user]);
 
   /* SEND MESSAGE */
   const sendMessage = async () => {
@@ -195,13 +285,45 @@ export default function PremiereRoomPage() {
     }
   };
 
+  const sendReaction = async (item) => {
+    if (!id || !user || postingReaction) return;
+    try {
+      setPostingReaction(true);
+      await addDoc(collection(db, "premieres", id, "reactions"), {
+        type: item.key,
+        emoji: item.emoji,
+        userId: user.uid,
+        name: user.displayName || user.email || "Viewer",
+        createdAt: serverTimestamp(),
+      });
+    } catch (err) {
+      console.error("Error sending reaction:", err);
+    } finally {
+      setPostingReaction(false);
+    }
+  };
+
+  useEffect(() => {
+    const list = messageListRef.current;
+    if (!list) return;
+
+    const distanceFromBottom = list.scrollHeight - list.scrollTop - list.clientHeight;
+    if (distanceFromBottom < 120) {
+      list.scrollTop = list.scrollHeight;
+    }
+  }, [messages]);
+
+  const topViewers = useMemo(() => viewers.slice(0, 4), [viewers]);
+
   /* LOADING STATE */
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0B0B0F] text-white flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-          <p>Loading premiere...</p>
+      <div className="min-h-screen text-white flex items-center justify-center px-4">
+        <div className="admin-empty">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+            <p>Loading premiere...</p>
+          </div>
         </div>
       </div>
     );
@@ -210,13 +332,13 @@ export default function PremiereRoomPage() {
   /* NOT FOUND STATE */
   if (notFound || !premiere) {
     return (
-      <div className="min-h-screen bg-[#0B0B0F] text-white flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen text-white flex items-center justify-center px-4">
+        <div className="admin-surface max-w-md text-center">
           <h1 className="text-4xl font-bold mb-4">404</h1>
           <p className="text-gray-400 mb-6">Premiere not found</p>
-          <a href="/premieres" className="bg-red-600 hover:bg-red-700 px-6 py-2 rounded transition">
+          <Link href="/" className="admin-button admin-button-primary">
             Back to Premieres
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -225,56 +347,90 @@ export default function PremiereRoomPage() {
   /* LOGIN REQUIRED STATE */
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0B0B0F] text-white flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen text-white flex items-center justify-center px-4">
+        <div className="admin-surface max-w-md text-center">
           <h1 className="text-2xl font-bold mb-4">Login Required</h1>
           <p className="text-gray-400 mb-6">Please login to view this premiere</p>
-          <a href="/login" className="bg-red-600 hover:bg-red-700 px-6 py-2 rounded transition">
+          <Link href="/login" className="admin-button admin-button-primary">
             Login
-          </a>
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0B0F] text-white">
+    <div className="min-h-screen text-white relative overflow-hidden px-4 md:px-6 py-4 md:py-6">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,212,255,0.14),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(255,77,141,0.1),_transparent_24%)]" />
 
-      {/* HEADER */}
-      <div className="flex justify-between p-4 border-b border-white/10 items-center">
+      {/* HERO */}
+      <div className="relative z-10 rounded-[2rem] border border-white/10 overflow-hidden shadow-[0_14px_90px_rgba(0,0,0,0.35)] mb-6">
+        {premiere.bannerImage ? (
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${premiere.bannerImage})` }}
+            aria-hidden="true"
+          />
+        ) : null}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#04070f] via-[#04070f]/85 to-[#04070f]/45" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(0,212,255,0.18),_transparent_30%)]" />
 
-        <div>
-          <h1 className="text-2xl font-bold">{premiere.title}</h1>
-          {premiere.description && (
-            <p className="text-sm text-gray-400 mt-1">{premiere.description}</p>
-          )}
-        </div>
+        <div className="relative p-5 md:p-7 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
+          <div>
+            <p className="admin-kicker mb-2">Premiere Room</p>
+            <h1 className="text-2xl md:text-4xl font-black tracking-tight">{premiere.title}</h1>
+            {premiere.description && (
+              <p className="text-sm md:text-base text-gray-200/90 mt-2 max-w-3xl line-clamp-2">{premiere.description}</p>
+            )}
 
-        <div className="flex gap-3 items-center">
-          {isLive ? (
-            <span className="bg-red-600 px-3 py-1 text-sm rounded font-semibold animate-pulse">
-              🔴 LIVE NOW
-            </span>
-          ) : (
-            <span className="bg-blue-600 px-3 py-1 text-sm rounded font-semibold">
-              ⏱️ {countdown}
-            </span>
-          )}
+            <div className="mt-4 flex items-center gap-3 flex-wrap">
+              {isLive ? (
+                <span className="admin-chip bg-gradient-to-r from-red-500 to-pink-600 text-white border-0 animate-softPulse">LIVE NOW</span>
+              ) : (
+                <span className="admin-chip">Starts in {countdown}</span>
+              )}
+              <span className="admin-chip">{viewerCount} watching</span>
+            </div>
+          </div>
 
-          <button
-            onClick={() => setShowViewers(!showViewers)}
-            className="bg-white/10 hover:bg-white/20 px-3 py-1 text-xs rounded transition cursor-pointer flex items-center gap-2"
-          >
-            👀 {viewerCount}
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="flex -space-x-2">
+              {topViewers.map((viewer) => (
+                <div
+                  key={viewer.id}
+                  className="w-9 h-9 rounded-full border border-white/30 overflow-hidden bg-white/10"
+                  title={getViewerLabel(viewer.id, user?.uid)}
+                >
+                  {viewer.photoURL ? (
+                    <div
+                      className="w-full h-full bg-cover bg-center"
+                      style={{ backgroundImage: `url(${viewer.photoURL})` }}
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-white">
+                      {getInitials(viewer.name || viewer.id)}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setShowViewers(!showViewers)}
+              className="admin-button admin-button-secondary text-xs cursor-pointer"
+            >
+              Viewers {viewerCount}
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6 p-4">
+      <div className="relative z-10 grid lg:grid-cols-[1.4fr_0.9fr] gap-6">
 
         {/* VIDEO PLAYER */}
-        <div className="lg:col-span-2">
-          <div className="bg-black aspect-video rounded overflow-hidden">
+        <div className="relative">
+          <div className="glass-card rounded-[2rem] overflow-hidden border border-white/10 aspect-video relative">
             {premiere.embedLink ? (
               <iframe
                 src={premiere.embedLink}
@@ -287,23 +443,64 @@ export default function PremiereRoomPage() {
                 No video available
               </div>
             )}
+
+            {reactionBurst.length > 0 && (
+              <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                {reactionBurst.map((item, idx) => (
+                  <span
+                    key={`${item.id}-${idx}`}
+                    className="absolute text-2xl"
+                    style={{
+                      left: `${12 + (idx % 5) * 16}%`,
+                      bottom: `${8 + (idx % 3) * 8}%`,
+                    }}
+                  >
+                    {item.emoji}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 glass-card border border-white/10 rounded-2xl p-3">
+            <p className="text-xs uppercase tracking-[0.18em] text-gray-400 mb-3">Live Reactions</p>
+            <div className="flex flex-wrap gap-2">
+              {REACTION_OPTIONS.map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => sendReaction(item)}
+                  disabled={postingReaction}
+                  className="admin-button admin-button-secondary px-3 py-2 text-xs flex items-center gap-2 disabled:opacity-60"
+                >
+                  <span>{item.emoji}</span>
+                  <span>{reactionCounts[item.key] || 0}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* CHAT SECTION */}
-        <div className="bg-white/5 border border-white/10 p-4 rounded flex flex-col h-[600px]">
+        <div className="glass-card border border-white/10 p-4 rounded-[2rem] flex flex-col h-[calc(100vh-11rem)] min-h-[560px] lg:sticky lg:top-4 shadow-[0_12px_60px_rgba(0,0,0,0.22)]">
+          <div className="pb-3 mb-3 border-b border-white/10 flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-gray-400">Live Chat</p>
+              <p className="text-sm text-gray-300">Realtime audience discussion</p>
+            </div>
+            <span className="admin-chip text-[10px]">{viewerCount} online</span>
+          </div>
 
           {/* PINNED MESSAGE */}
           {pinned && (
-            <div className="bg-yellow-600/20 border border-yellow-600/50 p-3 mb-3 rounded text-sm">
-              <p className="text-xs text-yellow-300 font-semibold mb-1">📌 Pinned Message</p>
+            <div className="bg-yellow-600/20 border border-yellow-600/50 p-3 mb-3 rounded-2xl text-sm">
+              <p className="text-xs text-yellow-300 font-semibold mb-1">Pinned Message</p>
               <p className="text-yellow-100">{pinned.text}</p>
               <p className="text-xs text-yellow-400 mt-1">— {pinned.name}</p>
             </div>
           )}
 
           {/* MESSAGES */}
-          <div className="flex-1 overflow-y-auto space-y-3 mb-4 pr-2">
+          <div ref={messageListRef} className="flex-1 overflow-y-auto space-y-3 mb-4 pr-2 hide-scrollbar">
 
             {messages.length === 0 ? (
               <div className="flex items-center justify-center h-full text-gray-500">
@@ -311,11 +508,16 @@ export default function PremiereRoomPage() {
               </div>
             ) : (
               messages.map((m) => (
-                <div key={m.id} className="bg-white/5 p-2 rounded border border-white/10">
+                <div key={m.id} className="bg-white/5 p-3 rounded-2xl border border-white/10">
                   <div className="flex justify-between items-start gap-2">
                     <div className="flex-1">
-                      <p className="text-xs text-gray-400 font-semibold">{m.name}</p>
-                      <p className="text-sm break-words">{m.text}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-gray-400 font-semibold">{m.name}</p>
+                        {m.isOfficial && (
+                          <span className="admin-chip text-[10px] py-0.5">Official</span>
+                        )}
+                      </div>
+                      <p className="text-sm break-words text-gray-100">{m.text}</p>
                     </div>
                     {m.userId === user?.uid && (
                       <span className="text-xs text-gray-500 whitespace-nowrap">(you)</span>
@@ -334,13 +536,10 @@ export default function PremiereRoomPage() {
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Type a message... (Enter to send)"
-              className="flex-1 bg-white/10 border border-white/10 p-2 rounded text-sm resize-none h-10 focus:outline-none focus:border-white/30 transition"
+              className="flex-1 admin-textarea text-sm resize-none h-10"
               rows="1"
             />
-            <button
-              onClick={sendMessage}
-              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm font-semibold transition flex items-center gap-2 whitespace-nowrap"
-            >
+            <button onClick={sendMessage} className="admin-button admin-button-primary whitespace-nowrap">
               Send
             </button>
           </div>
@@ -351,7 +550,7 @@ export default function PremiereRoomPage() {
 
       {/* ACTIVE VIEWERS SIDEBAR */}
       {showViewers && (
-        <div className="fixed right-0 top-0 bottom-0 w-80 bg-[#0B0B0F] border-l border-white/10 p-4 space-y-4 overflow-y-auto z-40">
+        <div className="fixed right-0 top-0 bottom-0 w-80 bg-[#050a18]/95 backdrop-blur-xl border-l border-white/10 p-4 space-y-4 overflow-y-auto z-40 shadow-[0_0_60px_rgba(0,0,0,0.35)]">
 
           <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-4">
             <h2 className="text-lg font-bold">Active Viewers</h2>
@@ -363,7 +562,7 @@ export default function PremiereRoomPage() {
             </button>
           </div>
 
-          <div className="bg-white/10 border border-white/10 p-3 rounded mb-4">
+          <div className="bg-white/10 border border-white/10 p-3 rounded-2xl mb-4">
             <p className="text-sm font-semibold">Total Viewers: {viewers.length}</p>
           </div>
 
@@ -374,12 +573,25 @@ export default function PremiereRoomPage() {
               {viewers.map((viewer) => (
                 <div
                   key={viewer.id}
-                  className="bg-white/5 border border-white/10 rounded-lg p-3"
+                  className="bg-white/5 border border-white/10 rounded-2xl p-3"
                 >
                   <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full overflow-hidden border border-white/20 bg-white/10">
+                      {viewer.photoURL ? (
+                        <div
+                          className="w-full h-full bg-cover bg-center"
+                          style={{ backgroundImage: `url(${viewer.photoURL})` }}
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[10px] font-bold">
+                          {getInitials(viewer.name || viewer.id)}
+                        </div>
+                      )}
+                    </div>
                     <span className="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
-                    <p className="text-xs text-gray-300 font-mono break-all flex-1">
-                      {viewer.id === user?.uid ? "You" : viewer.id.substring(0, 8) + "..."}
+                    <p className="text-xs text-gray-300 break-all flex-1">
+                      {viewer.name || getViewerLabel(viewer.id, user?.uid)}
                     </p>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">

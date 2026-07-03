@@ -1,29 +1,17 @@
 export default function MovieLoading() {
   return (
-    <div className="bg-black text-white min-h-screen animate-pulse">
+    <div className="min-h-screen animate-pulse">
+      <div className="h-[70vh] md:h-[84vh] rounded-b-[2.5rem] bg-white/8" />
 
-      {/* Hero */}
-      <div className="h-[70vh] bg-zinc-900" />
-
-      <div className="px-6 md:px-16 py-20 space-y-16">
-
-        {/* Video */}
-        <div className="aspect-video bg-zinc-800 rounded-3xl" />
-
-        {/* Rating */}
-        <div className="h-32 bg-zinc-800 rounded-3xl" />
-
-        {/* Info Grid */}
-        <div className="grid md:grid-cols-3 gap-12">
-          <div className="md:col-span-2 h-64 bg-zinc-800 rounded-3xl" />
-          <div className="h-64 bg-zinc-800 rounded-3xl" />
+      <div className="px-4 md:px-10 lg:px-16 py-12 space-y-10">
+        <div className="aspect-video bg-white/10 rounded-3xl" />
+        <div className="h-28 bg-white/10 rounded-3xl" />
+        <div className="grid md:grid-cols-3 gap-6 md:gap-8">
+          <div className="md:col-span-2 h-64 bg-white/10 rounded-3xl" />
+          <div className="h-64 bg-white/10 rounded-3xl" />
         </div>
-
-        {/* Comments */}
-        <div className="h-40 bg-zinc-800 rounded-3xl" />
-
+        <div className="h-40 bg-white/10 rounded-3xl" />
       </div>
-
     </div>
   );
 }

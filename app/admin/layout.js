@@ -4,22 +4,81 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 
+const navItems = [
+  { href: "/admin", label: "Dashboard" },
+  { href: "/admin/movies", label: "Movies" },
+  { href: "/admin/premieres", label: "Premieres" },
+  { href: "/admin/discovery", label: "Discovery" },
+  { href: "/admin/genres", label: "Genres" },
+  { href: "/admin/search-analytics", label: "Analytics" },
+  { href: "/admin/contacts", label: "Contacts" },
+  { href: "/admin/settings", label: "Settings" },
+];
+
 export default function AdminLayout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [loading, setLoading] = useState(true);
+  const [checking, setChecking] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [adminEmail, setAdminEmail] = useState("");
 
   const isLoginPage = pathname === "/admin/login";
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 300);
+    setMenuOpen(false);
 
-    return () => clearTimeout(timer);
-  }, []);
+    if (isLoginPage) {
+      setChecking(false);
+      return;
+    }
+
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const checkSession = async () => {
+      try {
+        let authenticated = false;
+        let email = "";
+
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          const res = await fetch("/api/admin/session", {
+            method: "GET",
+            cache: "no-store",
+            credentials: "include",
+            headers: {
+              "Cache-Control": "no-cache",
+            },
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.authenticated) {
+              authenticated = true;
+              email = data.email || "admin";
+              break;
+            }
+          }
+
+          if (attempt < 2) {
+            await delay(200);
+          }
+        }
+
+        if (!authenticated) {
+          router.replace("/admin/login");
+          return;
+        }
+
+        setAdminEmail(email || "admin");
+      } catch {
+        router.replace("/admin/login");
+      } finally {
+        setChecking(false);
+      }
+    };
+
+    checkSession();
+  }, [isLoginPage, router]);
 
   const handleLogout = async () => {
     await fetch("/api/logout", { method: "POST" });
@@ -30,141 +89,109 @@ export default function AdminLayout({ children }) {
 
   if (isLoginPage) return <>{children}</>;
 
-  if (loading) {
+  if (checking) {
     return (
-      <div className="bg-black text-white min-h-screen flex items-center justify-center">
-        Loading Admin Panel...
+      <div className="min-h-screen flex items-center justify-center text-white px-4">
+        <div className="glass-card rounded-3xl px-6 py-5 shadow-2xl text-center max-w-sm w-full">
+          <div className="mx-auto mb-4 h-10 w-10 rounded-full border-4 border-cyan-400/30 border-t-cyan-400 animate-spin" />
+          <p className="font-semibold">Validating admin session</p>
+          <p className="text-sm text-gray-400 mt-1">Checking secure access before loading the dashboard.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-black text-white">
-
-      {/* DESKTOP SIDEBAR */}
-      <aside className="hidden md:flex w-64 bg-zinc-900 p-6 flex-col justify-between shadow-xl border-r border-white/10">
-
+    <div className="app-shell flex min-h-screen text-white">
+      <aside className="hidden md:flex w-72 bg-[#060b19]/90 backdrop-blur-xl p-6 flex-col justify-between border-r border-white/10 shadow-2xl shadow-black/30">
         <div>
-          <h2 className="text-2xl font-bold mb-10">Admin Panel</h2>
+          <div className="mb-8">
+            <p className="text-xs uppercase tracking-[0.24em] text-cyan-300/80 mb-2">Admin Portal</p>
+            <h2 className="text-2xl font-black tracking-tight">Control Center</h2>
+          </div>
 
-          <nav className="space-y-4 text-sm">
+          <div className="mb-6 rounded-xl border border-white/15 bg-black/20 p-3 text-xs text-gray-300">
+            <p className="text-gray-400 mb-1">Signed in as</p>
+            <p className="font-medium break-all">{adminEmail || "admin"}</p>
+          </div>
 
-            <Link
-              href="/admin"
-              className={`block px-3 py-2 rounded-lg transition ${
-                isActive("/admin") ? "bg-white/10 text-white" : "text-gray-400 hover:text-white"
-              }`}
-            >
-              Dashboard
-            </Link>
-
-            <Link
-              href="/admin/movies"
-              className={`block px-3 py-2 rounded-lg transition ${
-                isActive("/admin/movies") ? "bg-white/10 text-white" : "text-gray-400 hover:text-white"
-              }`}
-            >
-              Movies
-            </Link>
-
-            <Link
-              href="/admin/comments"
-              className={`block px-3 py-2 rounded-lg transition ${
-                isActive("/admin/comments") ? "bg-white/10 text-white" : "text-gray-400 hover:text-white"
-              }`}
-            >
-              Comments
-            </Link>
-
-            <Link
-              href="/admin/premieres"
-              className={`block px-3 py-2 rounded-lg transition ${
-                isActive("/admin/premieres") ? "bg-red-600/20 text-white" : "text-gray-400 hover:text-white"
-              }`}
-            >
-              🎬 Premieres
-            </Link>
-
-            {/* ✅ NEW CONTACTS */}
-            <Link
-              href="/admin/contacts"
-              className={`block px-3 py-2 rounded-lg transition ${
-                isActive("/admin/contacts") ? "bg-white/10 text-white" : "text-gray-400 hover:text-white"
-              }`}
-            >
-              📥 Contacts
-            </Link>
-
+          <nav className="space-y-2 text-sm">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`block px-3 py-2.5 rounded-xl transition ${
+                  isActive(item.href)
+                    ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white"
+                    : "text-gray-300 hover:bg-white/10"
+                }`}
+              >
+                {item.label}
+              </Link>
+            ))}
           </nav>
         </div>
 
         <button
           onClick={handleLogout}
-          className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded transition text-sm"
+          className="bg-white/10 hover:bg-white/20 px-4 py-2.5 rounded-xl transition text-sm font-semibold focus-ring"
         >
           Logout
         </button>
       </aside>
 
-      {/* MOBILE TOP BAR */}
-      <div className="md:hidden fixed top-0 left-0 w-full bg-zinc-900 border-b border-white/10 flex items-center justify-between px-4 py-4 z-50">
-        <h2 className="text-lg font-semibold">Admin</h2>
-        <button onClick={() => setMenuOpen(true)} className="text-2xl">☰</button>
+      <div className="md:hidden fixed top-0 left-0 w-full bg-[#060b19]/95 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-4 py-4 z-50">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.24em] text-cyan-300/70">Admin</p>
+          <h2 className="text-base font-semibold">Control Center</h2>
+        </div>
+        <button
+          onClick={() => setMenuOpen(true)}
+          className="rounded-full border border-white/15 px-3 py-1.5 text-sm focus-ring"
+          aria-label="Open admin menu"
+        >
+          Menu
+        </button>
       </div>
 
       {menuOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50">
-          <div className="absolute left-0 top-0 h-full w-64 bg-zinc-900 p-6 shadow-xl border-r border-white/10 flex flex-col justify-between">
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50"
+          onClick={() => setMenuOpen(false)}
+        >
+          <div
+            className="absolute left-0 top-0 h-full w-72 bg-[#060b19]/95 p-6 border-r border-white/10 flex flex-col justify-between shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div>
-              <div className="flex justify-between items-center mb-10">
+              <div className="flex justify-between items-center mb-8">
                 <h2 className="text-xl font-bold">Admin</h2>
-                <button onClick={() => setMenuOpen(false)}>✕</button>
+                <button onClick={() => setMenuOpen(false)} className="text-sm text-gray-300 focus-ring rounded-md px-2 py-1">
+                  Close
+                </button>
               </div>
 
-              <nav className="space-y-4 text-sm">
-
-                <Link href="/admin" onClick={() => setMenuOpen(false)}
-                  className={`block px-3 py-2 rounded-lg ${
-                    isActive("/admin") ? "bg-white/10 text-white" : "text-gray-400"
-                  }`}>
-                  Dashboard
-                </Link>
-
-                <Link href="/admin/movies" onClick={() => setMenuOpen(false)}
-                  className={`block px-3 py-2 rounded-lg ${
-                    isActive("/admin/movies") ? "bg-white/10 text-white" : "text-gray-400"
-                  }`}>
-                  Movies
-                </Link>
-
-                <Link href="/admin/comments" onClick={() => setMenuOpen(false)}
-                  className={`block px-3 py-2 rounded-lg ${
-                    isActive("/admin/comments") ? "bg-white/10 text-white" : "text-gray-400"
-                  }`}>
-                  Comments
-                </Link>
-
-                <Link href="/admin/premieres" onClick={() => setMenuOpen(false)}
-                  className={`block px-3 py-2 rounded-lg ${
-                    isActive("/admin/premieres") ? "bg-red-600/20 text-white" : "text-gray-400"
-                  }`}>
-                  🎬 Premieres
-                </Link>
-
-                {/* ✅ NEW CONTACTS */}
-                <Link href="/admin/contacts" onClick={() => setMenuOpen(false)}
-                  className={`block px-3 py-2 rounded-lg ${
-                    isActive("/admin/contacts") ? "bg-white/10 text-white" : "text-gray-400"
-                  }`}>
-                  📥 Contacts
-                </Link>
-
+              <nav className="space-y-2 text-sm">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMenuOpen(false)}
+                    className={`block px-3 py-2.5 rounded-xl transition ${
+                      isActive(item.href)
+                        ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white"
+                        : "text-gray-300 hover:bg-white/10"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
               </nav>
             </div>
 
             <button
               onClick={handleLogout}
-              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded transition text-sm"
+              className="bg-white/10 hover:bg-white/20 px-4 py-2.5 rounded-xl transition text-sm font-semibold focus-ring"
             >
               Logout
             </button>
@@ -172,10 +199,9 @@ export default function AdminLayout({ children }) {
         </div>
       )}
 
-      <main className="flex-1 p-6 md:p-12 pt-24 md:pt-12 overflow-y-auto w-full">
+      <main className="flex-1 p-5 md:p-10 pt-24 md:pt-10 overflow-y-auto w-full">
         {children}
       </main>
-
     </div>
   );
 }

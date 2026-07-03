@@ -19,50 +19,45 @@ export default function ImageUploadSelector({
 
     setUploading(true);
 
-    try {
-      const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-      const preset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64Data = reader.result;
 
-      if (cloudName && preset) {
-        // Upload to Cloudinary
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("upload_preset", preset);
+      try {
+        const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+        if (!cloudName) {
+          // No cloud name configured, use base64 fallback directly
+          onChange(base64Data);
+          setUploading(false);
+          return;
+        }
 
-        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        const res = await fetch("/api/cloudinary/upload", {
           method: "POST",
-          body: formData,
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ file: base64Data }),
         });
 
         if (!res.ok) {
-          throw new Error("Cloudinary upload failed");
+          throw new Error("Server upload endpoint failed");
         }
 
         const data = await res.json();
         if (data.secure_url) {
           onChange(data.secure_url);
         } else {
-          throw new Error("Secure URL missing in response");
+          throw new Error("Secure URL missing in server response");
         }
-      } else {
-        // Fallback to local base64 Reader
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          onChange(reader.result);
-        };
-        reader.readAsDataURL(file);
+      } catch (err) {
+        console.warn("Secure upload failed, falling back to local base64:", err);
+        onChange(base64Data);
+      } finally {
+        setUploading(false);
       }
-    } catch (err) {
-      console.warn("Direct upload failed, falling back to local file reader:", err);
-      // FileReader fallback on error
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        onChange(reader.result);
-      };
-      reader.readAsDataURL(file);
-    } finally {
-      setUploading(false);
-    }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleClear = () => {

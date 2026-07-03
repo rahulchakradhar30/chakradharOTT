@@ -143,26 +143,23 @@ export default function AdminDashboard() {
         });
 
         // Latest movie
-        const latestMovieQuery = query(
-          collection(db, "movies"),
-          orderBy("createdAt", "desc"),
-          limit(1)
-        );
-
-        const latestMovieSnap = await getDocs(latestMovieQuery);
-        if (!latestMovieSnap.empty) {
-          setLatestMovie(latestMovieSnap.docs[0].data());
+        const sortedMovies = [...list].sort((a, b) => {
+          const timeA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+          const timeB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+          return timeB - timeA;
+        });
+        if (sortedMovies.length > 0) {
+          setLatestMovie(sortedMovies[0]);
         }
 
         // Recent comments
-        const recentCommentsQuery = query(
-          collection(db, "comments"),
-          orderBy("timestamp", "desc"),
-          limit(5)
-        );
-
-        const recentSnap = await getDocs(recentCommentsQuery);
-        setRecentComments(recentSnap.docs.map((doc) => doc.data()));
+        const commentsList = commentsSnapshot.docs.map((doc) => doc.data());
+        const sortedComments = commentsList.sort((a, b) => {
+          const timeA = a.timestamp?.toDate?.() || new Date(a.timestamp || 0);
+          const timeB = b.timestamp?.toDate?.() || new Date(b.timestamp || 0);
+          return timeB - timeA;
+        });
+        setRecentComments(sortedComments.slice(0, 5));
 
       } catch (error) {
         console.error("Dashboard fetch error:", error);

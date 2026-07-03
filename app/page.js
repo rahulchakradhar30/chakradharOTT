@@ -224,12 +224,9 @@ function PremiereRow({ premieres, scheduled, loading }) {
 
   const Card = ({ p, accent, href, isLive }) => (
     <Link href={href} className="group/card min-w-[280px] md:min-w-[320px] flex-shrink-0">
-      <motion.article
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        className={`relative h-[200px] md:h-[220px] rounded-3xl overflow-hidden border transition-all duration-500 group-hover/card:-translate-y-2 group-hover/card:shadow-[0_25px_50px_rgba(0,212,255,0.2)] ${
-          isLive ? "border-red-400/50 group-hover/card:border-red-300/80" : "border-cyan-300/30 group-hover/card:border-cyan-300/60"
+      <article
+        className={`relative h-[200px] md:h-[220px] rounded-3xl overflow-hidden border transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_25px_50px_rgba(0,212,255,0.2)] ${
+          isLive ? "border-red-400/50 hover:border-red-300/80" : "border-cyan-300/30 hover:border-cyan-300/60"
         }`}
       >
         {p.bannerImage ? (
@@ -256,10 +253,7 @@ function PremiereRow({ premieres, scheduled, loading }) {
         <div className="absolute inset-0 bg-gradient-to-br from-transparent via-[#04070f]/40 to-[#04070f]/80" />
         <div className="absolute inset-0 p-5 md:p-6 flex flex-col justify-between relative z-10">
           <div className="flex flex-wrap gap-2 text-xs">
-            <motion.span
-              initial={{ scale: 0.8 }}
-              whileInView={{ scale: 1 }}
-              viewport={{ once: true }}
+            <span
               className={`px-3 py-1.5 rounded-full backdrop-blur-md font-bold uppercase tracking-widest ${
                 p.status === "live"
                   ? "bg-red-500/80 border border-red-300/50 text-white animate-pulse"
@@ -267,7 +261,7 @@ function PremiereRow({ premieres, scheduled, loading }) {
               }`}
             >
               {p.status === "live" ? "🔴 LIVE NOW" : "🕐 Coming"}
-            </motion.span>
+            </span>
             {p.ticketRequired && p.ticketPrice && (
               <span className="px-3 py-1.5 rounded-full bg-white/15 border border-white/25 backdrop-blur-md font-bold">
                 ₹{p.ticketPrice}
@@ -285,7 +279,7 @@ function PremiereRow({ premieres, scheduled, loading }) {
             </p>
           </div>
         </div>
-      </motion.article>
+      </article>
     </Link>
   );
 
@@ -296,7 +290,12 @@ function PremiereRow({ premieres, scheduled, loading }) {
       {livePremieres.length > 0 && (
         <section className="px-4 md:px-10 lg:px-16 py-10 md:py-16">
           <SectionHeader title="🔴 Live Premieres" subtitle="Join ongoing events and watch together in real time" />
-          <div className="flex gap-5 md:gap-6 overflow-x-auto hide-scrollbar pb-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex gap-5 md:gap-6 overflow-x-auto hide-scrollbar pb-4"
+          >
             {livePremieres.map((p) => (
               <Card
                 key={p.id}
@@ -306,14 +305,19 @@ function PremiereRow({ premieres, scheduled, loading }) {
                 href={`/premiere/${p.id}/join`}
               />
             ))}
-          </div>
+          </motion.div>
         </section>
       )}
 
       {scheduledPremieres.length > 0 && (
         <section className="px-4 md:px-10 lg:px-16 py-10 md:py-16">
           <SectionHeader title="Coming Up Soon" subtitle="Upcoming premieres and special sessions" />
-          <div className="flex gap-5 md:gap-6 overflow-x-auto hide-scrollbar pb-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex gap-5 md:gap-6 overflow-x-auto hide-scrollbar pb-4"
+          >
             {scheduledPremieres.map((p) => (
               <Card
                 key={p.id}
@@ -322,7 +326,7 @@ function PremiereRow({ premieres, scheduled, loading }) {
                 href={`/premiere/${p.id}/join`}
               />
             ))}
-          </div>
+          </motion.div>
         </section>
       )}
     </>
@@ -345,20 +349,22 @@ function MovieRow({ title, subtitle, movies, loading }) {
     <section className="px-4 md:px-10 lg:px-16 py-10 md:py-16">
       <SectionHeader title={title} subtitle={subtitle} />
 
-      <div className="flex gap-5 md:gap-6 overflow-x-auto hide-scrollbar pb-10 pt-4 group">
-        {movies.map((movie, index) => (
-          <motion.div
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "0px 0px -100px 0px" }}
+        transition={{ duration: 0.5 }}
+        className="flex gap-5 md:gap-6 overflow-x-auto hide-scrollbar pb-10 pt-4 group"
+      >
+        {movies.map((movie) => (
+          <div
             key={movie.id}
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "0px 0px -50px 0px" }}
-            transition={{ duration: 0.4, delay: Math.min(index * 0.05, 0.25) }}
-            className="flex-shrink-0"
+            className="flex-shrink-0 transition-transform duration-300 hover:scale-[1.02]"
           >
             <MovieHoverCard movie={movie} />
-          </motion.div>
+          </div>
         ))}
-      </div>
+      </motion.div>
     </section>
   );
 }

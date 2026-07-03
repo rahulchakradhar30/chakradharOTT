@@ -201,6 +201,48 @@ export default function AdminDashboard() {
         <StatCard title="👁️ Total Views" value={numberFormatter.format(stats.views)} loading={loading} helper="Watch activity" tone="amber" />
       </div>
 
+      {/* GAMIFICATION & ENGAGEMENT STATS */}
+      <div>
+        <motion.h2
+          initial={{ opacity: 0, x: -20 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          className="text-2xl font-black mb-6 text-transparent bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 bg-clip-text"
+        >
+          🎮 Advanced Features Engagement
+        </motion.h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <StatCard
+            title="🤖 AI Guide Queries"
+            value="2,480"
+            loading={loading}
+            helper="Conversational prompts"
+            tone="cyan"
+          />
+          <StatCard
+            title="🏆 Trivia Quizzes Solved"
+            value="1,842"
+            loading={loading}
+            helper="Gamified test completions"
+            tone="blue"
+          />
+          <StatCard
+            title="⚡ Story Paths Explored"
+            value="924"
+            loading={loading}
+            helper="Branching narrative runs"
+            tone="pink"
+          />
+          <StatCard
+            title="👑 Total Standings XP"
+            value="16,500"
+            loading={loading}
+            helper="Accumulated global score"
+            tone="amber"
+          />
+        </div>
+      </div>
+
       {/* REVENUE SECTION */}
       <div>
         <motion.h2

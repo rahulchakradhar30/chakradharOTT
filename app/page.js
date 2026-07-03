@@ -109,21 +109,27 @@ function CinematicHero({ movie, loading }) {
   const image = movie.bannerImage || movie.posterImage || fallback;
 
   return (
-    <section className="relative h-[70vh] md:h-[85vh] w-full overflow-hidden rounded-b-3xl md:rounded-b-[3rem] mx-4 md:mx-10 lg:mx-16 mt-8 md:mt-12">
-      <Image src={image} alt={movie.title} fill priority className="object-cover" />
+    <section className="relative h-[75vh] md:h-[92vh] w-full overflow-hidden -mt-20 md:-mt-24">
+      <Image 
+        src={image} 
+        alt={movie.title} 
+        fill 
+        priority 
+        className="object-cover object-center lg:object-[right_center]" 
+      />
 
       {/* Multi-layer gradient for premium look */}
-      <div className="absolute inset-0 bg-gradient-to-r from-[#04070f] via-[#04070f]/85 to-transparent" />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#04070f] via-[#04070f]/40 to-transparent" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_15%,rgba(0,212,255,0.2),transparent_35%),radial-gradient(circle_at_20%_25%,rgba(255,77,141,0.12),transparent_25%)]" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#04070f] via-[#04070f]/75 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#04070f] via-[#04070f]/20 to-transparent" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_25%,rgba(0,212,255,0.15),transparent_40%),radial-gradient(circle_at_20%_20%,rgba(255,77,141,0.08),transparent_30%)]" />
 
       {/* Animated glow elements */}
-      <div className="absolute -top-20 -right-20 w-72 h-72 md:w-96 md:h-96 rounded-full bg-cyan-400/20 blur-3xl animate-pulse" />
-      <div className="absolute -bottom-32 -left-20 w-80 h-80 rounded-full bg-purple-500/10 blur-3xl" />
+      <div className="absolute -top-20 -right-20 w-72 h-72 md:w-96 md:h-96 rounded-full bg-cyan-400/10 blur-3xl animate-pulse" />
+      <div className="absolute -bottom-32 -left-20 w-80 h-80 rounded-full bg-purple-500/5 blur-3xl" />
 
-      {/* Content container */}
-      <div className="absolute inset-0 flex items-end pb-8 md:pb-14">
-        <div className="px-6 md:px-12 lg:px-16 max-w-4xl w-full space-y-5 md:space-y-7">
+      {/* Content container aligned with Navbar margins */}
+      <div className="absolute inset-0 flex items-end pb-12 md:pb-20">
+        <div className="px-4 md:px-8 lg:px-14 max-w-4xl w-full space-y-5 md:space-y-7">
           {/* Badge */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -156,7 +162,7 @@ function CinematicHero({ movie, loading }) {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.15 }}
-            className="text-gray-200/95 text-base md:text-lg lg:text-xl max-w-3xl line-clamp-2 drop-shadow-lg leading-relaxed"
+            className="text-gray-200/95 text-base md:text-lg lg:text-xl max-w-3xl line-clamp-3 drop-shadow-lg leading-relaxed"
           >
             {movie.tagline || movie.description || "Experience the next chapter of cinematic storytelling."}
           </motion.p>

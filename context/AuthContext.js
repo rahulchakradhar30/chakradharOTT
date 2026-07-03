@@ -20,7 +20,17 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
+      if (firebaseUser) {
+        setUser(firebaseUser);
+        localStorage.removeItem("demoUser");
+      } else {
+        const savedDemo = localStorage.getItem("demoUser");
+        if (savedDemo) {
+          setUser(JSON.parse(savedDemo));
+        } else {
+          setUser(null);
+        }
+      }
       setLoading(false);
     });
 
@@ -43,8 +53,23 @@ export function AuthProvider({ children }) {
     return createUserWithEmailAndPassword(auth, email, password);
   };
 
+  // Login as Demo Guest
+  const loginAsDemo = () => {
+    const demo = {
+      uid: "demo_user_chakradhar",
+      email: "demo@chakradharott.com",
+      displayName: "Guest Critic",
+      photoURL: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde",
+      emailVerified: true
+    };
+    setUser(demo);
+    localStorage.setItem("demoUser", JSON.stringify(demo));
+    return demo;
+  };
+
   // Logout
   const logout = async () => {
+    localStorage.removeItem("demoUser");
     await signOut(auth);
   };
 
@@ -61,6 +86,7 @@ export function AuthProvider({ children }) {
         loginWithGoogle,
         loginWithEmail,
         registerWithEmail,
+        loginAsDemo,
         logout,
         resetPassword,
       }}

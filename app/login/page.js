@@ -16,6 +16,7 @@ export default function LoginPage() {
     loginWithGoogle,
     loginWithEmail,
     registerWithEmail,
+    loginAsDemo,
     resetPassword,
   } = useAuth();
 
@@ -68,6 +69,19 @@ export default function LoginPage() {
     }
   };
 
+  const handleDemoLogin = () => {
+    try {
+      setLoading(true);
+      loginAsDemo();
+      addToast("Welcome back! Logged in as Demo Guest.", "success");
+      router.push("/");
+    } catch (err) {
+      addToast("Demo login failed", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleEmailAuth = async (e) => {
     e.preventDefault();
 
@@ -81,26 +95,19 @@ export default function LoginPage() {
       setMessage("");
 
       if (mode === "login") {
-        const cred = await loginWithEmail(formData.email, formData.password);
-
-        if (!cred.user.emailVerified) {
-          await sendEmailVerification(cred.user);
-          setMessage("Email not verified. A fresh verification link has been sent.");
-          addToast("Please verify your email", "warning");
-          return;
-        }
-
+        await loginWithEmail(formData.email, formData.password);
         addToast("Logged in successfully!", "success");
         router.push("/");
         return;
       }
 
-      const cred = await registerWithEmail(formData.email, formData.password);
-      await sendEmailVerification(cred.user);
-      setMessage("Account created. Please verify your email before login.");
-      setMode("login");
-      setFormData({ ...formData, password: "" });
-      addToast("Account created! Check your email for verification.", "success");
+      // Registration
+      await registerWithEmail(formData.email, formData.password);
+      addToast("Account created successfully! Logging you in...", "success");
+      
+      // Auto login after registration
+      await loginWithEmail(formData.email, formData.password);
+      router.push("/");
     } catch (err) {
       const errorMessage = err.message || "Authentication failed";
       addToast(errorMessage, "error");
@@ -143,9 +150,19 @@ export default function LoginPage() {
           disabled={loading}
           variant="secondary"
           size="full"
-          className="mb-5 bg-white text-black hover:bg-white/90"
+          className="mb-3 bg-white text-black hover:bg-white/90"
         >
           🔐 Continue with Google
+        </Button>
+
+        <Button
+          onClick={handleDemoLogin}
+          disabled={loading}
+          variant="secondary"
+          size="full"
+          className="mb-5 bg-gradient-to-r from-cyan-600/20 via-blue-600/25 to-pink-600/20 text-cyan-300 font-bold border border-cyan-400/30 hover:border-cyan-400/50"
+        >
+          🧪 Use Demo Guest Account (Bypass Auth)
         </Button>
 
         <div className="text-center text-gray-400 mb-5 text-sm font-medium">or continue with email</div>

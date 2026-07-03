@@ -14,6 +14,7 @@ export default function MovieHoverCard({ movie }) {
   const [isHovered, setIsHovered] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
   const hoverTimeoutRef = useRef(null);
 
   // Generate a random match percentage (e.g. 94% - 99%) based on movie ID hash to keep it consistent
@@ -36,7 +37,21 @@ export default function MovieHoverCard({ movie }) {
     checkSaved();
   }, [user, movie.id]);
 
+  useEffect(() => {
+    const checkTouch = () => {
+      setIsTouchDevice(
+        "ontouchstart" in window ||
+        navigator.maxTouchPoints > 0 ||
+        window.innerWidth < 768
+      );
+    };
+    checkTouch();
+    window.addEventListener("resize", checkTouch);
+    return () => window.removeEventListener("resize", checkTouch);
+  }, []);
+
   const handleMouseEnter = () => {
+    if (isTouchDevice) return; // Disable hover overlay on touch/mobile viewports
     clearTimeout(hoverTimeoutRef.current);
     hoverTimeoutRef.current = setTimeout(() => {
       setIsHovered(true);
@@ -157,24 +172,24 @@ export default function MovieHoverCard({ movie }) {
                       href={`/movie/${movie.id}`}
                       className="w-8 h-8 rounded-full bg-cyan-400 text-black flex items-center justify-center font-bold hover:bg-cyan-300 transition-colors shadow-lg shadow-cyan-500/20"
                     >
-                      ▶
+                      <span className="pl-0.5 text-xs select-none mt-[-1px]">▶</span>
                     </Link>
                     <button
                       onClick={toggleWishlist}
-                      className={`w-8 h-8 rounded-full border flex items-center justify-center text-sm transition-colors ${
+                      className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${
                         saved
                           ? "bg-red-500 border-red-500 text-white"
                           : "border-white/20 hover:border-white/40 text-gray-300 hover:text-white"
                       }`}
                     >
-                      {saved ? "❤️" : "➕"}
+                      <span className="text-[11px] select-none mt-[1px]">{saved ? "❤️" : "➕"}</span>
                     </button>
                     <Link
                       href={`/movie/${movie.id}/quiz`}
-                      className="w-8 h-8 rounded-full border border-white/20 hover:border-white/40 text-gray-300 hover:text-white flex items-center justify-center text-sm transition-colors"
+                      className="w-8 h-8 rounded-full border border-white/20 hover:border-white/40 text-gray-300 hover:text-white flex items-center justify-center transition-colors"
                       title="Play Trivia Quiz"
                     >
-                      🏆
+                      <span className="text-xs select-none mt-[1px]">🏆</span>
                     </Link>
                   </div>
                   <div className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-gray-400 font-bold uppercase tracking-wider">

@@ -9,6 +9,7 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   setDoc,
   query,
   where,
@@ -40,16 +41,58 @@ export default function WatchPartyRoom() {
   const [useRealVideoCall, setUseRealVideoCall] = useState(false);
   const myPresenceDocIdRef = useRef(null);
 
-  // Load movie data
+  // Load movie data — host has ?movie= in URL, joiner discovers it from Firestore
   useEffect(() => {
-    if (!movieParam) {
+    if (!roomId) {
       setLoading(false);
       return;
     }
 
     const fetchMovie = async () => {
       try {
-        const movieRef = doc(db, "movies", movieParam);
+        let movieId = movieParam;
+
+        // If host, store the movieId in Firestore so joiners can discover it
+        if (isHost && movieId) {
+          try {
+            await addDoc(collection(db, "comments"), {
+              movieId: "wp_room_" + roomId,
+              userId: "system",
+              name: "RoomInfo",
+              comment: movieId, // store the actual movie document ID
+              timestamp: new Date(),
+              parentId: "roominfo",
+            });
+          } catch (storeErr) {
+            console.warn("Failed to store room info:", storeErr);
+          }
+        }
+
+        // If joiner (no movie param), look up the movieId from the room info doc
+        if (!movieId) {
+          const roomInfoQuery = query(
+            collection(db, "comments"),
+            where("movieId", "==", "wp_room_" + roomId)
+          );
+          const roomInfoSnap = await getDocs(roomInfoQuery);
+          if (!roomInfoSnap.empty) {
+            // Get the most recent room info doc
+            const docs = roomInfoSnap.docs.map(d => ({
+              id: d.id,
+              ...d.data(),
+              ts: d.data().timestamp?.toDate ? d.data().timestamp.toDate() : new Date(0),
+            }));
+            docs.sort((a, b) => b.ts - a.ts);
+            movieId = docs[0].comment; // the movie document ID
+          }
+        }
+
+        if (!movieId) {
+          setLoading(false);
+          return;
+        }
+
+        const movieRef = doc(db, "movies", movieId);
         const movieSnap = await getDoc(movieRef);
         if (movieSnap.exists()) {
           setMovie({ id: movieSnap.id, ...movieSnap.data() });
@@ -62,7 +105,7 @@ export default function WatchPartyRoom() {
     };
     
     fetchMovie();
-  }, [movieParam]);
+  }, [movieParam, roomId, isHost]);
 
   // Presence Sync: Add user to comments collection with movieId: wp_presence_roomId
   useEffect(() => {
@@ -287,7 +330,9 @@ export default function WatchPartyRoom() {
           </div>
           <button
             onClick={() => {
-              navigator.clipboard.writeText(window.location.href);
+              const baseUrl = window.location.origin + `/watch-party/${roomId}`;
+              const shareUrl = movie ? `${baseUrl}?movie=${movie.id}` : baseUrl;
+              navigator.clipboard.writeText(shareUrl);
               alert("Watch Party link copied to clipboard!");
             }}
             className="bg-cyan-500 text-black px-3 py-1.5 rounded-lg font-bold hover:bg-cyan-400 transition"

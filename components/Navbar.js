@@ -27,7 +27,6 @@ export default function Navbar() {
     { href: "/posters", label: "Posters", icon: "🖼️" },
     { href: "/ai-assistant", label: "AI Guide", badge: "✦", icon: "🤖" },
     { href: "/trivia", label: "Trivia Arena", icon: "🏆" },
-    { href: "/interactive-story", label: "Interactive Heist", badge: "🎮", icon: "🎮" },
     { href: "/contact", label: "Contact", icon: "📧" },
   ];
 

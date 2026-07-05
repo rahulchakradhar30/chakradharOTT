@@ -69,13 +69,63 @@ export default function AICineGuidePage() {
     setInput("");
     setIsTyping(true);
 
-    // Simulate AI thinking delay
-    setTimeout(() => {
+    try {
+      // 1. Fetch from our Groq AI Assistant endpoint
+      // Include past history sliced to prevent context overflow
+      const chatHistory = [...messages, userMsg];
+      const res = await fetch("/api/ai-assistant", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ messages: chatHistory }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`AI Service status code: ${res.status}`);
+      }
+
+      const data = await res.json();
+      const replyText = data.text || "Sorry, I encountered an issue processing your request.";
+
+      // 2. Parse recommendations block from replyText
+      // Example block format: [RECOMMENDATIONS] movie_id_1, movie_id_2 [/RECOMMENDATIONS]
+      const recRegex = /\[RECOMMENDATIONS\]\s*([\s\S]*?)\s*\[\/RECOMMENDATIONS\]/;
+      const match = replyText.match(recRegex);
+      let matchedMovieIds = [];
+      let cleanedText = replyText;
+
+      if (match) {
+        matchedMovieIds = match[1]
+          .split(",")
+          .map((id) => id.trim())
+          .filter(Boolean);
+        // Strip out the bracket block for clean user visibility
+        cleanedText = replyText.replace(recRegex, "").trim();
+      }
+
+      // 3. Map IDs back to full movie documents in client state
+      const matchedMovies = matchedMovieIds
+        .map((id) => movies.find((m) => m.id === id))
+        .filter(Boolean);
+
+      const aiMsg = {
+        id: Math.random().toString(),
+        sender: "ai",
+        text: cleanedText,
+        movies: matchedMovies.slice(0, 5), // Show up to 5 recommendations
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, aiMsg]);
+    } catch (err) {
+      console.warn("AI Assistant API failed, using keyword search fallback:", err);
+
+      // 4. Fallback search (local keyword matching)
       const normalizedQuery = textToSend.toLowerCase();
       let matched = [];
       let replyText = "";
 
-      // 1. Keyword search over movies
       if (normalizedQuery.includes("action")) {
         matched = movies.filter((m) => m.genre?.toLowerCase().includes("action"));
         replyText = "Here are some top-tier action movies loaded with adrenaline:";
@@ -101,7 +151,6 @@ export default function AICineGuidePage() {
         matched = [...movies].sort((a, b) => (b.year || 0) - (a.year || 0)).slice(0, 5);
         replyText = "Fresh out of the editing room! Check out our latest releases:";
       } else {
-        // Fallback title / description match
         matched = movies.filter(
           (m) =>
             m.title?.toLowerCase().includes(normalizedQuery) ||
@@ -112,7 +161,6 @@ export default function AICineGuidePage() {
         if (matched.length > 0) {
           replyText = `I found some matches in our catalog for "${textToSend}":`;
         } else {
-          // General recommendation if no match found
           matched = movies.slice(0, 4);
           replyText = `I couldn't find exact matches for "${textToSend}", but here are some popular showcase titles you might love:`;
         }
@@ -122,13 +170,14 @@ export default function AICineGuidePage() {
         id: Math.random().toString(),
         sender: "ai",
         text: replyText,
-        movies: matched.slice(0, 5), // Limit to 5 cards max in carousel
+        movies: matched.slice(0, 5),
         timestamp: new Date(),
       };
 
       setMessages((prev) => [...prev, aiMsg]);
+    } finally {
       setIsTyping(false);
-    }, 1200);
+    }
   };
 
   const handleKeyPress = (e) => {

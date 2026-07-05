@@ -41,7 +41,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-white/10 pt-5 text-center text-xs text-gray-500">
-          © {new Date().getFullYear()} Chakradhar OTT Platform • Created by Rahul Chakradhar & The Fifth Age Films Productions
+          © {new Date().getFullYear()} Chakradhar OTT Platform • Created by Rahul Chakradhar & The Fifth Age Films Productions • Version 3.0
         </div>
       </div>
     </footer>

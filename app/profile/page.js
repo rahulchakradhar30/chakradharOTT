@@ -222,6 +222,26 @@ export default function ProfilePage() {
     reader.readAsDataURL(file);
   };
 
+  const handleRemovePhoto = async () => {
+    if (!user?.uid) return;
+    const confirm = window.confirm("Are you sure you want to remove your profile photo?");
+    if (!confirm) return;
+
+    try {
+      setUploadingPhoto(true);
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, { photoURL: "" });
+      }
+      await setDoc(doc(db, "users", user.uid), { photoURL: "" }, { merge: true });
+      setProfile((prev) => ({ ...prev, photoURL: "" }));
+    } catch (err) {
+      console.error("Remove photo failed:", err);
+      alert("Failed to remove profile photo.");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const handleSaveSettings = async () => {
     if (!user?.uid) return;
 
@@ -319,6 +339,17 @@ export default function ProfilePage() {
                 <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-400 to-blue-700 flex items-center justify-center font-black text-2xl border-[3px] border-cyan-400/50 shadow-lg shadow-cyan-500/20">
                   {getInitials(displayName)}
                 </div>
+              )}
+              {profile.photoURL && (
+                <button
+                  type="button"
+                  onClick={handleRemovePhoto}
+                  disabled={uploadingPhoto}
+                  className="absolute bottom-0 left-0 w-8 h-8 bg-red-600 hover:bg-red-500 rounded-full flex items-center justify-center text-xs font-bold transition shadow-lg border-2 border-[#0a1020] group-hover:scale-110"
+                  title="Remove Profile Image"
+                >
+                  🗑️
+                </button>
               )}
               <button
                 onClick={() => fileInputRef.current?.click()}

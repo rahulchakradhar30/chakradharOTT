@@ -4,6 +4,7 @@ export const revalidate = 60;
 import { notFound } from "next/navigation";
 import { adminDb } from "@/lib/firebaseAdmin";
 import Image from "next/image";
+import Link from "next/link";
 import dynamic from "next/dynamic";
 import ViewTracker from "@/components/ViewTracker";
 import WishlistButton from "@/components/WishlistButton";
@@ -130,7 +131,13 @@ export default async function MovieDetail({ params }) {
                 </div>
               </div>
 
-              <div className="mt-4 md:mt-0">
+              <div className="mt-4 md:mt-0 flex flex-wrap items-center gap-3">
+                <Link
+                  href={`/watch-party?movie=${id}`}
+                  className="bg-cyan-500 hover:bg-cyan-400 text-black font-bold py-2.5 px-4 rounded-xl transition text-xs flex items-center gap-2 shadow-lg shadow-cyan-500/10"
+                >
+                  👥 Watch Party
+                </Link>
                 <WishlistButton
                   movie={{
                     id,

@@ -12,6 +12,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
+  updateProfile,
 } from "firebase/auth";
 
 const AuthContext = createContext();
@@ -29,6 +30,17 @@ export function AuthProvider({ children }) {
       const userRef = doc(db, "users", firebaseUser.uid);
       const userSnap = await getDoc(userRef);
       
+      let photoURL = firebaseUser.photoURL || "";
+      if (!photoURL) {
+        const seedText = firebaseUser.displayName || firebaseUser.email || "User";
+        photoURL = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(seedText)}`;
+        try {
+          await updateProfile(firebaseUser, { photoURL });
+        } catch (profileErr) {
+          console.warn("Failed to update auth photoURL:", profileErr);
+        }
+      }
+
       if (!userSnap.exists()) {
         const nameParts = (firebaseUser.displayName || "Google User").split(" ");
         await setDoc(userRef, {
@@ -36,7 +48,7 @@ export function AuthProvider({ children }) {
           name: firebaseUser.displayName || "Google User",
           firstName: nameParts[0] || "",
           lastName: nameParts.slice(1).join(" ") || "",
-          photoURL: firebaseUser.photoURL || "",
+          photoURL: photoURL,
           createdAt: new Date(),
         });
       }
@@ -136,13 +148,27 @@ export function AuthProvider({ children }) {
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       
+      const displayName = `${additionalData.firstName || ""} ${additionalData.lastName || ""}`.trim() || email.split("@")[0];
+      const initialAvatar = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(displayName)}`;
+      
+      try {
+        await updateProfile(cred.user, {
+          displayName,
+          photoURL: initialAvatar,
+        });
+      } catch (profileErr) {
+        console.warn("Failed to update profile name & photoURL on signup:", profileErr);
+      }
+
       try {
         const { doc, setDoc } = await import("firebase/firestore");
         const { db } = await import("@/firebase");
         await setDoc(doc(db, "users", cred.user.uid), {
           email,
+          name: displayName,
           firstName: additionalData.firstName || "",
           lastName: additionalData.lastName || "",
+          photoURL: initialAvatar,
           dob: additionalData.dob || "",
           createdAt: new Date(),
         }, { merge: true });

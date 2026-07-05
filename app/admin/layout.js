@@ -13,6 +13,7 @@ const navItems = [
   { href: "/admin/genres", label: "Genres" },
   { href: "/admin/search-analytics", label: "Analytics" },
   { href: "/admin/contacts", label: "Contacts" },
+  { href: "/admin/users", label: "Users" },
   { href: "/admin/settings", label: "Settings" },
 ];
 
@@ -133,12 +134,17 @@ export default function AdminLayout({ children }) {
           </nav>
         </div>
 
-        <button
-          onClick={handleLogout}
-          className="bg-white/10 hover:bg-white/20 px-4 py-2.5 rounded-xl transition text-sm font-semibold focus-ring"
-        >
-          Logout
-        </button>
+        <div className="space-y-4">
+          <button
+            onClick={handleLogout}
+            className="w-full bg-white/10 hover:bg-white/20 px-4 py-2.5 rounded-xl transition text-sm font-semibold focus-ring"
+          >
+            Logout
+          </button>
+          <div className="text-[10px] text-center text-gray-500 uppercase tracking-widest">
+            Version 3.0
+          </div>
+        </div>
       </aside>
 
       <div className="md:hidden fixed top-0 left-0 w-full bg-[#060b19]/95 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-4 py-4 z-50">
@@ -190,12 +196,17 @@ export default function AdminLayout({ children }) {
               </nav>
             </div>
 
-            <button
-              onClick={handleLogout}
-              className="bg-white/10 hover:bg-white/20 px-4 py-2.5 rounded-xl transition text-sm font-semibold focus-ring"
-            >
-              Logout
-            </button>
+            <div className="space-y-4">
+              <button
+                onClick={handleLogout}
+                className="w-full bg-white/10 hover:bg-white/20 px-4 py-2.5 rounded-xl transition text-sm font-semibold focus-ring"
+              >
+                Logout
+              </button>
+              <div className="text-[10px] text-center text-gray-500 uppercase tracking-widest">
+                Version 3.0
+              </div>
+            </div>
           </div>
         </div>
       )}

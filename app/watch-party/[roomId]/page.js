@@ -3,7 +3,16 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { db } from "@/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  deleteDoc,
+  doc,
+  setDoc,
+  query,
+  where,
+  onSnapshot,
+} from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import VideoPlayer from "@/components/VideoPlayer";
 import Link from "next/link";
@@ -22,16 +31,12 @@ export default function WatchPartyRoom() {
   const { user } = useAuth();
   const [movie, setMovie] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [messages, setMessages] = useState([
-    { id: "1", sender: "System", text: `Watch Party room ${roomId} created. Invite friends!`, time: "Just now" }
-  ]);
+  const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
   const [activeTab, setActiveTab] = useState("chat"); // chat, members
   
-  // Simulated WebRTC participants
-  const [participants, setParticipants] = useState([
-    { name: "You", initial: "Y", isMuted: false, isCameraOff: false, isYou: true, photo: null }
-  ]);
+  const [participants, setParticipants] = useState([]);
+  const myPresenceDocIdRef = useRef(null);
 
   // Load movie data
   useEffect(() => {
@@ -57,83 +62,182 @@ export default function WatchPartyRoom() {
     fetchMovie();
   }, [movieParam]);
 
-  // Seed mock friends entering after 3s and 7s to make it feel alive!
+  // Presence Sync: Add user to comments collection with movieId: wp_presence_roomId
   useEffect(() => {
-    const t1 = setTimeout(() => {
-      setParticipants((prev) => [
-        ...prev,
-        { name: "Rahul C.", initial: "RC", isMuted: true, isCameraOff: false, photo: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde" }
-      ]);
-      setMessages((prev) => [
-        ...prev,
-        { id: Math.random().toString(), sender: "System", text: "Rahul C. joined the Watch Party", time: "Now" }
-      ]);
-    }, 3000);
+    if (!roomId || !user) return;
 
-    const t2 = setTimeout(() => {
-      setParticipants((prev) => [
-        ...prev,
-        { name: "Cinephile Lily", initial: "CL", isMuted: false, isCameraOff: false, photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330" }
-      ]);
-      setMessages((prev) => [
-        ...prev,
-        { id: Math.random().toString(), sender: "System", text: "Cinephile Lily joined the Watch Party", time: "Now" }
-      ]);
-    }, 7000);
+    const userLabel = user.displayName || user.email?.split("@")[0] || "Critic";
+    
+    const registerPresence = async () => {
+      try {
+        const docRef = await addDoc(collection(db, "comments"), {
+          movieId: "wp_presence_" + roomId,
+          userId: user.uid,
+          name: userLabel,
+          photoURL: user.photoURL || null,
+          comment: JSON.stringify({ isMuted: false, isCameraOff: false }),
+          timestamp: new Date(),
+          parentId: "presence",
+        });
+        myPresenceDocIdRef.current = docRef.id;
+      } catch (err) {
+        console.error("Failed to register presence via comments fallback:", err);
+      }
+    };
+
+    registerPresence();
 
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
+      if (myPresenceDocIdRef.current) {
+        const docId = myPresenceDocIdRef.current;
+        deleteDoc(doc(db, "comments", docId)).catch((err) => {
+          console.warn("Failed to delete presence doc on unmount:", err);
+        });
+      }
     };
-  }, []);
+  }, [roomId, user]);
 
-  const handleSendMessage = (e) => {
+  // Listen to members list in real-time
+  useEffect(() => {
+    if (!roomId) return;
+
+    const presenceQuery = query(
+      collection(db, "comments"),
+      where("movieId", "==", "wp_presence_" + roomId)
+    );
+
+    const unsubscribe = onSnapshot(
+      presenceQuery,
+      (snapshot) => {
+        const list = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data();
+          let state = { isMuted: false, isCameraOff: false };
+          try {
+            state = JSON.parse(data.comment || "{}");
+          } catch (e) {}
+
+          return {
+            uid: data.userId,
+            docId: docSnap.id,
+            name: data.name || "Critic",
+            initial: (data.name || "C").slice(0, 2).toUpperCase(),
+            isMuted: state.isMuted || false,
+            isCameraOff: state.isCameraOff || false,
+            isYou: data.userId === user?.uid,
+            photo: data.photoURL || null,
+          };
+        });
+
+        // Deduplicate list by uid in case of duplicate registrations
+        const unique = [];
+        list.forEach((item) => {
+          if (!unique.some((u) => u.uid === item.uid)) {
+            unique.push(item);
+          }
+        });
+        setParticipants(unique);
+      },
+      (err) => {
+        console.error("Members list snapshot listener failed:", err);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [roomId, user]);
+
+  // Listen to group chat messages in real-time
+  useEffect(() => {
+    if (!roomId) return;
+
+    const msgsQuery = query(
+      collection(db, "comments"),
+      where("movieId", "==", "wp_chat_" + roomId)
+    );
+
+    const unsubscribe = onSnapshot(
+      msgsQuery,
+      (snapshot) => {
+        const list = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data();
+          const timestamp = data.timestamp?.toDate ? data.timestamp.toDate() : new Date(data.timestamp || Date.now());
+          return {
+            id: docSnap.id,
+            sender: data.name || "Critic",
+            text: data.comment || "",
+            time: timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            createdAt: timestamp,
+          };
+        });
+
+        // Sort messages chronologically client-side
+        list.sort((a, b) => a.createdAt - b.createdAt);
+        setMessages(list);
+      },
+      (err) => {
+        console.error("Messages list snapshot listener failed:", err);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [roomId]);
+
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!chatInput.trim()) return;
+    if (!chatInput.trim() || !roomId || !user) return;
 
     const userLabel = user?.displayName || user?.email?.split("@")[0] || "Critic";
-    const newMsg = {
-      id: Math.random().toString(),
-      sender: userLabel,
-      text: chatInput,
-      time: "Just now"
-    };
+    try {
+      await addDoc(collection(db, "comments"), {
+        movieId: "wp_chat_" + roomId,
+        userId: user.uid,
+        name: userLabel,
+        photoURL: user.photoURL || null,
+        comment: chatInput.trim(),
+        timestamp: new Date(),
+        parentId: "chat",
+      });
+      setChatInput("");
+    } catch (err) {
+      console.error("Failed to send watch party chat message:", err);
+    }
+  };
 
-    setMessages((prev) => [...prev, newMsg]);
-    setChatInput("");
+  const toggleMute = async () => {
+    if (!myPresenceDocIdRef.current || !user) return;
+    const me = participants.find((p) => p.isYou);
+    if (!me) return;
 
-    // Simulate reply from friends
-    setTimeout(() => {
-      const replies = [
-        "Oh I love this scene! 🍿",
-        "The sound quality is incredible on this stream.",
-        "Wait, did he actually do that stunt?",
-        "Yes, the music composing here is top tier!",
-        "Who is playing that character?"
-      ];
-      const randomReply = replies[Math.floor(Math.random() * replies.length)];
-      setMessages((prev) => [
-        ...prev,
+    try {
+      const nextMuted = !me.isMuted;
+      await setDoc(
+        doc(db, "comments", myPresenceDocIdRef.current),
         {
-          id: Math.random().toString(),
-          sender: Math.random() > 0.5 ? "Rahul C." : "Cinephile Lily",
-          text: randomReply,
-          time: "Just now"
-        }
-      ]);
-    }, 2000);
+          comment: JSON.stringify({ isMuted: nextMuted, isCameraOff: me.isCameraOff }),
+        },
+        { merge: true }
+      );
+    } catch (err) {
+      console.error("Failed to toggle mute state:", err);
+    }
   };
 
-  const toggleMute = () => {
-    setParticipants((prev) =>
-      prev.map((p) => (p.isYou ? { ...p, isMuted: !p.isMuted } : p))
-    );
-  };
+  const toggleCamera = async () => {
+    if (!myPresenceDocIdRef.current || !user) return;
+    const me = participants.find((p) => p.isYou);
+    if (!me) return;
 
-  const toggleCamera = () => {
-    setParticipants((prev) =>
-      prev.map((p) => (p.isYou ? { ...p, isCameraOff: !p.isCameraOff } : p))
-    );
+    try {
+      const nextCam = !me.isCameraOff;
+      await setDoc(
+        doc(db, "comments", myPresenceDocIdRef.current),
+        {
+          comment: JSON.stringify({ isMuted: me.isMuted, isCameraOff: nextCam }),
+        },
+        { merge: true }
+      );
+    } catch (err) {
+      console.error("Failed to toggle camera state:", err);
+    }
   };
 
   if (loading) {

@@ -8,6 +8,7 @@ import {
   addDoc,
   deleteDoc,
   doc,
+  getDoc,
   setDoc,
   query,
   where,

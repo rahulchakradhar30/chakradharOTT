@@ -66,46 +66,99 @@ If there are no recommendations, output:
 [/RECOMMENDATIONS]`,
     };
 
-    // 3. Prepare message payload for Groq
-    // Slice messages to avoid context overflow, keep last 8 messages
+    // 3. Formulate formatted message list
     const formattedMessages = messages.map((m) => ({
       role: m.sender === "user" ? "user" : "assistant",
       content: m.text || "",
     }));
 
-    const payload = {
-      model: "mixtral-8x7b-32768", // fast, large context
-      messages: [systemPrompt, ...formattedMessages.slice(-8)],
-      temperature: 0.7,
-      max_tokens: 1000,
-    };
+    let replyText = "";
+    let callSucceeded = false;
 
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
-      console.warn("GROQ_API_KEY is missing in environment variables. Falling back to keyword mock.");
-      return Response.json(
-        { error: "Groq API key not configured on server" },
-        { status: 500 }
-      );
+    // --- TRY GOOGLE GEMINI FIRST ---
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (geminiKey) {
+      console.log("AI Assistant: Attempting Gemini 2.0 Flash query...");
+      try {
+        const contents = formattedMessages.slice(-8).map((m) => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }],
+        }));
+
+        const systemInstruction = {
+          parts: [{ text: systemPrompt.content }],
+        };
+
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              contents,
+              systemInstruction,
+            }),
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          replyText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          if (replyText) {
+            callSucceeded = true;
+            console.log("AI Assistant: Gemini 2.0 call succeeded.");
+          }
+        } else {
+          const errBody = await response.text();
+          console.warn(`AI Assistant: Gemini API returned status ${response.status}: ${errBody}`);
+        }
+      } catch (geminiErr) {
+        console.warn("AI Assistant: Gemini call failed with exception:", geminiErr);
+      }
     }
 
-    // 4. Request Groq API
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(payload),
-    });
+    // --- FALLBACK TO GROQ IF GEMINI FAILED/ABSENT ---
+    if (!callSucceeded) {
+      const groqKey = process.env.GROQ_API_KEY;
+      if (groqKey) {
+        console.log("AI Assistant: Falling back to Groq Mixtral query...");
+        try {
+          const payload = {
+            model: "mixtral-8x7b-32768",
+            messages: [systemPrompt, ...formattedMessages.slice(-8)],
+            temperature: 0.7,
+            max_tokens: 1000,
+          };
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Groq API returned error: ${response.status} - ${errorText}`);
+          const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${groqKey}`,
+            },
+            body: JSON.stringify(payload),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            replyText = data.choices?.[0]?.message?.content || "";
+            callSucceeded = true;
+            console.log("AI Assistant: Groq call succeeded.");
+          } else {
+            const errText = await response.text();
+            console.warn(`AI Assistant: Groq API returned status ${response.status}: ${errText}`);
+          }
+        } catch (groqErr) {
+          console.warn("AI Assistant: Groq call failed with exception:", groqErr);
+        }
+      }
     }
 
-    const data = await response.json();
-    const replyText = data.choices?.[0]?.message?.content || "Sorry, I am having trouble thinking right now.";
+    if (!callSucceeded) {
+      throw new Error("All configured AI Services (Gemini, Groq) failed or are unconfigured.");
+    }
 
     return Response.json({ text: replyText });
   } catch (error) {

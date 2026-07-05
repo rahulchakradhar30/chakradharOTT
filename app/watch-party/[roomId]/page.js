@@ -36,6 +36,7 @@ export default function WatchPartyRoom() {
   const [activeTab, setActiveTab] = useState("chat"); // chat, members
   
   const [participants, setParticipants] = useState([]);
+  const [useRealVideoCall, setUseRealVideoCall] = useState(false);
   const myPresenceDocIdRef = useRef(null);
 
   // Load movie data
@@ -334,49 +335,76 @@ export default function WatchPartyRoom() {
             )}
           </div>
 
-          {/* WebRTC Video Feeds Bar */}
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
-            {participants.map((p, idx) => (
-              <div key={idx} className="relative aspect-video rounded-xl overflow-hidden bg-white/5 border border-white/10 group flex flex-col justify-end p-2">
-                {/* Simulated Camera Feed */}
-                {p.isCameraOff ? (
-                  <div className="absolute inset-0 flex items-center justify-center font-bold text-lg bg-gradient-to-br from-white/10 to-transparent">
-                    {p.initial}
-                  </div>
-                ) : (
-                  <img
-                    src={p.photo || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(p.name)}`}
-                    alt={p.name}
-                    className="absolute inset-0 w-full h-full object-cover grayscale opacity-80"
-                  />
-                )}
-                
-                {/* Labels / Overlays */}
-                <div className="relative z-10 flex items-center justify-between w-full">
-                  <span className="text-[10px] bg-black/60 px-2 py-0.5 rounded-full font-bold text-gray-200 truncate max-w-[70%]">
-                    {p.name}
-                  </span>
-                  {p.isMuted && (
-                    <span className="text-xs bg-red-600/80 p-0.5 rounded-full" title="Muted">
-                      🔇
+          {/* Real-time Video Call Toggle Bar */}
+          <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 gap-4">
+            <div>
+              <h4 className="text-xs font-bold text-cyan-300">👥 Live Group Call (Voice & Video)</h4>
+              <p className="text-[10px] text-gray-400 mt-0.5">Toggle to launch a premium peer voice/video connection with your friends.</p>
+            </div>
+            <button
+              onClick={() => setUseRealVideoCall(!useRealVideoCall)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 ${
+                useRealVideoCall ? "bg-red-500 text-white hover:bg-red-600" : "bg-cyan-500 text-black hover:bg-cyan-400"
+              }`}
+            >
+              {useRealVideoCall ? "Disable Voice/Video Call" : "Enable Voice/Video Call"}
+            </button>
+          </div>
+
+          {/* Video Call Interface */}
+          {useRealVideoCall ? (
+            <div className="glass-card rounded-3xl overflow-hidden border border-white/10 relative h-[350px] w-full bg-black/60 shadow-2xl">
+              <iframe
+                src={`https://meet.jit.si/ChakradharStreamWatchParty_${roomId}#config.startWithVideoMuted=true&config.startWithAudioMuted=true`}
+                className="w-full h-full border-0"
+                allow="camera; microphone; display-capture; autoplay"
+              />
+            </div>
+          ) : (
+            /* WebRTC Video Feeds Bar */
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
+              {participants.map((p, idx) => (
+                <div key={idx} className="relative aspect-video rounded-xl overflow-hidden bg-white/5 border border-white/10 group flex flex-col justify-end p-2">
+                  {/* Simulated Camera Feed */}
+                  {p.isCameraOff ? (
+                    <div className="absolute inset-0 flex items-center justify-center font-bold text-lg bg-gradient-to-br from-white/10 to-transparent">
+                      {p.initial}
+                    </div>
+                  ) : (
+                    <img
+                      src={p.photo || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(p.name)}`}
+                      alt={p.name}
+                      className="absolute inset-0 w-full h-full object-cover grayscale opacity-80"
+                    />
+                  )}
+                  
+                  {/* Labels / Overlays */}
+                  <div className="relative z-10 flex items-center justify-between w-full">
+                    <span className="text-[10px] bg-black/60 px-2 py-0.5 rounded-full font-bold text-gray-200 truncate max-w-[70%]">
+                      {p.name}
                     </span>
+                    {p.isMuted && (
+                      <span className="text-xs bg-red-600/80 p-0.5 rounded-full" title="Muted">
+                        🔇
+                      </span>
+                    )}
+                  </div>
+
+                  {/* You Control overlay */}
+                  {p.isYou && (
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                      <button onClick={toggleMute} className="bg-white/20 hover:bg-white/30 p-1.5 rounded-full text-xs" title={p.isMuted ? "Unmute" : "Mute"}>
+                        {p.isMuted ? "🎙️" : "🔇"}
+                      </button>
+                      <button onClick={toggleCamera} className="bg-white/20 hover:bg-white/30 p-1.5 rounded-full text-xs" title={p.isCameraOff ? "Turn Cam On" : "Turn Cam Off"}>
+                        📷
+                      </button>
+                    </div>
                   )}
                 </div>
-
-                {/* You Control overlay */}
-                {p.isYou && (
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
-                    <button onClick={toggleMute} className="bg-white/20 hover:bg-white/30 p-1.5 rounded-full text-xs" title={p.isMuted ? "Unmute" : "Mute"}>
-                      {p.isMuted ? "🎙️" : "🔇"}
-                    </button>
-                    <button onClick={toggleCamera} className="bg-white/20 hover:bg-white/30 p-1.5 rounded-full text-xs" title={p.isCameraOff ? "Turn Cam On" : "Turn Cam Off"}>
-                      📷
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Right Side: Sidebar Tabs (Chat & Members) */}

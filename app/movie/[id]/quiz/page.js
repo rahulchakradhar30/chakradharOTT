@@ -135,7 +135,33 @@ export default function MovieQuizPage() {
         if (snap.exists()) {
           const data = snap.data();
           setMovie(data);
-          setQuestions(generateQuestions(data));
+          
+          // Attempt AI Trivia Generation
+          try {
+            console.log("Movie Quiz: Requesting AI generated quiz questions...");
+            const res = await fetch("/api/trivia/generate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                title: data.title,
+                genre: data.genre,
+                director: data.director,
+                description: data.description,
+              }),
+            });
+            if (res.ok) {
+              const resData = await res.json();
+              if (resData.questions && resData.questions.length > 0) {
+                setQuestions(resData.questions);
+                console.log("Movie Quiz: AI Trivia generation succeeded!");
+                return;
+              }
+            }
+            throw new Error(`API returned status ${res.status}`);
+          } catch (aiErr) {
+            console.warn("Movie Quiz: AI Trivia generation failed. Falling back to local template:", aiErr);
+            setQuestions(generateQuestions(data));
+          }
         }
       } catch (err) {
         console.error("Error loading quiz movie details:", err);

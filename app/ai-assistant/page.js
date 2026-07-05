@@ -209,18 +209,36 @@ export default function AICineGuidePage() {
         {/* Chat container */}
         <div className="flex-1 min-h-[500px] glass-card border border-white/10 rounded-[2.5rem] flex flex-col overflow-hidden backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
           {/* Top Info Bar */}
-          <div className="bg-white/5 border-b border-white/10 px-6 py-4 flex items-center gap-3 shrink-0">
-            <div className="relative">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-xl font-bold shadow-lg shadow-cyan-500/20">
-                🤖
+          <div className="bg-white/5 border-b border-white/10 px-6 py-4 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-xl font-bold shadow-lg shadow-cyan-500/20">
+                  🤖
+                </div>
+                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#04070f] animate-ping" />
+                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#04070f]" />
               </div>
-              <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#04070f] animate-ping" />
-              <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#04070f]" />
+              <div>
+                <p className="font-bold text-sm">CineGuide Agent</p>
+                <p className="text-xs text-green-400">Online & Ready to Recommend</p>
+              </div>
             </div>
-            <div>
-              <p className="font-bold text-sm">CineGuide Agent</p>
-              <p className="text-xs text-green-400">Online & Ready to Recommend</p>
-            </div>
+            
+            <button
+              onClick={() => {
+                setMessages([
+                  {
+                    id: "welcome",
+                    sender: "ai",
+                    text: "Hello! I am your AI CineGuide. 🍿\n\nWhat are you in the mood for tonight? Ask me for recommendations by genre, rating, release year, or tell me your current mood.",
+                    timestamp: new Date(),
+                  }
+                ]);
+              }}
+              className="px-4 py-1.5 rounded-xl border border-white/10 hover:border-red-500/30 hover:bg-red-500/10 text-xs font-bold text-gray-400 hover:text-red-400 transition"
+            >
+              Clear Chat
+            </button>
           </div>
 
           {/* Messages Area */}

@@ -7,6 +7,8 @@ import {
   signOut,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -18,7 +20,46 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Helper to ensure a user profile document exists in Firestore
+  const ensureUserProfile = async (firebaseUser) => {
+    if (!firebaseUser) return;
+    try {
+      const { doc, getDoc, setDoc } = await import("firebase/firestore");
+      const { db } = await import("@/firebase");
+      const userRef = doc(db, "users", firebaseUser.uid);
+      const userSnap = await getDoc(userRef);
+      
+      if (!userSnap.exists()) {
+        const nameParts = (firebaseUser.displayName || "Google User").split(" ");
+        await setDoc(userRef, {
+          email: firebaseUser.email,
+          name: firebaseUser.displayName || "Google User",
+          firstName: nameParts[0] || "",
+          lastName: nameParts.slice(1).join(" ") || "",
+          photoURL: firebaseUser.photoURL || "",
+          createdAt: new Date(),
+        });
+      }
+    } catch (dbErr) {
+      console.warn("Firestore profile save skipped on Google sign-in:", dbErr);
+    }
+  };
+
   useEffect(() => {
+    // Process redirect sign-in result if returning from a redirect auth flow
+    const checkRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          await ensureUserProfile(result.user);
+        }
+      } catch (err) {
+        console.error("Google redirect sign-in error:", err);
+      }
+    };
+    
+    checkRedirectResult();
+
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
@@ -37,38 +78,29 @@ export function AuthProvider({ children }) {
     return () => unsubscribe();
   }, []);
 
-  // Google login with robust config-error fallback
+  // Google login
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      const cred = await signInWithPopup(auth, provider);
+      await ensureUserProfile(cred.user);
+      return cred.user;
     } catch (err) {
       console.warn("Firebase Google login failed, code:", err.code, err);
       
-      // Attempt redirect fallback for popup blockages
-      if (err.code === "auth/popup-blocked" || err.code === "auth/popup-closed-by-user") {
+      // Fallback to redirect authentication ONLY if popups are explicitly blocked by the browser.
+      if (err.code === "auth/popup-blocked") {
         try {
-          const { signInWithRedirect } = await import("firebase/auth");
           await signInWithRedirect(auth, provider);
           return;
         } catch (redirectErr) {
-          console.warn("Redirect fallback failed:", redirectErr);
+          console.error("Redirect fallback failed:", redirectErr);
+          throw redirectErr;
         }
       }
-
-      // If ANY error occurs (popup blocked, configuration missing, domain unauthorized, network down, etc.),
-      // we log them in as a local Google Guest user so they can fully view the site without auth blockages.
-      console.info("Falling back to local Google Guest for testing.");
-      const localUser = {
-        uid: "google_local_guest",
-        email: "google_guest@example.com",
-        displayName: "Google Guest",
-        photoURL: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150",
-        emailVerified: true,
-      };
-      setUser(localUser);
-      localStorage.setItem("demoUser", JSON.stringify(localUser));
-      return localUser;
+      
+      // Do not redirect on standard cancel ('auth/popup-closed-by-user'), simply throw it so the login page can let the user cancel cleanly.
+      throw err;
     }
   };
 

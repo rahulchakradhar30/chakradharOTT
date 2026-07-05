@@ -4,19 +4,23 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { db } from "@/firebase";
-import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 
 export default function WatchPartyLobby() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const movieParam = searchParams?.get("movie") || "";
+  const { user } = useAuth();
 
   const [movies, setMovies] = useState([]);
   const [selectedMovieId, setSelectedMovieId] = useState(movieParam);
   const [loading, setLoading] = useState(true);
   const [partyCode, setPartyCode] = useState("");
   const [creating, setCreating] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState("");
 
   useEffect(() => {
     const fetchMovies = async () => {
@@ -47,10 +51,62 @@ export default function WatchPartyLobby() {
     router.push(`/watch-party/${code}?movie=${selectedMovieId}&host=true`);
   };
 
-  const handleJoinParty = (e) => {
+  const handleJoinParty = async (e) => {
     e.preventDefault();
-    if (!partyCode.trim()) return;
-    router.push(`/watch-party/${partyCode.trim().toUpperCase()}`);
+    const code = partyCode.trim().toUpperCase();
+    if (!code) return;
+
+    setJoining(true);
+    setJoinError("");
+
+    try {
+      // Look up the room info from Firestore to get the movieId
+      const roomInfoQuery = query(
+        collection(db, "comments"),
+        where("movieId", "==", "wp_room_" + code)
+      );
+      const roomInfoSnap = await getDocs(roomInfoQuery);
+
+      if (!roomInfoSnap.empty) {
+        // Found room info — get the movieId from the most recent entry
+        const docs = roomInfoSnap.docs.map((d) => {
+          const data = d.data();
+          return {
+            movieDocId: data.comment,
+            ts: data.timestamp?.toDate ? data.timestamp.toDate() : new Date(0),
+          };
+        });
+        docs.sort((a, b) => b.ts - a.ts);
+        const movieId = docs[0].movieDocId;
+
+        if (movieId) {
+          router.push(`/watch-party/${code}?movie=${movieId}`);
+          return;
+        }
+      }
+
+      // Fallback: try to find the room via presence docs (someone is already in the room)
+      const presenceQuery = query(
+        collection(db, "comments"),
+        where("movieId", "==", "wp_presence_" + code)
+      );
+      const presenceSnap = await getDocs(presenceQuery);
+
+      if (!presenceSnap.empty) {
+        // Room exists (someone is present), but we don't know the movie — navigate anyway
+        router.push(`/watch-party/${code}`);
+        return;
+      }
+
+      // No room found at all
+      setJoinError("Room not found. Check the code and try again.");
+    } catch (err) {
+      console.error("Failed to look up room:", err);
+      // Even if lookup fails, still navigate — the room page has its own fallback
+      router.push(`/watch-party/${code}`);
+    } finally {
+      setJoining(false);
+    }
   };
 
   return (
@@ -125,15 +181,18 @@ export default function WatchPartyLobby() {
               maxLength={6}
               placeholder="E.g. AX7B9R"
               value={partyCode}
-              onChange={(e) => setPartyCode(e.target.value)}
+              onChange={(e) => { setPartyCode(e.target.value); setJoinError(""); }}
               className="admin-input focus-ring text-sm w-full text-center uppercase tracking-widest text-lg font-bold"
             />
+            {joinError && (
+              <p className="text-xs text-red-400 text-center font-medium">{joinError}</p>
+            )}
             <button
               type="submit"
-              disabled={!partyCode.trim()}
+              disabled={!partyCode.trim() || joining}
               className="w-full bg-white/10 hover:bg-white/15 text-white font-bold py-3 px-4 rounded-xl transition text-sm flex items-center justify-center"
             >
-              Join Watch Party
+              {joining ? "Looking up room..." : "Join Watch Party"}
             </button>
           </form>
         </motion.div>

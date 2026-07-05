@@ -33,14 +33,44 @@ export async function generateMetadata({ params }) {
     if (!snapshot.exists) return {};
 
     const movie = snapshot.data();
+    const title = movie.title || "Movie";
+    const description = movie.description?.slice(0, 160) || movie.tagline || "Watch premium movies on Chakradhar Stream.";
+    const image = movie.bannerImage || movie.posterImage || "/homepage-banner.jpg";
 
     return {
-      title: `${movie.title} | Chakradhar OTT`,
-      description: movie.description?.slice(0, 160) || "",
+      title: `${title} | Chakradhar Stream`,
+      description,
+      keywords: [title, movie.genre, "Chakradhar Stream", "Movies", "Streaming"].filter(Boolean),
+      alternates: {
+        canonical: `/movie/${id}`,
+      },
+      robots: {
+        index: true,
+        follow: true,
+        googleBot: {
+          index: true,
+          follow: true,
+        },
+      },
       openGraph: {
-        title: movie.title,
-        description: movie.description?.slice(0, 160) || "",
-        images: movie.bannerImage ? [movie.bannerImage] : [],
+        title,
+        description,
+        url: `/movie/${id}`,
+        type: "article",
+        images: [
+          {
+            url: image,
+            width: 1200,
+            height: 630,
+            alt: title,
+          },
+        ],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+        images: [image],
       },
     };
   } catch {
@@ -83,28 +113,84 @@ export default async function MovieDetail({ params }) {
   const viewsBoost = movie.viewsBoost || 0;
   const totalViews = viewsReal + viewsBoost;
   const banner = toText(movie.bannerImage || movie.posterImage, "/homepage-banner.jpg");
+  const movieSchema = {
+    "@context": "https://schema.org",
+    "@type": "Movie",
+    name: title,
+    description: description || tagline || "Watch premium movies on Chakradhar Stream.",
+    image: banner,
+    genre,
+    director: director !== "Not Available" ? { "@type": "Person", name: director } : undefined,
+    url: `https://chakradharstream.vercel.app/movie/${id}`,
+    aggregateRating: movie.rating
+      ? {
+          "@type": "AggregateRating",
+          ratingValue: movie.rating,
+          bestRating: "5",
+          worstRating: "1",
+        }
+      : undefined,
+  };
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://chakradharstream.vercel.app",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Movies",
+        item: "https://chakradharstream.vercel.app/movies",
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: title,
+        item: `https://chakradharstream.vercel.app/movie/${id}`,
+      },
+    ],
+  };
+
+  const videoSchema = embedLink
+    ? {
+        "@context": "https://schema.org",
+        "@type": "VideoObject",
+        name: title,
+        description: description || tagline || title,
+        thumbnailUrl: [banner],
+        embedUrl: embedLink,
+        uploadDate: movie.releaseDate?.toDate?.()
+          ? movie.releaseDate.toDate().toISOString()
+          : undefined,
+      }
+    : null;
 
   return (
     <div className="min-h-screen relative overflow-hidden text-white">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(movieSchema).replace(/</g, "\\u003c") }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema).replace(/</g, "\\u003c") }} />
+      {videoSchema && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(videoSchema).replace(/</g, "\\u003c") }} />
+      )}
+
       <ViewTracker movieId={id} />
 
       <section className="relative h-[72vh] md:h-[86vh] flex items-end rounded-b-[2rem] md:rounded-b-[3rem] overflow-hidden">
-        {banner.startsWith("data:image/") ? (
-          <img
-            src={banner}
-            alt={title || "Movie banner"}
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-        ) : (
-          <Image
-            src={banner}
-            alt={title || "Movie banner"}
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover"
-          />
-        )}
+        <Image
+          src={banner}
+          alt={title || "Movie banner"}
+          fill
+          priority
+          sizes="100vw"
+          unoptimized={banner.startsWith("data:image/")}
+          className="object-cover"
+        />
 
         <div className="absolute inset-0 bg-gradient-to-r from-[#050915] via-[#050915]/85 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#04070f] via-[#04070f]/55 to-transparent" />

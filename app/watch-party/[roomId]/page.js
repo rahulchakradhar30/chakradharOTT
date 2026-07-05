@@ -52,17 +52,27 @@ export default function WatchPartyRoom() {
       try {
         let movieId = movieParam;
 
-        // If host, store the movieId in Firestore so joiners can discover it
-        if (isHost && movieId) {
+        // If host AND user is authenticated, store the movieId in Firestore for joiners
+        if (isHost && movieId && user) {
           try {
-            await addDoc(collection(db, "comments"), {
-              movieId: "wp_room_" + roomId,
-              userId: "system",
-              name: "RoomInfo",
-              comment: movieId, // store the actual movie document ID
-              timestamp: new Date(),
-              parentId: "roominfo",
-            });
+            // Check if room info already exists to avoid duplicates
+            const existingQuery = query(
+              collection(db, "comments"),
+              where("movieId", "==", "wp_room_" + roomId)
+            );
+            const existingSnap = await getDocs(existingQuery);
+            
+            if (existingSnap.empty) {
+              await addDoc(collection(db, "comments"), {
+                movieId: "wp_room_" + roomId,
+                userId: user.uid, // MUST match authenticated user for Firestore rules
+                name: user.displayName || user.email?.split("@")[0] || "Host",
+                comment: movieId, // store the actual movie document ID
+                timestamp: new Date(),
+                parentId: "roominfo",
+              });
+              console.log("Room info stored successfully for room:", roomId);
+            }
           } catch (storeErr) {
             console.warn("Failed to store room info:", storeErr);
           }
@@ -70,24 +80,28 @@ export default function WatchPartyRoom() {
 
         // If joiner (no movie param), look up the movieId from the room info doc
         if (!movieId) {
-          const roomInfoQuery = query(
-            collection(db, "comments"),
-            where("movieId", "==", "wp_room_" + roomId)
-          );
-          const roomInfoSnap = await getDocs(roomInfoQuery);
-          if (!roomInfoSnap.empty) {
-            // Get the most recent room info doc
-            const docs = roomInfoSnap.docs.map(d => ({
-              id: d.id,
-              ...d.data(),
-              ts: d.data().timestamp?.toDate ? d.data().timestamp.toDate() : new Date(0),
-            }));
-            docs.sort((a, b) => b.ts - a.ts);
-            movieId = docs[0].comment; // the movie document ID
+          try {
+            const roomInfoQuery = query(
+              collection(db, "comments"),
+              where("movieId", "==", "wp_room_" + roomId)
+            );
+            const roomInfoSnap = await getDocs(roomInfoQuery);
+            if (!roomInfoSnap.empty) {
+              const docs = roomInfoSnap.docs.map(d => ({
+                movieDocId: d.data().comment,
+                ts: d.data().timestamp?.toDate ? d.data().timestamp.toDate() : new Date(0),
+              }));
+              docs.sort((a, b) => b.ts - a.ts);
+              movieId = docs[0].movieDocId;
+              console.log("Joiner discovered movieId:", movieId);
+            }
+          } catch (lookupErr) {
+            console.warn("Room info lookup failed:", lookupErr);
           }
         }
 
         if (!movieId) {
+          console.warn("No movieId found for room:", roomId);
           setLoading(false);
           return;
         }
@@ -96,6 +110,8 @@ export default function WatchPartyRoom() {
         const movieSnap = await getDoc(movieRef);
         if (movieSnap.exists()) {
           setMovie({ id: movieSnap.id, ...movieSnap.data() });
+        } else {
+          console.warn("Movie document not found:", movieId);
         }
       } catch (err) {
         console.error("Watch party room movie fetch failed:", err);
@@ -105,7 +121,7 @@ export default function WatchPartyRoom() {
     };
     
     fetchMovie();
-  }, [movieParam, roomId, isHost]);
+  }, [movieParam, roomId, isHost, user]);
 
   // Presence Sync: Add user to comments collection with movieId: wp_presence_roomId
   useEffect(() => {
@@ -298,13 +314,22 @@ export default function WatchPartyRoom() {
     return (
       <div className="min-h-screen text-white flex items-center justify-center flex-col bg-[#04070f] px-4 text-center">
         <p className="text-5xl mb-4">⚠️</p>
-        <h2 className="text-2xl font-black mb-2">Watch Party Session Expired</h2>
-        <p className="text-gray-400 max-w-sm text-sm mb-6">
-          This watch party room or movie reference could not be found. Start a new co-watching room below.
+        <h2 className="text-2xl font-black mb-2">Watch Party Session Not Found</h2>
+        <p className="text-gray-400 max-w-md text-sm mb-6">
+          The room <span className="text-cyan-300 font-bold">{roomId}</span> could not be connected. 
+          The host may not have started the session yet. Ask them to share the <strong>Copy Link</strong> from their room.
         </p>
-        <Link href="/watch-party" className="admin-btn text-xs">
-          Go back to Lobby
-        </Link>
+        <div className="flex gap-3">
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-cyan-500 text-black font-bold px-5 py-2.5 rounded-xl text-xs hover:bg-cyan-400 transition"
+          >
+            🔄 Retry Connection
+          </button>
+          <Link href="/watch-party" className="bg-white/10 hover:bg-white/15 text-white font-bold px-5 py-2.5 rounded-xl text-xs transition">
+            Go back to Lobby
+          </Link>
+        </div>
       </div>
     );
   }

@@ -22,6 +22,9 @@ export const metadata = buildBaseMetadata({
   description: SITE_DESCRIPTION,
   path: "/",
   image: DEFAULT_OG_IMAGE,
+  verification: {
+    google: "Csxb9nxcEL6g8tDMkQro8B9G0qlNfMIncWdLgN-T7p0",
+  },
 });
 
 const websiteJsonLd = {

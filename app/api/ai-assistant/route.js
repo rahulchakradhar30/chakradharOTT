@@ -75,51 +75,91 @@ If there are no recommendations, output:
     let replyText = "";
     let callSucceeded = false;
 
-    // --- TRY GOOGLE GEMINI FIRST ---
-    const geminiKey = process.env.GEMINI_API_KEY;
-    if (geminiKey) {
-      console.log("AI Assistant: Attempting Gemini 2.0 Flash query...");
+    // --- TRY OPENROUTER FIRST (HIGH TRUST KEY) ---
+    const openrouterKey = process.env.OPENROUTER_API_KEY;
+    if (openrouterKey) {
+      console.log("AI Assistant: Attempting OpenRouter GPT-4o-Mini query...");
       try {
-        const contents = formattedMessages.slice(-8).map((m) => ({
-          role: m.role === "assistant" ? "model" : "user",
-          parts: [{ text: m.content }],
-        }));
-
-        const systemInstruction = {
-          parts: [{ text: systemPrompt.content }],
+        const payload = {
+          model: "openai/gpt-4o-mini",
+          messages: [systemPrompt, ...formattedMessages.slice(-8)],
+          temperature: 0.7,
         };
 
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              contents,
-              systemInstruction,
-            }),
-          }
-        );
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${openrouterKey}`,
+            "HTTP-Referer": "http://localhost:3000",
+            "X-Title": "Chakradhar Stream",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
 
         if (response.ok) {
           const data = await response.json();
-          replyText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          replyText = data.choices?.[0]?.message?.content || "";
           if (replyText) {
             callSucceeded = true;
-            console.log("AI Assistant: Gemini 2.0 call succeeded.");
+            console.log("AI Assistant: OpenRouter call succeeded.");
           }
         } else {
           const errBody = await response.text();
-          console.warn(`AI Assistant: Gemini API returned status ${response.status}: ${errBody}`);
+          console.warn(`AI Assistant: OpenRouter API returned status ${response.status}: ${errBody}`);
         }
-      } catch (geminiErr) {
-        console.warn("AI Assistant: Gemini call failed with exception:", geminiErr);
+      } catch (orErr) {
+        console.warn("AI Assistant: OpenRouter call failed with exception:", orErr);
       }
     }
 
-    // --- FALLBACK TO GROQ IF GEMINI FAILED/ABSENT ---
+    // --- FALLBACK TO GOOGLE GEMINI SECOND ---
+    if (!callSucceeded) {
+      const geminiKey = process.env.GEMINI_API_KEY;
+      if (geminiKey) {
+        console.log("AI Assistant: Attempting Gemini 2.0 Flash query...");
+        try {
+          const contents = formattedMessages.slice(-8).map((m) => ({
+            role: m.role === "assistant" ? "model" : "user",
+            parts: [{ text: m.content }],
+          }));
+
+          const systemInstruction = {
+            parts: [{ text: systemPrompt.content }],
+          };
+
+          const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                contents,
+                systemInstruction,
+              }),
+            }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            replyText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+            if (replyText) {
+              callSucceeded = true;
+              console.log("AI Assistant: Gemini 2.0 call succeeded.");
+            }
+          } else {
+            const errBody = await response.text();
+            console.warn(`AI Assistant: Gemini API returned status ${response.status}: ${errBody}`);
+          }
+        } catch (geminiErr) {
+          console.warn("AI Assistant: Gemini call failed with exception:", geminiErr);
+        }
+      }
+    }
+
+    // --- FALLBACK TO GROQ THIRD ---
     if (!callSucceeded) {
       const groqKey = process.env.GROQ_API_KEY;
       if (groqKey) {
@@ -157,7 +197,7 @@ If there are no recommendations, output:
     }
 
     if (!callSucceeded) {
-      throw new Error("All configured AI Services (Gemini, Groq) failed or are unconfigured.");
+      throw new Error("All configured AI Services (OpenRouter, Gemini, Groq) failed or are unconfigured.");
     }
 
     return Response.json({ text: replyText });

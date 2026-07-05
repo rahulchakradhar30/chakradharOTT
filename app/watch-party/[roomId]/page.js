@@ -197,12 +197,30 @@ export default function WatchPartyRoom() {
         <div className="p-4 md:p-6 flex flex-col justify-between overflow-y-auto space-y-6">
           {/* Synced Player */}
           <div className="glass-card rounded-[2rem] overflow-hidden border border-white/15 shadow-2xl shadow-black relative aspect-video w-full">
-            <VideoPlayer
-              src={movie.videoUrl || "https://assets.mixkit.co/videos/preview/mixkit-cyberpunk-city-street-with-neon-lights-at-night-40156-large.mp4"}
-              poster={movie.bannerImage || movie.posterImage}
-              title={movie.title}
-              movieId={movie.id}
-            />
+            {movie.videoUrl ? (
+              <VideoPlayer
+                src={movie.videoUrl}
+                poster={movie.bannerImage || movie.posterImage}
+                title={movie.title}
+                movieId={movie.id}
+              />
+            ) : movie.embedLink ? (
+              <iframe
+                src={movie.embedLink}
+                className="w-full h-full rounded-3xl"
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="strict-origin-when-cross-origin"
+                title={movie.title || "Movie stream"}
+              />
+            ) : (
+              <VideoPlayer
+                src="https://assets.mixkit.co/videos/preview/mixkit-cyberpunk-city-street-with-neon-lights-at-night-40156-large.mp4"
+                poster={movie.bannerImage || movie.posterImage}
+                title={movie.title}
+                movieId={movie.id}
+              />
+            )}
             
             {/* Sync Overlay Warning for non-hosts */}
             {!isHost && (

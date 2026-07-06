@@ -143,6 +143,7 @@ export default function Navbar() {
                 onClick={() => setMobileMenuOpen(true)}
                 className="lg:hidden flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-white/10 text-white hover:bg-white/10 transition"
                 title="Open Navigation"
+                aria-label="Open navigation menu"
               >
                 <span className="text-lg">☰</span>
               </button>
@@ -187,6 +188,7 @@ export default function Navbar() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 className="focus-ring w-full bg-white/5 border border-white/10 rounded-full px-5 py-2.5 text-xs text-white placeholder:text-gray-400 focus:outline-none"
+                aria-label="Search movies, genres, or cast"
               />
 
               <AnimatePresence>
@@ -239,6 +241,7 @@ export default function Navbar() {
                       setProfileOpen(!profileOpen)
                     }
                     className="flex items-center transition hover:scale-105"
+                    aria-label="Open profile menu"
                   >
                     {user.photoURL && user.photoURL.startsWith("http") ? (
                       <Image
@@ -323,6 +326,7 @@ export default function Navbar() {
                   <button
                     onClick={() => setMobileMenuOpen(false)}
                     className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white"
+                    aria-label="Close navigation menu"
                   >
                     ✕
                   </button>

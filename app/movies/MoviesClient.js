@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { db } from "@/firebase";
-import { collection, getDocs } from "firebase/firestore";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { SkeletonGrid } from "@/components/Skeleton";
 import EmptyState from "@/components/EmptyState";
 import { SearchIcon } from "@/components/Icon";
+
+import { getCachedData } from "@/lib/searchEngine";
 
 export default function MoviesClient() {
   const [movies, setMovies] = useState([]);
@@ -21,20 +21,15 @@ export default function MoviesClient() {
       try {
         setLoading(true);
         setError(null);
-        const snapshot = await getDocs(collection(db, "movies"));
+        const { movies: cachedList } = await getCachedData();
         const now = Date.now();
-        const movieList = snapshot.docs
-          .map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }))
-          .filter((m) => {
-            if (!m.scheduledRelease) return true;
-            const releaseTime = m.scheduledRelease.toDate 
-              ? m.scheduledRelease.toDate().getTime() 
-              : new Date(m.scheduledRelease).getTime();
-            return now >= releaseTime;
-          });
+        const movieList = cachedList.filter((m) => {
+          if (!m.scheduledRelease) return true;
+          const releaseTime = m.scheduledRelease.toDate 
+            ? m.scheduledRelease.toDate().getTime() 
+            : new Date(m.scheduledRelease).getTime();
+          return now >= releaseTime;
+        });
         setMovies(movieList);
       } catch (err) {
         console.error("Error fetching movies:", err);

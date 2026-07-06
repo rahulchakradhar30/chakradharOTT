@@ -249,7 +249,9 @@ export default function ContactPage() {
               <div className="flex flex-wrap justify-between items-center gap-3 border-b border-white/5 pb-3">
                 <div>
                   <h4 className="font-bold text-sm text-cyan-300">Ticket #{trackedTicket.id}</h4>
-                  <p className="text-[10px] text-gray-400 mt-0.5">Submitted: {new Date(trackedTicket.createdAt?.toDate ? trackedTicket.createdAt.toDate() : trackedTicket.createdAt).toLocaleString()}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    Submitted: {trackedTicket.createdAt ? new Date(trackedTicket.createdAt.toDate ? trackedTicket.createdAt.toDate() : trackedTicket.createdAt).toLocaleString() : "Date not available"}
+                  </p>
                 </div>
                 <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase border ${
                   (trackedTicket.messageStatus || "New") === "New"
@@ -286,7 +288,7 @@ export default function ContactPage() {
                       <div key={i} className="bg-emerald-500/5 border border-emerald-500/15 p-3.5 rounded-xl text-xs">
                         <div className="flex justify-between items-center text-[10px] text-emerald-400 font-bold mb-1.5">
                           <span>AGENT RESPONSE ({reply.repliedBy?.split("@")[0] || "Support"})</span>
-                          <span>{new Date(reply.repliedAt).toLocaleString()}</span>
+                          <span>{reply.repliedAt ? new Date(reply.repliedAt).toLocaleString() : ""}</span>
                         </div>
                         <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">{reply.content}</p>
                         

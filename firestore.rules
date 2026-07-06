@@ -13,11 +13,17 @@ service cloud.firestore {
       // Restrict collection listing and querying to admins or the ticket owner
       allow list: if request.auth != null && (
         request.auth.token.admin == true || 
+        request.auth.token.email == 'thefifthagefilms@gmail.com' ||
+        request.auth.token.email == 'rahulchakradharperepogu@gmail.com' ||
         resource.data.userId == request.auth.uid
       );
       
       // Restrict editing and deleting strictly to authenticated admins
-      allow update, delete: if request.auth != null && request.auth.token.admin == true;
+      allow update, delete: if request.auth != null && (
+        request.auth.token.admin == true ||
+        request.auth.token.email == 'thefifthagefilms@gmail.com' ||
+        request.auth.token.email == 'rahulchakradharperepogu@gmail.com'
+      );
     }
     
     // Rate Limiting (Admin-only read/write)

@@ -53,9 +53,6 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className="app-shell min-h-screen flex flex-col text-white">
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(websiteJsonLd) }} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(organizationJsonLd) }} />
-
         {/* Razorpay Script */}
         <Script
           src="https://checkout.razorpay.com/v1/checkout.js"

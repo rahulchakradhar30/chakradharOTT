@@ -243,7 +243,7 @@ export default function Navbar() {
                     {user.photoURL && user.photoURL.startsWith("http") ? (
                       <Image
                         src={user.photoURL}
-                        alt="profile"
+                        alt={user.displayName || "User profile avatar"}
                         width={36}
                         height={36}
                         className="rounded-full object-cover w-9 h-9 border border-cyan-300/40"

@@ -51,6 +51,18 @@ function playNotificationSound() {
   }
 }
 
+function formatTime(dateVal) {
+  if (!dateVal) return "";
+  const d = dateVal.toDate ? dateVal.toDate() : new Date(dateVal);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function AdminContactsPage() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);

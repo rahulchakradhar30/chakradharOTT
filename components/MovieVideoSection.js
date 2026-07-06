@@ -6,6 +6,7 @@ import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import VideoPlayer from "@/components/VideoPlayer";
 import dynamic from "next/dynamic";
+import { MovieIcon } from "@/components/Icon";
 
 const Toast = dynamic(() => import("@/components/Toast").then(mod => mod.Toast), {
   ssr: false
@@ -101,7 +102,7 @@ export default function MovieVideoSection({
     <section className="glass-card rounded-[2rem] overflow-hidden border border-white/15 shadow-[0_8px_60px_rgba(0,0,0,0.32)] transition duration-500 hover:border-cyan-300/40">
       <div className="aspect-video flex items-center justify-center bg-gradient-to-br from-white/5 to-white/2">
         <div className="text-center">
-          <p className="text-3xl mb-2">🎬</p>
+          <MovieIcon className="w-8 h-8 text-cyan-400 mx-auto mb-2" />
           <p className="text-gray-300 font-medium">Video not available</p>
           <p className="text-gray-500 text-sm mt-1">Check back soon for streaming access</p>
         </div>

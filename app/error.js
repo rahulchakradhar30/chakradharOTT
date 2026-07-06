@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect } from "react";
 
+import { WarningIcon } from "@/components/Icon";
+
 export default function ErrorBoundary({ error, reset }) {
   useEffect(() => {
     console.error(error);
@@ -11,7 +13,7 @@ export default function ErrorBoundary({ error, reset }) {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-[#04070f] to-[#0b1328]">
       <div className="text-center max-w-md">
-        <div className="text-6xl mb-6">⚠️</div>
+        <WarningIcon className="w-16 h-16 text-rose-500 mx-auto mb-6" />
         <h1 className="text-3xl font-black text-white mb-3">Something went wrong</h1>
         <p className="text-gray-400 mb-8">
           An unexpected error occurred. Please try again or contact support if the problem persists.

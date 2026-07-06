@@ -6,6 +6,7 @@ import { doc, setDoc, deleteDoc, getDoc } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import AuthModal from "@/components/AuthModal";
 import { motion } from "framer-motion";
+import { WishlistIcon } from "@/components/Icon";
 
 export default function WishlistButton({ movie }) {
   const { user } = useAuth();
@@ -83,9 +84,11 @@ export default function WishlistButton({ movie }) {
             : "bg-white/10 border-white/20 hover:bg-white/20"
         }`}
       >
-        <span className="text-lg">
-          {saved ? "❤️" : "🤍"}
-        </span>
+        {saved ? (
+          <WishlistIcon className="w-4 h-4 text-white fill-current" />
+        ) : (
+          <WishlistIcon className="w-4 h-4 text-gray-300" />
+        )}
         <span className="text-sm hidden sm:block">
           {saved ? "Saved" : "My List"}
         </span>

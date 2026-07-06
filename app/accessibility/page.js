@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useTheme } from "@/context/ThemeContext";
+import { SparklesIcon } from "@/components/Icon";
 
 export default function AccessibilityPage() {
   const { theme, toggleTheme, accessibility, updateAccessibility } = useTheme();
@@ -197,8 +198,8 @@ export default function AccessibilityPage() {
             transition={{ duration: 0.4, delay: 0.5 }}
             className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-6"
           >
-            <p className="text-sm text-blue-200">
-              💡 <strong>Tip:</strong> Your accessibility preferences are saved
+            <p className="text-sm text-blue-200 flex items-center gap-1.5">
+              <SparklesIcon className="w-4 h-4 text-blue-300" /> <strong>Tip:</strong> Your accessibility preferences are saved
               automatically and will apply across all pages.
             </p>
           </motion.div>

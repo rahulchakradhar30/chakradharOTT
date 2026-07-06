@@ -8,6 +8,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { SkeletonGrid } from "@/components/Skeleton";
 import EmptyState from "@/components/EmptyState";
+import { SearchIcon } from "@/components/Icon";
 
 export default function MoviesPage() {
   const [movies, setMovies] = useState([]);
@@ -90,7 +91,9 @@ export default function MoviesPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="focus-ring admin-input w-full md:w-[28rem] pl-10"
           />
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+            <SearchIcon className="w-4 h-4" />
+          </span>
         </div>
 
         <div className="mt-3 text-xs text-gray-400">

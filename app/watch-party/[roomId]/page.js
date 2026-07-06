@@ -19,6 +19,7 @@ import { useAuth } from "@/context/AuthContext";
 import VideoPlayer from "@/components/VideoPlayer";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { WarningIcon, LockIcon, UserIcon } from "@/components/Icon";
 
 export default function WatchPartyRoom() {
   const params = useParams();
@@ -329,7 +330,7 @@ export default function WatchPartyRoom() {
   if (!movie) {
     return (
       <div className="min-h-screen text-white flex items-center justify-center flex-col bg-[#04070f] px-4 text-center">
-        <p className="text-5xl mb-4">⚠️</p>
+        <WarningIcon className="w-12 h-12 text-rose-500 mb-4 mx-auto" />
         <h2 className="text-2xl font-black mb-2">Watch Party Session Not Found</h2>
         <p className="text-gray-400 max-w-md text-sm mb-6">
           The room <span className="text-cyan-300 font-bold">{roomId}</span> could not be connected.
@@ -338,9 +339,12 @@ export default function WatchPartyRoom() {
         <div className="flex gap-3">
           <button
             onClick={() => window.location.reload()}
-            className="bg-cyan-500 text-black font-bold px-5 py-2.5 rounded-xl text-xs hover:bg-cyan-400 transition"
+            className="bg-cyan-500 text-black font-bold px-5 py-2.5 rounded-xl text-xs hover:bg-cyan-400 transition flex items-center gap-1.5"
           >
-            🔄 Retry Connection
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+            </svg>
+            Retry Connection
           </button>
           <Link href="/watch-party" className="bg-white/10 hover:bg-white/15 text-white font-bold px-5 py-2.5 rounded-xl text-xs transition">
             Go back to Lobby
@@ -416,8 +420,8 @@ export default function WatchPartyRoom() {
 
             {/* Sync Overlay Warning for non-hosts */}
             {!isHost && (
-              <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[10px] text-cyan-300 font-bold border border-cyan-400/20">
-                🔒 Playback Synced with Host
+              <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[10px] text-cyan-300 font-bold border border-cyan-400/20 flex items-center gap-1">
+                <LockIcon className="w-3 h-3 text-cyan-400" /> Playback Synced with Host
               </div>
             )}
           </div>
@@ -425,7 +429,9 @@ export default function WatchPartyRoom() {
           {/* Real-time Video Call Toggle Bar */}
           <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 gap-4">
             <div>
-              <h4 className="text-xs font-bold text-cyan-300">👥 Live Group Call (Voice & Video)</h4>
+              <h4 className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                <UserIcon className="w-4 h-4 text-cyan-400" /> Live Group Call (Voice & Video)
+              </h4>
               <p className="text-[10px] text-gray-400 mt-0.5">Toggle to launch a premium peer voice/video connection with your friends.</p>
             </div>
             <button
@@ -470,8 +476,10 @@ export default function WatchPartyRoom() {
                       {p.name}
                     </span>
                     {p.isMuted && (
-                      <span className="text-xs bg-red-600/80 p-0.5 rounded-full" title="Muted">
-                        🔇
+                      <span className="bg-red-600/80 p-1 rounded-full flex items-center justify-center" title="Muted">
+                        <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.21.05-.42.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+                        </svg>
                       </span>
                     )}
                   </div>
@@ -479,11 +487,25 @@ export default function WatchPartyRoom() {
                   {/* You Control overlay */}
                   {p.isYou && (
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
-                      <button onClick={toggleMute} className="bg-white/20 hover:bg-white/30 p-1.5 rounded-full text-xs" title={p.isMuted ? "Unmute" : "Mute"}>
-                        {p.isMuted ? "🎙️" : "🔇"}
+                      <button onClick={toggleMute} className="bg-white/20 hover:bg-white/30 p-1.5 rounded-full flex items-center justify-center" title={p.isMuted ? "Unmute" : "Mute"}>
+                        {p.isMuted ? (
+                          <svg className="w-3.5 h-3.5 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                            <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path>
+                            <path d="M17 11a6.9 6.9 0 0 1-1.65 4.58M12 19v4M8 23h8"></path>
+                          </svg>
+                        ) : (
+                          <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                            <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v4M8 23h8"/>
+                          </svg>
+                        )}
                       </button>
-                      <button onClick={toggleCamera} className="bg-white/20 hover:bg-white/30 p-1.5 rounded-full text-xs" title={p.isCameraOff ? "Turn Cam On" : "Turn Cam Off"}>
-                        📷
+                      <button onClick={toggleCamera} className="bg-white/20 hover:bg-white/30 p-1.5 rounded-full flex items-center justify-center" title={p.isCameraOff ? "Turn Cam On" : "Turn Cam Off"}>
+                        <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                          <circle cx="12" cy="13" r="4"/>
+                        </svg>
                       </button>
                     </div>
                   )}

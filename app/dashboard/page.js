@@ -18,6 +18,16 @@ import {
 } from "firebase/firestore";
 import Link from "next/link";
 import Image from "next/image";
+import { MovieIcon, ClockIcon, FlameIcon, WishlistIcon } from "@/components/Icon";
+
+function DashboardStatIcon({ type, className = "w-8 h-8 text-cyan-400" }) {
+  switch (type) {
+    case "Watched": return <MovieIcon className={className} />;
+    case "Minutes": return <ClockIcon className={className} />;
+    case "Streak": return <FlameIcon className={className} />;
+    default: return null;
+  }
+}
 import { motion } from "framer-motion";
 import { SkeletonGrid } from "@/components/Skeleton";
 import EmptyState from "@/components/EmptyState";
@@ -133,17 +143,17 @@ export default function DashboardPage() {
             {
               label: "Total Watched",
               value: userStats.totalWatched,
-              icon: "🎬",
+              icon: "Watched",
             },
             {
               label: "Minutes Watched",
               value: `${Math.round(userStats.totalMinutesWatched / 60)}h`,
-              icon: "⏱️",
+              icon: "Minutes",
             },
             {
               label: "Current Streak",
               value: `${userStats.streak} days`,
-              icon: "🔥",
+              icon: "Streak",
             },
           ].map((stat, index) => (
             <motion.div
@@ -158,7 +168,7 @@ export default function DashboardPage() {
                   <p className="text-gray-400 text-sm">{stat.label}</p>
                   <p className="text-2xl font-black mt-2">{stat.value}</p>
                 </div>
-                <span className="text-4xl">{stat.icon}</span>
+                <DashboardStatIcon type={stat.icon} className="w-8 h-8 text-cyan-400" />
               </div>
             </motion.div>
           ))}
@@ -258,7 +268,9 @@ export default function DashboardPage() {
                       className="object-cover transition duration-700 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#04070f] via-transparent to-transparent" />
-                    <div className="absolute top-3 right-3 text-lg">❤️</div>
+                     <div className="absolute top-3 right-3">
+                       <WishlistIcon className="w-5 h-5 text-rose-500 fill-current" />
+                     </div>
                   </div>
                   <h3 className="mt-3 text-sm md:text-base text-gray-200 group-hover:text-white line-clamp-2 font-medium">
                     {item.title}

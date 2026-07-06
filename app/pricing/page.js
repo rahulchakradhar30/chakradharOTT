@@ -3,12 +3,20 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useState } from "react";
+import { MovieIcon, TrophyIcon } from "@/components/Icon";
+
+function TierIcon({ type, className = "w-10 h-10 mx-auto" }) {
+  if (type === "free") {
+    return <MovieIcon className={`${className} text-cyan-400`} />;
+  }
+  return <TrophyIcon className={`${className} text-yellow-400`} />;
+}
 
 const TIERS = [
   {
     name: "Free",
     price: 0,
-    icon: "🎬",
+    icon: "free",
     description: "Essential streaming experience",
     features: [
       "Unlimited browsing",
@@ -28,7 +36,7 @@ const TIERS = [
   {
     name: "Premium",
     price: 149,
-    icon: "👑",
+    icon: "premium",
     description: "Best for quality lovers",
     features: [
       "Full content library",
@@ -114,7 +122,9 @@ export default function PricingPage() {
               <div className={`p-8 ${tier.popular ? "pt-16" : ""}`}>
                 {/* Tier Info */}
                 <div className="text-center mb-8">
-                  <p className="text-4xl mb-3">{tier.icon}</p>
+                  <div className="mb-3">
+                    <TierIcon type={tier.icon} />
+                  </div>
                   <h3 className="text-2xl font-bold mb-2">{tier.name}</h3>
                   <p className="text-sm text-gray-400 mb-4">{tier.description}</p>
                   <div className="flex items-baseline justify-center gap-1">

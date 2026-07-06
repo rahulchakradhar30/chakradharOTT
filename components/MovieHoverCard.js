@@ -8,6 +8,7 @@ import { db } from "@/firebase";
 import { doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import AuthModal from "@/components/AuthModal";
+import { PlayIcon, WishlistIcon, TrophyIcon } from "@/components/Icon";
 
 export default function MovieHoverCard({ movie }) {
   const { user } = useAuth();
@@ -186,9 +187,10 @@ export default function MovieHoverCard({ movie }) {
                   <div className="flex items-center gap-2">
                     <Link
                       href={`/movie/${movie.id}`}
-                      className="w-8 h-8 rounded-full bg-cyan-400 text-black flex items-center justify-center font-bold hover:bg-cyan-300 transition-colors shadow-lg shadow-cyan-500/20"
+                      className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center hover:bg-cyan-100 transition-colors"
+                      title="Play Movie"
                     >
-                      <span className="pl-0.5 text-xs select-none mt-[-1px]">▶</span>
+                      <PlayIcon className="w-3.5 h-3.5 text-black fill-current ml-0.5" />
                     </Link>
                     <button
                       onClick={toggleWishlist}
@@ -198,14 +200,21 @@ export default function MovieHoverCard({ movie }) {
                           : "border-white/20 hover:border-white/40 text-gray-300 hover:text-white"
                       }`}
                     >
-                      <span className="text-[11px] select-none mt-[1px]">{saved ? "❤️" : "➕"}</span>
+                      {saved ? (
+                        <WishlistIcon className="w-3.5 h-3.5 text-white fill-current" />
+                      ) : (
+                        <svg className="w-3.5 h-3.5 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="12" y1="5" x2="12" y2="19"></line>
+                          <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                      )}
                     </button>
                     <Link
                       href={`/movie/${movie.id}/quiz`}
                       className="w-8 h-8 rounded-full border border-white/20 hover:border-white/40 text-gray-300 hover:text-white flex items-center justify-center transition-colors"
                       title="Play Trivia Quiz"
                     >
-                      <span className="text-xs select-none mt-[1px]">🏆</span>
+                      <TrophyIcon className="w-3.5 h-3.5 text-yellow-400 fill-current" />
                     </Link>
                   </div>
                   <div className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-gray-400 font-bold uppercase tracking-wider">

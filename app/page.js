@@ -298,7 +298,15 @@ function PremiereRow({ premieres, scheduled, loading }) {
     <>
       {livePremieres.length > 0 && (
         <section className="px-4 md:px-10 lg:px-16 py-10 md:py-16">
-          <SectionHeader title="🔴 Live Premieres" subtitle="Join ongoing events and watch together in real time" />
+          <SectionHeader
+            title={
+              <span className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
+                <span>Live Premieres</span>
+              </span>
+            }
+            subtitle="Join ongoing events and watch together in real time"
+          />
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}

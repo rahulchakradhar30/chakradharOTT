@@ -7,6 +7,31 @@ import { db } from "@/firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
+import {
+  HomeIcon,
+  MovieIcon,
+  PosterIcon,
+  RobotIcon,
+  TrophyIcon,
+  UserIcon,
+  MailIcon,
+  AnalyticsIcon,
+  LogOutIcon,
+  FolderIcon
+} from "@/components/Icon";
+
+function NavLinkIcon({ itemKey, className = "w-4 h-4" }) {
+  switch (itemKey) {
+    case "/": return <HomeIcon className={className} />;
+    case "/movies": return <MovieIcon className={className} />;
+    case "/posters": return <PosterIcon className={className} />;
+    case "/ai-assistant": return <RobotIcon className={className} />;
+    case "/trivia": return <TrophyIcon className={className} />;
+    case "/watch-party": return <UserIcon className={className} />;
+    case "/contact": return <MailIcon className={className} />;
+    default: return null;
+  }
+}
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -22,13 +47,13 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
-    { href: "/", label: "Home", icon: "🏠" },
-    { href: "/movies", label: "Movies", icon: "🎬" },
-    { href: "/posters", label: "Posters", icon: "🖼️" },
-    { href: "/ai-assistant", label: "AI Guide", badge: "✦", icon: "🤖" },
-    { href: "/trivia", label: "Trivia Arena", icon: "🏆" },
-    { href: "/watch-party", label: "Watch Party", badge: "👥", icon: "👥" },
-    { href: "/contact", label: "Contact", icon: "📧" },
+    { href: "/", label: "Home" },
+    { href: "/movies", label: "Movies" },
+    { href: "/posters", label: "Posters" },
+    { href: "/ai-assistant", label: "AI Guide", badge: "✦" },
+    { href: "/trivia", label: "Trivia Arena" },
+    { href: "/watch-party", label: "Watch Party", badge: "👥" },
+    { href: "/contact", label: "Contact" },
   ];
 
   /* Scroll */
@@ -242,23 +267,23 @@ export default function Navbar() {
                       >
                         <Link
                           href="/dashboard"
-                          className="block px-4 py-3 text-sm hover:bg-white/10 transition border-b border-white/5"
+                          className="px-4 py-3 text-sm hover:bg-white/10 transition border-b border-white/5 flex items-center gap-2 text-gray-200"
                         >
-                          📊 Dashboard
+                          <AnalyticsIcon className="w-4 h-4 text-cyan-400" /> Dashboard
                         </Link>
 
                         <Link
                           href="/profile"
-                          className="block px-4 py-3 text-sm hover:bg-white/10 transition border-b border-white/5"
+                          className="px-4 py-3 text-sm hover:bg-white/10 transition border-b border-white/5 flex items-center gap-2 text-gray-200"
                         >
-                          👤 My Profile
+                          <UserIcon className="w-4 h-4 text-cyan-400" /> My Profile
                         </Link>
 
                         <button
                           onClick={logout}
-                          className="w-full text-left px-4 py-3 text-sm hover:bg-white/10 transition text-red-400"
+                          className="w-full text-left px-4 py-3 text-sm hover:bg-white/10 transition text-red-400 flex items-center gap-2"
                         >
-                          🚪 Logout
+                          <LogOutIcon className="w-4 h-4 text-red-400" /> Logout
                         </button>
                       </motion.div>
                     )}
@@ -292,8 +317,8 @@ export default function Navbar() {
             >
               <div className="space-y-8">
                 <div className="flex justify-between items-center pb-4 border-b border-white/10">
-                  <span className="font-black text-[10px] uppercase tracking-widest text-cyan-300">
-                    📂 Navigation menu
+                  <span className="font-black text-[10px] uppercase tracking-widest text-cyan-300 flex items-center gap-1.5">
+                    <FolderIcon className="w-4 h-4 text-cyan-400" /> Navigation menu
                   </span>
                   <button
                     onClick={() => setMobileMenuOpen(false)}
@@ -312,7 +337,7 @@ export default function Navbar() {
                       className="px-4 py-3 rounded-2xl bg-white/5 border border-white/5 hover:border-cyan-400/40 hover:bg-cyan-500/10 transition flex items-center justify-between group"
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-base select-none">{item.icon}</span>
+                        <NavLinkIcon itemKey={item.href} className="w-4 h-4 text-cyan-300" />
                         <span className="font-extrabold text-sm text-gray-200 group-hover:text-cyan-300">
                           {item.label}
                         </span>

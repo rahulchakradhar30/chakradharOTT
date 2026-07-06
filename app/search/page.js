@@ -9,6 +9,7 @@ import FormInput from "@/components/FormInput";
 import EmptyState from "@/components/EmptyState";
 import { SkeletonGrid } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
+import { MovieIcon } from "@/components/Icon";
 
 const GENRES = [
   "Action",
@@ -281,8 +282,18 @@ export default function AdvancedSearchPage() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#04070f] via-transparent to-transparent" />
                     <div className="absolute top-3 right-3">
-                      <span className="inline-block bg-white/15 backdrop-blur-lg border border-white/25 px-2 py-1 rounded-lg text-xs font-medium">
-                        {item.type === "movie" ? "🎬" : "🔴"}
+                      <span className="inline-flex items-center gap-1 bg-[#0b1328]/80 backdrop-blur-lg border border-white/20 px-2.5 py-1 rounded-lg text-[10px] uppercase font-bold tracking-wider">
+                        {item.type === "movie" ? (
+                          <>
+                            <MovieIcon className="w-3.5 h-3.5 text-cyan-400" />
+                            <span className="text-cyan-100">Movie</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                            <span className="text-red-400 font-bold">Live</span>
+                          </>
+                        )}
                       </span>
                     </div>
                   </div>

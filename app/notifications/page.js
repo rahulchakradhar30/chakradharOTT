@@ -16,13 +16,37 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { SkeletonGrid } from "@/components/Skeleton";
 import EmptyState from "@/components/EmptyState";
+import {
+  MovieIcon,
+  SparklesIcon,
+  RobotIcon,
+  TrophyIcon,
+  BellIcon
+} from "@/components/Icon";
 
+function NotificationIcon({ type, className = "w-6 h-6 text-cyan-400" }) {
+  switch (type) {
+    case "premiere":
+      return <MovieIcon className={className} />;
+    case "new_content":
+      return <SparklesIcon className={className} />;
+    case "recommendation":
+      return <RobotIcon className={className} />;
+    case "achievement":
+      return <TrophyIcon className={className} />;
+    case "system":
+    default:
+      return <BellIcon className={className} />;
+  }
+}
+
+// Notification types config (colors only)
 const NOTIFICATION_TYPES = {
-  premiere: { icon: "🎬", color: "from-red-500" },
-  new_content: { icon: "✨", color: "from-blue-500" },
-  recommendation: { icon: "💡", color: "from-cyan-500" },
-  achievement: { icon: "🏆", color: "from-yellow-500" },
-  system: { icon: "🔔", color: "from-gray-500" },
+  premiere: { color: "from-red-500" },
+  new_content: { color: "from-blue-500" },
+  recommendation: { color: "from-cyan-500" },
+  achievement: { color: "from-yellow-500" },
+  system: { color: "from-gray-500" },
 };
 
 export default function NotificationsPage() {
@@ -166,8 +190,8 @@ export default function NotificationsPage() {
                 >
                   <div className="flex items-start gap-4">
                     {/* Icon */}
-                    <div className={`text-2xl flex-shrink-0`}>
-                      {typeInfo.icon}
+                    <div className="flex-shrink-0">
+                      <NotificationIcon type={notification.type} className="w-6 h-6 text-cyan-400" />
                     </div>
 
                     {/* Content */}

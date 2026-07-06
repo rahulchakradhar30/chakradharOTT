@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { auth } from "@/firebase";
+import { ChatIcon, TrophyIcon, SparklesIcon, PlayIcon } from "@/components/Icon";
 
 export default function VideoPlayer({
   src,
@@ -126,6 +127,7 @@ export default function VideoPlayer({
     const comment = timedComments.find(
       (c) => currentTime >= c.time && currentTime < c.time + 3.5
     );
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveComment(comment || null);
   }, [currentTime]);
 
@@ -279,8 +281,8 @@ export default function VideoPlayer({
             exit={{ opacity: 0, scale: 0.9, x: -20 }}
             className="absolute top-6 left-6 z-40 max-w-sm glass-card border border-cyan-400/30 px-4 py-2.5 rounded-2xl flex items-start gap-2.5 shadow-[0_8px_32px_rgba(0,212,255,0.15)]"
           >
-            <div className="w-7 h-7 rounded-full bg-cyan-500/20 text-xs font-black flex items-center justify-center border border-cyan-400/40 text-cyan-300">
-              💬
+            <div className="w-7 h-7 rounded-full bg-cyan-500/20 flex items-center justify-center border border-cyan-400/40 text-cyan-300 shrink-0">
+              <ChatIcon className="w-3.5 h-3.5" />
             </div>
             <div>
               <p className="text-[10px] text-cyan-300 font-extrabold tracking-wider">
@@ -319,9 +321,13 @@ export default function VideoPlayer({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 50 }}
             onClick={skipIntro}
-            className="absolute bottom-20 right-6 z-40 bg-[#080c18]/90 border border-cyan-400/40 px-5 py-2.5 rounded-full font-black text-sm text-cyan-300 backdrop-blur-md shadow-lg shadow-cyan-500/10 hover:bg-cyan-500 hover:text-black transition-all"
+            className="absolute bottom-20 right-6 z-40 bg-[#080c18]/90 border border-cyan-400/40 px-5 py-2.5 rounded-full font-black text-sm text-cyan-300 backdrop-blur-md shadow-lg shadow-cyan-500/10 hover:bg-cyan-500 hover:text-black transition-all flex items-center gap-1.5"
           >
-            Skip Intro ⏩
+            <span>Skip Intro</span>
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="5 4 15 12 5 20 5 4"></polygon>
+              <line x1="19" y1="5" x2="19" y2="19"></line>
+            </svg>
           </motion.button>
         )}
       </AnimatePresence>
@@ -335,7 +341,7 @@ export default function VideoPlayer({
             exit={{ opacity: 0, y: 50 }}
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 glass-card border border-yellow-400/40 p-6 rounded-3xl text-center max-w-sm"
           >
-            <p className="text-2xl mb-2">🏆</p>
+            <TrophyIcon className="w-8 h-8 text-yellow-400 mx-auto mb-2 fill-current" />
             <h3 className="text-lg font-black text-yellow-300">Trivia Challenge!</h3>
             <p className="text-xs text-gray-300 mt-2 leading-relaxed">
               Test your knowledge on this film! Complete the quiz to earn XP points and rank up.
@@ -419,8 +425,13 @@ export default function VideoPlayer({
               {/* Scene Soundtrack */}
               {currentSong && (
                 <div className="bg-gradient-to-br from-cyan-500/10 to-blue-500/5 border border-cyan-400/25 p-4 rounded-2xl space-y-2">
-                  <h4 className="text-[10px] uppercase tracking-widest text-cyan-400 font-black">
-                    🎵 Soundtrack playing
+                  <h4 className="text-[10px] uppercase tracking-widest text-cyan-400 font-black flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 18V5l12-2v13" />
+                      <circle cx="6" cy="18" r="3" />
+                      <circle cx="18" cy="16" r="3" />
+                    </svg>
+                    Soundtrack playing
                   </h4>
                   <div>
                     <p className="text-xs font-black text-white">{currentSong.title}</p>
@@ -432,8 +443,8 @@ export default function VideoPlayer({
               {/* Trivia Tidbits */}
               {currentTrivia && (
                 <div className="bg-yellow-500/10 border border-yellow-400/20 p-4 rounded-2xl space-y-2">
-                  <h4 className="text-[10px] uppercase tracking-widest text-yellow-400 font-black">
-                    💡 Production Trivia
+                  <h4 className="text-[10px] uppercase tracking-widest text-yellow-400 font-black flex items-center gap-1">
+                    <SparklesIcon className="w-3.5 h-3.5 text-yellow-400" /> Production Trivia
                   </h4>
                   <p className="text-[11px] text-yellow-100/90 leading-relaxed font-medium">
                     {currentTrivia.text}
@@ -446,9 +457,9 @@ export default function VideoPlayer({
             <div className="pt-4 border-t border-white/10">
               <button
                 onClick={handlePlayPause}
-                className="w-full bg-cyan-500 text-black hover:bg-cyan-400 font-black py-2.5 rounded-full text-xs transition"
+                className="w-full bg-cyan-500 text-black hover:bg-cyan-400 font-black py-2.5 rounded-full text-xs transition flex items-center justify-center gap-1"
               >
-                Resume Playback ▶
+                Resume Playback <PlayIcon className="w-3 h-3 text-black fill-current" />
               </button>
             </div>
           </motion.div>

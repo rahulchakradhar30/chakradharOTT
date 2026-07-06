@@ -7,18 +7,45 @@ import { motion } from "framer-motion";
 import { getTrendingContent } from "@/lib/searchEngine";
 import { SkeletonGrid } from "@/components/Skeleton";
 import { slugifyGenre } from "@/lib/seo";
+import {
+  FlameIcon,
+  SparklesIcon,
+  MovieIcon,
+  WarningIcon,
+  TargetIcon,
+  WishlistIcon,
+  RobotIcon,
+  PosterIcon,
+  AnalyticsIcon
+} from "@/components/Icon";
+
+function GenreIcon({ type, className = "w-10 h-10 mb-2 text-white/80 group-hover:scale-110 transition duration-300" }) {
+  switch (type) {
+    case "Action": return <FlameIcon className={className} />;
+    case "Comedy": return <SparklesIcon className={className} />;
+    case "Drama": return <MovieIcon className={className} />;
+    case "Horror": return <WarningIcon className={className} />;
+    case "Thriller": return <TargetIcon className={className} />;
+    case "Romance": return <WishlistIcon className={className} />;
+    case "Sci-Fi": return <RobotIcon className={className} />;
+    case "Fantasy": return <SparklesIcon className={className} />;
+    case "Animation": return <PosterIcon className={className} />;
+    case "Documentary": return <AnalyticsIcon className={className} />;
+    default: return <MovieIcon className={className} />;
+  }
+}
 
 const GENRES = [
-  { name: "Action", icon: "💥", color: "from-red-600 to-red-900" },
-  { name: "Comedy", icon: "😂", color: "from-yellow-500 to-orange-900" },
-  { name: "Drama", icon: "🎭", color: "from-purple-600 to-purple-900" },
-  { name: "Horror", icon: "👻", color: "from-gray-800 to-black" },
-  { name: "Thriller", icon: "😰", color: "from-blue-700 to-indigo-900" },
-  { name: "Romance", icon: "💕", color: "from-pink-600 to-pink-900" },
-  { name: "Sci-Fi", icon: "🚀", color: "from-cyan-600 to-blue-900" },
-  { name: "Fantasy", icon: "✨", color: "from-emerald-600 to-emerald-900" },
-  { name: "Animation", icon: "🎨", color: "from-violet-600 to-violet-900" },
-  { name: "Documentary", icon: "📽️", color: "from-amber-600 to-amber-900" },
+  { name: "Action", color: "from-red-600 to-red-900" },
+  { name: "Comedy", color: "from-yellow-500 to-orange-900" },
+  { name: "Drama", color: "from-purple-600 to-purple-900" },
+  { name: "Horror", color: "from-gray-800 to-black" },
+  { name: "Thriller", color: "from-blue-700 to-indigo-900" },
+  { name: "Romance", color: "from-pink-600 to-pink-900" },
+  { name: "Sci-Fi", color: "from-cyan-600 to-blue-900" },
+  { name: "Fantasy", color: "from-emerald-600 to-emerald-900" },
+  { name: "Animation", color: "from-violet-600 to-violet-900" },
+  { name: "Documentary", color: "from-amber-600 to-amber-900" },
 ];
 
 export default function DiscoverPage() {
@@ -77,7 +104,7 @@ export default function DiscoverPage() {
                   >
                     <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition" />
                     <div className="absolute inset-0 flex flex-col items-center justify-center group-hover:-translate-y-1 transition">
-                      <span className="text-4xl mb-2">{genre.icon}</span>
+                      <GenreIcon type={genre.name} />
                       <span className="text-white font-bold text-center">{genre.name}</span>
                     </div>
                   </div>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { auth } from "@/firebase";
 
 export default function VideoPlayer({
   src,
@@ -15,6 +16,52 @@ export default function VideoPlayer({
 }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
+  
+  const startTimeRef = useRef(null);
+
+  const sendWatchTimeUpdate = async (eventStatus) => {
+    if (!movieId || !auth.currentUser) return;
+    
+    let activeSec = 0;
+    if (startTimeRef.current) {
+      activeSec = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      if (activeSec < 0) activeSec = 0;
+      if (activeSec > 3600) activeSec = 3600; // clamp to max 1 hour
+      startTimeRef.current = Date.now(); // reset timer for next segment
+    }
+
+    if (activeSec <= 0 && eventStatus !== "complete") return;
+
+    try {
+      const token = await auth.currentUser.getIdToken();
+      await fetch("/api/watch-history", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          movieId,
+          title,
+          posterImage: poster || "",
+          currentTime: Math.floor(videoRef.current?.currentTime || 0),
+          duration: videoRef.current?.duration || 0,
+          activeTime: activeSec,
+          status: eventStatus
+        })
+      });
+    } catch (err) {
+      console.warn("Failed to report watch history segment:", err);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (startTimeRef.current) {
+        sendWatchTimeUpdate("stop");
+      }
+    };
+  }, []);
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -194,15 +241,31 @@ export default function VideoPlayer({
         poster={poster}
         className="w-full h-full object-cover"
         onLoadedMetadata={() => setDuration(videoRef.current?.duration || 120)}
-        onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime || 0)}
+        onTimeUpdate={() => {
+          setCurrentTime(videoRef.current?.currentTime || 0);
+          const now = Date.now();
+          if (startTimeRef.current && now - startTimeRef.current >= 10000) {
+            sendWatchTimeUpdate("watching");
+          }
+        }}
         onPlay={() => {
           setIsPlaying(true);
           setShowXRay(false);
           onPlayPauseChange(true);
+          startTimeRef.current = Date.now();
+          sendWatchTimeUpdate("resume");
         }}
         onPause={() => {
           setIsPlaying(false);
           onPlayPauseChange(false);
+          sendWatchTimeUpdate("pause");
+          startTimeRef.current = null;
+        }}
+        onEnded={() => {
+          setIsPlaying(false);
+          onPlayPauseChange(false);
+          sendWatchTimeUpdate("complete");
+          startTimeRef.current = null;
         }}
         onClick={handlePlayPause}
       />

@@ -17,18 +17,216 @@ import {
 
 const AuthContext = createContext();
 
+/* HELPER: Merge duplicate profiles (consists of moving subcollections & changing refs) */
+export async function mergeUserProfiles(newUid, oldUid, email) {
+  if (!newUid || !oldUid || newUid === oldUid) return;
+  try {
+    const { doc, getDoc, setDoc, deleteDoc, collection, getDocs, writeBatch, query, where } = await import("firebase/firestore");
+    const { db } = await import("@/firebase");
+
+    console.log(`[MERGE] Merging user profile from ${oldUid} to ${newUid} for email ${email}`);
+
+    const oldUserRef = doc(db, "users", oldUid);
+    const newUserRef = doc(db, "users", newUid);
+
+    const [oldSnap, newSnap] = await Promise.all([
+      getDoc(oldUserRef),
+      getDoc(newUserRef)
+    ]);
+
+    if (oldSnap.exists()) {
+      const oldData = oldSnap.data();
+      const newData = newSnap.exists() ? newSnap.data() : {};
+
+      // Merge profile properties
+      await setDoc(newUserRef, {
+        ...oldData,
+        ...newData,
+        email: email.toLowerCase(),
+        updatedAt: new Date(),
+      }, { merge: true });
+
+      const batch = writeBatch(db);
+
+      // 1. Move Wishlist subcollection
+      const oldWishlistSnap = await getDocs(collection(db, "users", oldUid, "wishlist"));
+      oldWishlistSnap.docs.forEach((itemDoc) => {
+        const newItemRef = doc(db, "users", newUid, "wishlist", itemDoc.id);
+        batch.set(newItemRef, itemDoc.data());
+        batch.delete(itemDoc.ref);
+      });
+
+      // 2. Move Tickets subcollection
+      const oldTicketsSnap = await getDocs(collection(db, "users", oldUid, "tickets"));
+      oldTicketsSnap.docs.forEach((itemDoc) => {
+        const newItemRef = doc(db, "users", newUid, "tickets", itemDoc.id);
+        batch.set(newItemRef, itemDoc.data());
+        batch.delete(itemDoc.ref);
+      });
+
+      await batch.commit();
+
+      // 3. Update comments referencing old UID
+      const commentsQuery = query(collection(db, "comments"), where("userId", "==", oldUid));
+      const commentsSnap = await getDocs(commentsQuery);
+      const commentsBatch = writeBatch(db);
+      commentsSnap.docs.forEach((cDoc) => {
+        commentsBatch.update(cDoc.ref, { userId: newUid });
+      });
+      await commentsBatch.commit();
+
+      // 4. Update ratings referencing old UID
+      const ratingsQuery = query(collection(db, "ratings"), where("userId", "==", oldUid));
+      const ratingsSnap = await getDocs(ratingsQuery);
+      const ratingsBatch = writeBatch(db);
+      ratingsSnap.docs.forEach((rDoc) => {
+        ratingsBatch.update(rDoc.ref, { userId: newUid });
+      });
+      await ratingsBatch.commit();
+
+      // 5. Update views / watch history referencing old UID
+      const viewsQuery = query(collection(db, "views"), where("userId", "==", oldUid));
+      const viewsSnap = await getDocs(viewsQuery);
+      const viewsBatch = writeBatch(db);
+      viewsSnap.docs.forEach((vDoc) => {
+        viewsBatch.update(vDoc.ref, { userId: newUid });
+      });
+      await viewsBatch.commit();
+
+      // 6. Update support tickets (contacts) referencing old UID
+      const contactsQuery = query(collection(db, "contacts"), where("userId", "==", oldUid));
+      const contactsSnap = await getDocs(contactsQuery);
+      const contactsBatch = writeBatch(db);
+      contactsSnap.docs.forEach((conDoc) => {
+        contactsBatch.update(conDoc.ref, { userId: newUid });
+      });
+      await contactsBatch.commit();
+
+      // 7. Delete old user document
+      await deleteDoc(oldUserRef);
+      console.log(`[MERGE] Merged and deleted old profile ${oldUid}`);
+    }
+  } catch (err) {
+    console.error("[MERGE] Error merging user profiles:", err);
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Helper to ensure a user profile document exists in Firestore
-  const ensureUserProfile = async (firebaseUser) => {
+  // Helper to unlock achievements and send real-time alerts
+  const unlockAchievement = async (uid, achievementId, title, description) => {
+    try {
+      const { doc, getDoc, updateDoc, collection, addDoc } = await import("firebase/firestore");
+      const { db } = await import("@/firebase");
+
+      const userRef = doc(db, "users", uid);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+        const currentAchievements = userData.achievements || [];
+        
+        if (currentAchievements.includes(achievementId)) return;
+
+        const newAchievements = [...currentAchievements, achievementId];
+        await updateDoc(userRef, { achievements: newAchievements });
+
+        // Push real-time notification
+        await addDoc(collection(db, "users", uid, "notifications"), {
+          title: `Achievement Unlocked: ${title}! 🏆`,
+          message: description,
+          type: "achievement",
+          read: false,
+          createdAt: new Date(),
+        });
+      }
+    } catch (err) {
+      console.warn("Failed to unlock achievement:", err);
+    }
+  };
+
+  // Helper to track and update login streaks
+  const updateLoginStreak = async (uid) => {
+    if (!uid) return;
+    try {
+      const { doc, getDoc, updateDoc } = await import("firebase/firestore");
+      const { db } = await import("@/firebase");
+
+      const userRef = doc(db, "users", uid);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        const now = new Date();
+        
+        const lastLogin = data.lastLoginAt ? (data.lastLoginAt.toDate ? data.lastLoginAt.toDate() : new Date(data.lastLoginAt)) : null;
+
+        let currentStreak = data.loginStreak || 0;
+        let longestStreak = data.longestStreak || 0;
+
+        if (lastLogin) {
+          // Calculate day differences using UTC midnights
+          const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const prevDate = new Date(lastLogin.getFullYear(), lastLogin.getMonth(), lastLogin.getDate());
+          const diffDays = Math.round((todayDate - prevDate) / (1000 * 60 * 60 * 24));
+
+          if (diffDays === 1) {
+            currentStreak += 1;
+          } else if (diffDays > 1) {
+            currentStreak = 1;
+          }
+        } else {
+          currentStreak = 1;
+        }
+
+        if (currentStreak > longestStreak) {
+          longestStreak = currentStreak;
+        }
+
+        await updateDoc(userRef, {
+          lastLoginAt: now,
+          loginStreak: currentStreak,
+          longestStreak: longestStreak,
+        });
+
+        // Award login streak achievement milestone
+        if (currentStreak >= 7) {
+          await unlockAchievement(uid, "weekly_streak", "Loyal Streamer", "Maintained a 7-day daily login streak!");
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to update login streak:", err);
+    }
+  };
+
+  // Helper to ensure a user profile document exists in Firestore (with merge checks)
+  const ensureUserProfile = async (firebaseUser, provider = "google") => {
     if (!firebaseUser) return;
     try {
-      const { doc, getDoc, setDoc } = await import("firebase/firestore");
+      const { doc, getDoc, setDoc, collection, getDocs, query, where } = await import("firebase/firestore");
       const { db } = await import("@/firebase");
+      
+      const emailLower = firebaseUser.email.toLowerCase();
       const userRef = doc(db, "users", firebaseUser.uid);
       const userSnap = await getDoc(userRef);
+      
+      // Look for duplicate profile documents under a different UID
+      const dupQuery = query(collection(db, "users"), where("email", "==", emailLower));
+      const dupSnap = await getDocs(dupQuery);
+      
+      let existingProfileId = null;
+      dupSnap.docs.forEach((d) => {
+        if (d.id !== firebaseUser.uid) {
+          existingProfileId = d.id;
+        }
+      });
+      
+      if (existingProfileId) {
+        // Merge legacy profile activities under this UID
+        await mergeUserProfiles(firebaseUser.uid, existingProfileId, emailLower);
+      }
       
       let photoURL = firebaseUser.photoURL || "";
       if (!photoURL) {
@@ -41,19 +239,22 @@ export function AuthProvider({ children }) {
         }
       }
 
-      if (!userSnap.exists()) {
-        const nameParts = (firebaseUser.displayName || "Google User").split(" ");
-        await setDoc(userRef, {
-          email: firebaseUser.email,
-          name: firebaseUser.displayName || "Google User",
-          firstName: nameParts[0] || "",
-          lastName: nameParts.slice(1).join(" ") || "",
-          photoURL: photoURL,
-          createdAt: new Date(),
-        });
-      }
+      const nameParts = (firebaseUser.displayName || "Google User").split(" ");
+      
+      await setDoc(userRef, {
+        email: emailLower,
+        name: firebaseUser.displayName || "Google User",
+        firstName: nameParts[0] || "",
+        lastName: nameParts.slice(1).join(" ") || "",
+        photoURL: photoURL,
+        authProvider: provider,
+        createdAt: new Date(),
+      }, { merge: true });
+
+      // Trigger login streak check
+      await updateLoginStreak(firebaseUser.uid);
     } catch (dbErr) {
-      console.warn("Firestore profile save skipped on Google sign-in:", dbErr);
+      console.warn("Firestore profile save skipped on sign-in:", dbErr);
     }
   };
 
@@ -63,7 +264,7 @@ export function AuthProvider({ children }) {
       try {
         const result = await getRedirectResult(auth);
         if (result?.user) {
-          await ensureUserProfile(result.user);
+          await ensureUserProfile(result.user, "google");
         }
       } catch (err) {
         console.error("Google redirect sign-in error:", err);
@@ -76,6 +277,7 @@ export function AuthProvider({ children }) {
       if (firebaseUser) {
         setUser(firebaseUser);
         localStorage.removeItem("demoUser");
+        updateLoginStreak(firebaseUser.uid);
       } else {
         const savedDemo = localStorage.getItem("demoUser");
         if (savedDemo) {
@@ -95,12 +297,10 @@ export function AuthProvider({ children }) {
     const provider = new GoogleAuthProvider();
     try {
       const cred = await signInWithPopup(auth, provider);
-      await ensureUserProfile(cred.user);
+      await ensureUserProfile(cred.user, "google");
       return cred.user;
     } catch (err) {
       console.warn("Firebase Google login failed, code:", err.code, err);
-      
-      // Fallback to redirect authentication ONLY if popups are explicitly blocked by the browser.
       if (err.code === "auth/popup-blocked") {
         try {
           await signInWithRedirect(auth, provider);
@@ -110,8 +310,6 @@ export function AuthProvider({ children }) {
           throw redirectErr;
         }
       }
-      
-      // Do not redirect on standard cancel ('auth/popup-closed-by-user'), simply throw it so the login page can let the user cancel cleanly.
       throw err;
     }
   };
@@ -120,6 +318,10 @@ export function AuthProvider({ children }) {
   const loginWithEmail = async (email, password) => {
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password);
+      // Trigger login streak
+      if (cred.user) {
+        await updateLoginStreak(cred.user.uid);
+      }
       return cred.user;
     } catch (err) {
       console.warn("Firebase email login failed, trying local storage fallback:", err);
@@ -145,6 +347,28 @@ export function AuthProvider({ children }) {
 
   // Register
   const registerWithEmail = async (email, password, additionalData = {}) => {
+    // 1. Prevent duplicate email registrations across authentication providers
+    try {
+      const { collection, getDocs, query, where } = await import("firebase/firestore");
+      const { db } = await import("@/firebase");
+      
+      const dupQuery = query(collection(db, "users"), where("email", "==", email.toLowerCase()));
+      const dupSnap = await getDocs(dupQuery);
+      
+      if (!dupSnap.empty) {
+        const existingData = dupSnap.docs[0].data();
+        if (existingData.authProvider === "google") {
+          throw new Error("This email is already registered using Google Sign-In. Please sign in with Google instead.");
+        } else {
+          throw new Error("This email is already registered. Please sign in instead.");
+        }
+      }
+    } catch (checkErr) {
+      if (checkErr.message.includes("registered")) {
+        throw checkErr;
+      }
+    }
+
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       
@@ -164,12 +388,13 @@ export function AuthProvider({ children }) {
         const { doc, setDoc } = await import("firebase/firestore");
         const { db } = await import("@/firebase");
         await setDoc(doc(db, "users", cred.user.uid), {
-          email,
+          email: email.toLowerCase(),
           name: displayName,
           firstName: additionalData.firstName || "",
           lastName: additionalData.lastName || "",
           photoURL: initialAvatar,
           dob: additionalData.dob || "",
+          authProvider: "email",
           createdAt: new Date(),
         }, { merge: true });
       } catch (dbErr) {
@@ -246,6 +471,7 @@ export function AuthProvider({ children }) {
         loginAsDemo,
         logout,
         resetPassword,
+        unlockAchievement,
       }}
     >
       {children}

@@ -74,6 +74,17 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
+    // UserStats Collection
+    match /userStats/{statsId} {
+      allow read: if true;
+      allow write: if request.auth != null && (
+        request.auth.uid == statsId ||
+        request.auth.token.admin == true ||
+        request.auth.token.email == 'thefifthagefilms@gmail.com' ||
+        request.auth.token.email == 'rahulchakradharperepogu@gmail.com'
+      );
+    }
+
     // Users Collection (Wishlist and Tickets)
     match /users/{userId} {
       allow read, write: if request.auth != null && (
@@ -93,6 +104,33 @@ service cloud.firestore {
       }
       
       match /tickets/{item} {
+        allow read, write: if request.auth != null && (
+          request.auth.uid == userId ||
+          request.auth.token.admin == true ||
+          request.auth.token.email == 'thefifthagefilms@gmail.com' ||
+          request.auth.token.email == 'rahulchakradharperepogu@gmail.com'
+        );
+      }
+
+      match /notifications/{item} {
+        allow read, write: if request.auth != null && (
+          request.auth.uid == userId ||
+          request.auth.token.admin == true ||
+          request.auth.token.email == 'thefifthagefilms@gmail.com' ||
+          request.auth.token.email == 'rahulchakradharperepogu@gmail.com'
+        );
+      }
+
+      match /continueWatching/{item} {
+        allow read, write: if request.auth != null && (
+          request.auth.uid == userId ||
+          request.auth.token.admin == true ||
+          request.auth.token.email == 'thefifthagefilms@gmail.com' ||
+          request.auth.token.email == 'rahulchakradharperepogu@gmail.com'
+        );
+      }
+
+      match /watchHistory/{item} {
         allow read, write: if request.auth != null && (
           request.auth.uid == userId ||
           request.auth.token.admin == true ||

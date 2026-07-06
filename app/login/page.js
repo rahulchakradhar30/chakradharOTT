@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { sendEmailVerification } from "firebase/auth";
 import { motion } from "framer-motion";
 import FormInput from "@/components/FormInput";
 import Button from "@/components/Button";
@@ -44,9 +43,7 @@ export default function LoginPage() {
   };
 
   useEffect(() => {
-    if (mode === "register") {
-      generateCaptcha();
-    }
+    generateCaptcha();
   }, [mode]);
 
   const handleChange = (e) => {
@@ -72,6 +69,10 @@ export default function LoginPage() {
       newErrors.password = "Password must be at least 6 characters";
     }
 
+    if (formData.captchaInput.toUpperCase() !== captchaCode) {
+      newErrors.captchaInput = "Verification code does not match";
+    }
+
     if (mode === "register") {
       if (!formData.firstName.trim()) {
         newErrors.firstName = "First name is required";
@@ -81,9 +82,6 @@ export default function LoginPage() {
       }
       if (!formData.dob) {
         newErrors.dob = "Date of birth is required";
-      }
-      if (formData.captchaInput.toUpperCase() !== captchaCode) {
-        newErrors.captchaInput = "Verification code does not match";
       }
     }
 
@@ -120,6 +118,16 @@ export default function LoginPage() {
   const handleEmailAuth = async (e) => {
     e.preventDefault();
 
+    const emailKey = formData.email.trim().toLowerCase();
+    const localLock = JSON.parse(localStorage.getItem(`login_lock_${emailKey}`) || '{"attempts":0,"lockedUntil":0}');
+    
+    // Check account lockout
+    if (localLock.lockedUntil > Date.now()) {
+      const minutesLeft = Math.ceil((localLock.lockedUntil - Date.now()) / (60 * 1000));
+      addToast(`Account temporarily locked. Try again in ${minutesLeft} minutes.`, "error");
+      return;
+    }
+
     if (!validateForm()) {
       addToast("Please fix the errors in the form", "warning");
       return;
@@ -131,6 +139,10 @@ export default function LoginPage() {
 
       if (mode === "login") {
         await loginWithEmail(formData.email, formData.password);
+        
+        // Reset failures on login success
+        localStorage.removeItem(`login_lock_${emailKey}`);
+        
         addToast("Logged in successfully!", "success");
         router.push("/");
         return;
@@ -142,6 +154,7 @@ export default function LoginPage() {
         lastName: formData.lastName,
         dob: formData.dob,
       });
+      
       addToast("Account created successfully! Logging you in...", "success");
       
       // Auto login after registration
@@ -151,10 +164,26 @@ export default function LoginPage() {
       let errorMessage = "Authentication failed. Please try again.";
       const errorCode = err.code || "";
       
+      if (mode === "login") {
+        // Record lockout increments
+        const newAttempts = localLock.attempts + 1;
+        const newLock = {
+          attempts: newAttempts,
+          lockedUntil: newAttempts >= 5 ? Date.now() + 15 * 60 * 1000 : 0
+        };
+        localStorage.setItem(`login_lock_${emailKey}`, JSON.stringify(newLock));
+
+        if (newAttempts >= 5) {
+          errorMessage = "Too many failed attempts. Your account has been locked for 15 minutes.";
+        } else {
+          errorMessage = `Incorrect email or password. Attempt ${newAttempts} of 5 before lockout.`;
+        }
+      }
+
       if (errorCode === "auth/user-not-found" || err.message?.includes("auth/user-not-found")) {
         errorMessage = "This email is not registered. Please sign up first.";
       } else if (errorCode === "auth/wrong-password" || err.message?.includes("auth/wrong-password") || errorCode === "auth/invalid-credential" || err.message?.includes("auth/invalid-credential")) {
-        errorMessage = "Incorrect email or password. Please try again.";
+        // Kept within rate-limiter logic above
       } else if (errorCode === "auth/email-already-in-use" || err.message?.includes("auth/email-already-in-use")) {
         errorMessage = "This email is already registered. Please sign in instead.";
       } else if (errorCode === "auth/network-request-failed" || err.message?.includes("auth/network-request-failed")) {
@@ -164,9 +193,10 @@ export default function LoginPage() {
       }
       
       addToast(errorMessage, "error");
-      if (mode === "register") {
-        generateCaptcha();
-      }
+      
+      // Force regeneration of CAPTCHA on failure
+      generateCaptcha();
+      setFormData((prev) => ({ ...prev, captchaInput: "" }));
     } finally {
       setLoading(false);
     }
@@ -188,8 +218,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-10 text-white">
+    <div className="min-h-screen flex items-center justify-center px-4 py-10 text-white text-left">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(0,212,255,0.18),_transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(255,77,141,0.12),_transparent_30%)]" />
+      
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -201,17 +232,26 @@ export default function LoginPage() {
           {mode === "login" ? "Welcome Back" : "Create Account"}
         </h1>
 
-        <Button
-          onClick={handleGoogle}
-          disabled={loading}
-          variant="secondary"
-          size="full"
-          className="mb-5 bg-white text-black hover:bg-white/90"
-        >
-          Continue with Google
-        </Button>
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          <Button
+            onClick={handleGoogle}
+            disabled={loading}
+            variant="secondary"
+            className="bg-white text-black hover:bg-white/90 text-xs font-bold py-3"
+          >
+            Google
+          </Button>
+          <Button
+            onClick={handleDemoLogin}
+            disabled={loading}
+            variant="secondary"
+            className="bg-white/10 text-white hover:bg-white/20 text-xs font-bold py-3"
+          >
+            Demo Guest
+          </Button>
+        </div>
 
-        <div className="text-center text-gray-400 mb-5 text-sm font-medium">or continue with email</div>
+        <div className="text-center text-gray-400 mb-5 text-xs font-bold uppercase tracking-wider">or continue with email</div>
 
         {message ? (
           <motion.div
@@ -261,40 +301,6 @@ export default function LoginPage() {
                 disabled={loading}
                 required
               />
-
-              {/* Bot Check Captcha */}
-              <div className="admin-panel p-4 rounded-2xl bg-zinc-900 border border-white/10 space-y-3">
-                <label className="block text-xs uppercase tracking-[0.18em] text-gray-400 font-semibold">
-                  Bot Verification
-                </label>
-                <div className="flex items-center justify-between gap-4">
-                  <div 
-                    className="flex-1 bg-gradient-to-r from-cyan-900 to-blue-900 text-cyan-200 py-3 rounded-xl text-center font-mono tracking-[0.4em] font-extrabold select-none border border-cyan-400/20 text-lg shadow-inner"
-                    style={{ textShadow: "0px 0px 8px rgba(0, 212, 255, 0.4)" }}
-                  >
-                    {captchaCode}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={generateCaptcha}
-                    className="p-3 bg-white/5 border border-white/15 rounded-xl hover:bg-white/10 transition text-sm text-cyan-300 font-bold"
-                    title="Generate new captcha code"
-                  >
-                    ↻
-                  </button>
-                </div>
-                <FormInput
-                  label="Type the code above"
-                  name="captchaInput"
-                  type="text"
-                  placeholder="Verification code"
-                  value={formData.captchaInput}
-                  onChange={handleChange}
-                  error={errors.captchaInput}
-                  disabled={loading}
-                  required
-                />
-              </div>
             </>
           )}
 
@@ -321,6 +327,40 @@ export default function LoginPage() {
             disabled={loading}
             required
           />
+
+          {/* Bot Check Captcha for BOTH Login and Registration */}
+          <div className="admin-panel p-4 rounded-2xl bg-zinc-950 border border-white/10 space-y-3">
+            <label className="block text-[10px] uppercase tracking-[0.18em] text-gray-400 font-black">
+              Bot Verification
+            </label>
+            <div className="flex items-center justify-between gap-4">
+              <div 
+                className="flex-1 bg-gradient-to-r from-cyan-900 to-blue-900 text-cyan-200 py-3 rounded-xl text-center font-mono tracking-[0.4em] font-extrabold select-none border border-cyan-400/20 text-lg shadow-inner"
+                style={{ textShadow: "0px 0px 8px rgba(0, 212, 255, 0.4)" }}
+              >
+                {captchaCode}
+              </div>
+              <button
+                type="button"
+                onClick={generateCaptcha}
+                className="p-3 bg-white/5 border border-white/15 rounded-xl hover:bg-white/10 transition text-sm text-cyan-300 font-bold"
+                title="Generate new captcha code"
+              >
+                ↻
+              </button>
+            </div>
+            <FormInput
+              label="Type the code above"
+              name="captchaInput"
+              type="text"
+              placeholder="Verification code"
+              value={formData.captchaInput}
+              onChange={handleChange}
+              error={errors.captchaInput}
+              disabled={loading}
+              required
+            />
+          </div>
 
           <Button
             type="submit"
@@ -349,7 +389,7 @@ export default function LoginPage() {
               New here?{" "}
               <button
                 onClick={() => setMode("register")}
-                className="text-white underline"
+                className="text-white underline font-bold"
               >
                 Create account
               </button>
@@ -359,7 +399,7 @@ export default function LoginPage() {
               Already have an account?{" "}
               <button
                 onClick={() => setMode("login")}
-                className="text-white underline"
+                className="text-white underline font-bold"
               >
                 Login
               </button>

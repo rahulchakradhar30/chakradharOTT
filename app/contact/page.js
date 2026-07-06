@@ -11,7 +11,7 @@ import { doc, getDoc } from "firebase/firestore";
 
 export default function ContactPage() {
   const { addToast } = useToast();
-  const { user } = useAuth();
+  const { user, unlockAchievement } = useAuth();
   
   // Complaint submission form states
   const [formData, setFormData] = useState({
@@ -147,6 +147,10 @@ export default function ContactPage() {
       setImageUrl("");
       setErrors({});
       addToast("Complaint filed successfully!", "success");
+
+      if (user?.uid && unlockAchievement) {
+        await unlockAchievement(user.uid, "first_ticket", "Reporter", "Filed your first support ticket!");
+      }
     } catch (err) {
       console.error(err);
       addToast(err.message || "Failed to send message. Please try again.", "error");

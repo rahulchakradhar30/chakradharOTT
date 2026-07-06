@@ -1,4 +1,3 @@
-import { Resend } from "resend";
 import { NextResponse } from "next/server";
 import { enforceRateLimit, getClientIp } from "@/lib/rateLimit";
 import { sanitizeText } from "@/lib/validation";
@@ -7,18 +6,9 @@ import { verifyAdminSession } from "@/lib/adminAuth";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { FieldValue } from "firebase-admin/firestore";
 import crypto from "crypto";
+import { sendMail } from "@/lib/mail";
 
 export const runtime = "nodejs";
-
-// Lazy initialize Resend only when API is called
-function getResendClient() {
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error(
-      "RESEND_API_KEY is not configured. Add it to .env.local to enable email replies."
-    );
-  }
-  return new Resend(process.env.RESEND_API_KEY);
-}
 
 export async function POST(req) {
   const ip = getClientIp(req);
@@ -31,9 +21,9 @@ export async function POST(req) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!process.env.RESEND_API_KEY) {
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
       return NextResponse.json(
-        { error: "Email service not configured. Missing RESEND_API_KEY." },
+        { error: "Email service not configured. Missing EMAIL_USER or EMAIL_PASS in environment." },
         { status: 503 }
       );
     }
@@ -101,7 +91,6 @@ export async function POST(req) {
       );
     }
 
-    const resend = getResendClient();
     let emailStatus = "success";
     let emailError = null;
     let resendData = null;
@@ -137,9 +126,8 @@ export async function POST(req) {
     plainTextContent += `Original Inquiry:\n"${originalMessage}"\n\n---\nChakradhar Stream Support Team`;
 
     try {
-      resendData = await resend.emails.send({
-        from: process.env.RESEND_FROM_EMAIL || "Chakradhar Stream Support <onboarding@resend.dev>",
-        to: [recipientEmail],
+      resendData = await sendMail({
+        to: recipientEmail,
         subject: `Re: Support Ticket - Chakradhar Stream`,
         text: plainTextContent,
         html: `
@@ -185,15 +173,10 @@ export async function POST(req) {
           </div>
         `,
       });
-
-      if (resendData && resendData.error) {
-        emailStatus = "failed";
-        emailError = resendData.error.message || JSON.stringify(resendData.error);
-      }
     } catch (err) {
-      console.error("Resend API error:", err);
+      console.error("Nodemailer SMTP error:", err);
       emailStatus = "failed";
-      emailError = err?.message || "Unknown SMTP/API error";
+      emailError = err?.message || "Unknown SMTP error";
     }
 
     const replyId = crypto.randomUUID();

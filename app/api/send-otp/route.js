@@ -2,21 +2,11 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { Resend } from "resend";
 import { hashOtp } from "@/lib/adminAuth";
 import { enforceRateLimit, getClientIp } from "@/lib/rateLimit";
 import { isValidEmail, normalizeEmail } from "@/lib/validation";
 import { logServerEvent } from "@/lib/auditLog";
-
-// Lazy initialize Resend only when API is called
-function getResendClient() {
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error(
-      "RESEND_API_KEY is not configured. Add it to .env.local to enable OTP emails."
-    );
-  }
-  return new Resend(process.env.RESEND_API_KEY);
-}
+import { sendMail } from "@/lib/mail";
 
   function getAllowedAdminEmails() {
     const fromEnv = String(process.env.ADMIN_ALLOWED_EMAILS || "")
@@ -36,9 +26,9 @@ export async function POST(req) {
   const ip = getClientIp(req);
 
   try {
-    if (!process.env.RESEND_API_KEY) {
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
       return NextResponse.json(
-        { success: false, error: "Email service not configured" },
+        { success: false, error: "Email service not configured. Missing EMAIL_USER or EMAIL_PASS in environment." },
         { status: 503 }
       );
     }
@@ -142,12 +132,10 @@ export async function POST(req) {
       expiresAt: now + 5 * 60 * 1000,
     });
 
-    const resend = getResendClient();
-
-    await resend.emails.send({
-      from: "Chakradhar OTT <onboarding@resend.dev>",
+    await sendMail({
       to: normalizedEmail,
       subject: "Admin OTP Verification",
+      text: `Your OTP is: ${otp}\nValid for 5 minutes.`,
       html: `
         <div style="font-family: sans-serif;">
           <h2>Your OTP is: ${otp}</h2>

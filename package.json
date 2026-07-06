@@ -13,6 +13,7 @@
     "firebase-admin": "^13.7.0",
     "framer-motion": "^12.34.3",
     "next": "16.1.6",
+    "nodemailer": "^9.0.3",
     "razorpay": "^2.9.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",

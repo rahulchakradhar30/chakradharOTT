@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
 import FormInput from "@/components/FormInput";
@@ -15,9 +15,11 @@ export default function LoginPage() {
     loginWithGoogle,
     loginWithEmail,
     registerWithEmail,
-    loginAsDemo,
     resetPassword,
   } = useAuth();
+
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams?.get("redirect") || "/";
 
   const [mode, setMode] = useState("login");
   const [formData, setFormData] = useState({
@@ -28,6 +30,7 @@ export default function LoginPage() {
     dob: "",
     captchaInput: "",
   });
+  const [otpValue, setOtpValue] = useState("");
   const [captchaCode, setCaptchaCode] = useState("");
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -94,22 +97,9 @@ export default function LoginPage() {
       setLoading(true);
       await loginWithGoogle();
       addToast("Logged in successfully!", "success");
-      router.push("/");
+      router.push(redirectUrl);
     } catch (err) {
       addToast(err.message || "Google sign-in failed", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDemoLogin = () => {
-    try {
-      setLoading(true);
-      loginAsDemo();
-      addToast("Welcome back! Logged in as Demo Guest.", "success");
-      router.push("/");
-    } catch (err) {
-      addToast("Demo login failed", "error");
     } finally {
       setLoading(false);
     }
@@ -144,22 +134,24 @@ export default function LoginPage() {
         localStorage.removeItem(`login_lock_${emailKey}`);
         
         addToast("Logged in successfully!", "success");
-        router.push("/");
+        router.push(redirectUrl);
         return;
       }
 
-      // Registration
-      await registerWithEmail(formData.email, formData.password, {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        dob: formData.dob,
+      // Registration - Send OTP
+      const res = await fetch("/api/auth/send-signup-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email }),
       });
+      const data = await res.json();
       
-      addToast("Account created successfully! Logging you in...", "success");
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to send OTP");
+      }
       
-      // Auto login after registration
-      await loginWithEmail(formData.email, formData.password);
-      router.push("/");
+      addToast("Verification code sent to your email", "success");
+      setMode("otp");
     } catch (err) {
       let errorMessage = "Authentication failed. Please try again.";
       const errorCode = err.code || "";
@@ -217,6 +209,45 @@ export default function LoginPage() {
     }
   };
 
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    if (!otpValue || otpValue.length < 6) {
+      addToast("Enter a valid 6-digit OTP", "warning");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await fetch("/api/auth/verify-signup-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email, otp: otpValue }),
+      });
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || "Invalid verification code");
+      }
+      
+      // OTP verified successfully, proceed with registration
+      await registerWithEmail(formData.email, formData.password, {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        dob: formData.dob,
+      });
+      
+      addToast("Account created successfully! Logging you in...", "success");
+      
+      // Auto login after registration
+      await loginWithEmail(formData.email, formData.password);
+      router.push(redirectUrl);
+    } catch (err) {
+      addToast(err.message || "Verification failed", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10 text-white text-left">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(0,212,255,0.18),_transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(255,77,141,0.12),_transparent_30%)]" />
@@ -229,29 +260,25 @@ export default function LoginPage() {
       >
         <p className="admin-kicker mb-2">Chakradhar Stream</p>
         <h1 className="text-3xl font-black mb-6 tracking-tight">
-          {mode === "login" ? "Welcome Back" : "Create Account"}
+          {mode === "login" ? "Welcome Back" : mode === "register" ? "Create Account" : "Verify Email"}
         </h1>
 
-        <div className="grid grid-cols-2 gap-3 mb-5">
-          <Button
-            onClick={handleGoogle}
-            disabled={loading}
-            variant="secondary"
-            className="bg-white text-black hover:bg-white/90 text-xs font-bold py-3"
-          >
-            Google
-          </Button>
-          <Button
-            onClick={handleDemoLogin}
-            disabled={loading}
-            variant="secondary"
-            className="bg-white/10 text-white hover:bg-white/20 text-xs font-bold py-3"
-          >
-            Demo Guest
-          </Button>
-        </div>
+        {mode !== "otp" && (
+          <>
+            <div className="grid grid-cols-1 gap-3 mb-5">
+              <Button
+                onClick={handleGoogle}
+                disabled={loading}
+                variant="secondary"
+                className="bg-white text-black hover:bg-white/90 text-xs font-bold py-3"
+              >
+                Google
+              </Button>
+            </div>
 
-        <div className="text-center text-gray-400 mb-5 text-xs font-bold uppercase tracking-wider">or continue with email</div>
+            <div className="text-center text-gray-400 mb-5 text-xs font-bold uppercase tracking-wider">or continue with email</div>
+          </>
+        )}
 
         {message ? (
           <motion.div
@@ -263,7 +290,43 @@ export default function LoginPage() {
           </motion.div>
         ) : null}
 
-        <form onSubmit={handleEmailAuth} className="space-y-5">
+        {mode === "otp" ? (
+          <form onSubmit={handleVerifyOtp} className="space-y-5">
+            <div className="admin-panel p-4 rounded-2xl bg-zinc-950 border border-white/10 space-y-3">
+              <p className="text-sm text-gray-300">
+                We sent a 6-digit verification code to <strong className="text-cyan-300">{formData.email}</strong>.
+              </p>
+              <FormInput
+                label="Verification Code"
+                name="otp"
+                type="text"
+                placeholder="123456"
+                value={otpValue}
+                onChange={(e) => setOtpValue(e.target.value)}
+                disabled={loading}
+                required
+              />
+            </div>
+            <Button
+              type="submit"
+              variant="primary"
+              size="full"
+              loading={loading}
+              disabled={loading}
+            >
+              Verify & Create Account
+            </Button>
+            <button
+              type="button"
+              onClick={() => setMode("register")}
+              className="text-sm text-gray-400 mt-4 block mx-auto hover:text-white transition font-medium"
+            >
+              ← Back to Registration
+            </button>
+          </form>
+        ) : (
+          <>
+            <form onSubmit={handleEmailAuth} className="space-y-5">
           {mode === "register" && (
             <>
               <div className="grid grid-cols-2 gap-4">
@@ -382,30 +445,34 @@ export default function LoginPage() {
             Forgot your password?
           </button>
         ) : null}
+          </>
+        )}
 
-        <div className="mt-6 text-center text-sm text-gray-300">
-          {mode === "login" ? (
-            <>
-              New here?{" "}
-              <button
-                onClick={() => setMode("register")}
-                className="text-white underline font-bold"
-              >
-                Create account
-              </button>
-            </>
-          ) : (
-            <>
-              Already have an account?{" "}
-              <button
-                onClick={() => setMode("login")}
-                className="text-white underline font-bold"
-              >
-                Login
-              </button>
-            </>
-          )}
-        </div>
+        {mode !== "otp" && (
+          <div className="mt-6 text-center text-sm text-gray-300">
+            {mode === "login" ? (
+              <>
+                New here?{" "}
+                <button
+                  onClick={() => setMode("register")}
+                  className="text-white underline font-bold"
+                >
+                  Create account
+                </button>
+              </>
+            ) : (
+              <>
+                Already have an account?{" "}
+                <button
+                  onClick={() => setMode("login")}
+                  className="text-white underline font-bold"
+                >
+                  Login
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </motion.div>
     </div>
   );

@@ -441,20 +441,6 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Login as Demo Guest
-  const loginAsDemo = () => {
-    const demo = {
-      uid: "demo_user_chakradhar",
-      email: "demo@chakradharott.com",
-      displayName: "Guest Critic",
-      photoURL: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde",
-      emailVerified: true
-    };
-    setUser(demo);
-    localStorage.setItem("demoUser", JSON.stringify(demo));
-    return demo;
-  };
-
   // Logout
   const logout = async () => {
     localStorage.removeItem("demoUser");
@@ -474,7 +460,6 @@ export function AuthProvider({ children }) {
         loginWithGoogle,
         loginWithEmail,
         registerWithEmail,
-        loginAsDemo,
         logout,
         resetPassword,
         unlockAchievement,

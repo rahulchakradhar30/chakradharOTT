@@ -24,7 +24,7 @@ import { useToast } from "@/components/Toast";
 export default function ReviewsAndRatings({ movieId }) {
   const { user } = useAuth();
   const { addToast } = useToast?.() || {};
-  
+
   const [reviews, setReviews] = useState([]);
   const [userRating, setUserRating] = useState(0);
   const [averageRating, setAverageRating] = useState(0);
@@ -36,7 +36,7 @@ export default function ReviewsAndRatings({ movieId }) {
     const loadReviews = async () => {
       try {
         setLoading(true);
-        
+
         // Get all reviews for movie
         const reviewsRef = collection(db, "reviews");
         const reviewsSnap = await getDocs(

@@ -24,22 +24,29 @@ export default function WatchPartyRoom() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+
   const rawRoomId = params?.roomId;
   const roomId = Array.isArray(rawRoomId) ? rawRoomId[0] : rawRoomId;
   const movieParam = searchParams?.get("movie") || "";
   const isHost = searchParams?.get("host") === "true";
-  
-  const { user } = useAuth();
+
+  const { user, loading: authLoading } = useAuth();
   const [movie, setMovie] = useState(null);
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
   const [activeTab, setActiveTab] = useState("chat"); // chat, members
-  
+
   const [participants, setParticipants] = useState([]);
   const [useRealVideoCall, setUseRealVideoCall] = useState(false);
   const myPresenceDocIdRef = useRef(null);
+
+  // Authentication Check
+  useEffect(() => {
+    if (!authLoading && !user && roomId) {
+      router.push(`/login?redirect=/watch-party/${roomId}`);
+    }
+  }, [user, authLoading, roomId, router]);
 
   // Load movie data — host has ?movie= in URL, joiner discovers it from Firestore
   useEffect(() => {
@@ -61,7 +68,7 @@ export default function WatchPartyRoom() {
               where("movieId", "==", "wp_room_" + roomId)
             );
             const existingSnap = await getDocs(existingQuery);
-            
+
             if (existingSnap.empty) {
               await addDoc(collection(db, "comments"), {
                 movieId: "wp_room_" + roomId,
@@ -119,7 +126,7 @@ export default function WatchPartyRoom() {
         setLoading(false);
       }
     };
-    
+
     fetchMovie();
   }, [movieParam, roomId, isHost, user]);
 
@@ -128,7 +135,7 @@ export default function WatchPartyRoom() {
     if (!roomId || !user) return;
 
     const userLabel = user.displayName || user.email?.split("@")[0] || "Critic";
-    
+
     const registerPresence = async () => {
       try {
         const docRef = await addDoc(collection(db, "comments"), {
@@ -175,7 +182,7 @@ export default function WatchPartyRoom() {
           let state = { isMuted: false, isCameraOff: false };
           try {
             state = JSON.parse(data.comment || "{}");
-          } catch (e) {}
+          } catch (e) { }
 
           return {
             uid: data.userId,
@@ -301,6 +308,15 @@ export default function WatchPartyRoom() {
     }
   };
 
+  if (authLoading || (!user && loading)) {
+    return (
+      <div className="min-h-screen text-white flex items-center justify-center flex-col bg-[#04070f]">
+        <div className="w-12 h-12 rounded-full border-4 border-cyan-400/30 border-t-cyan-400 animate-spin mb-4" />
+        <p className="text-sm text-gray-400 font-bold">Verifying authentication...</p>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen text-white flex items-center justify-center flex-col bg-[#04070f]">
@@ -316,7 +332,7 @@ export default function WatchPartyRoom() {
         <p className="text-5xl mb-4">⚠️</p>
         <h2 className="text-2xl font-black mb-2">Watch Party Session Not Found</h2>
         <p className="text-gray-400 max-w-md text-sm mb-6">
-          The room <span className="text-cyan-300 font-bold">{roomId}</span> could not be connected. 
+          The room <span className="text-cyan-300 font-bold">{roomId}</span> could not be connected.
           The host may not have started the session yet. Ask them to share the <strong>Copy Link</strong> from their room.
         </p>
         <div className="flex gap-3">
@@ -397,7 +413,7 @@ export default function WatchPartyRoom() {
                 movieId={movie.id}
               />
             )}
-            
+
             {/* Sync Overlay Warning for non-hosts */}
             {!isHost && (
               <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[10px] text-cyan-300 font-bold border border-cyan-400/20">
@@ -414,9 +430,8 @@ export default function WatchPartyRoom() {
             </div>
             <button
               onClick={() => setUseRealVideoCall(!useRealVideoCall)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 ${
-                useRealVideoCall ? "bg-red-500 text-white hover:bg-red-600" : "bg-cyan-500 text-black hover:bg-cyan-400"
-              }`}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 ${useRealVideoCall ? "bg-red-500 text-white hover:bg-red-600" : "bg-cyan-500 text-black hover:bg-cyan-400"
+                }`}
             >
               {useRealVideoCall ? "Disable Voice/Video Call" : "Enable Voice/Video Call"}
             </button>
@@ -448,7 +463,7 @@ export default function WatchPartyRoom() {
                       className="absolute inset-0 w-full h-full object-cover grayscale opacity-80"
                     />
                   )}
-                  
+
                   {/* Labels / Overlays */}
                   <div className="relative z-10 flex items-center justify-between w-full">
                     <span className="text-[10px] bg-black/60 px-2 py-0.5 rounded-full font-bold text-gray-200 truncate max-w-[70%]">
@@ -484,17 +499,15 @@ export default function WatchPartyRoom() {
           <div className="flex border-b border-white/10 p-2 shrink-0">
             <button
               onClick={() => setActiveTab("chat")}
-              className={`flex-1 py-2 text-xs font-bold rounded-xl transition ${
-                activeTab === "chat" ? "bg-cyan-500 text-black" : "text-gray-400 hover:text-white"
-              }`}
+              className={`flex-1 py-2 text-xs font-bold rounded-xl transition ${activeTab === "chat" ? "bg-cyan-500 text-black" : "text-gray-400 hover:text-white"
+                }`}
             >
               Live Chat
             </button>
             <button
               onClick={() => setActiveTab("members")}
-              className={`flex-1 py-2 text-xs font-bold rounded-xl transition ${
-                activeTab === "members" ? "bg-cyan-500 text-black" : "text-gray-400 hover:text-white"
-              }`}
+              className={`flex-1 py-2 text-xs font-bold rounded-xl transition ${activeTab === "members" ? "bg-cyan-500 text-black" : "text-gray-400 hover:text-white"
+                }`}
             >
               Audience ({participants.length})
             </button>

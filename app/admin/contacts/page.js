@@ -11,6 +11,8 @@ import {
   orderBy,
   query,
 } from "firebase/firestore";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const TEMPLATES = [
   {
@@ -1156,18 +1158,21 @@ export default function AdminContactsPage() {
                                 <p>ORIGINAL INQUIRY BY {String(item.author).toUpperCase()}</p>
                                 <p>{formatTime(item.date)}</p>
                               </div>
-                              <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
-                                {item.content}
-                              </p>
+                              <div className="text-sm text-gray-300 leading-relaxed markdown-preview">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                  {item.content}
+                                </ReactMarkdown>
+                              </div>
                               <div className="flex flex-wrap gap-4 text-[10px] text-gray-500 pt-1 font-mono">
                                 <p>Email: {item.email}</p>
                                 {activeTicket.ip && <p>IP: {activeTicket.ip}</p>}
                                 {activeTicket.source && <p>Source: {activeTicket.source}</p>}
                               </div>
                               {item.imageUrl && (
-                                <div className="mt-2 pt-2 border-t border-white/5">
-                                  <a href={item.imageUrl} target="_blank" rel="noreferrer" className="text-cyan-400 underline hover:text-cyan-300 text-[11px] font-bold">
-                                    View Attached Image 📎
+                                <div className="mt-4 pt-4 border-t border-white/5">
+                                  <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-2">Attached Image</p>
+                                  <a href={item.imageUrl} target="_blank" rel="noreferrer" className="block max-w-[300px] rounded-xl overflow-hidden border border-white/10 hover:opacity-90 transition">
+                                    <img src={item.imageUrl} alt="Attached issue" className="w-full h-auto object-cover" />
                                   </a>
                                 </div>
                               )}

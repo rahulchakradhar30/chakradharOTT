@@ -8,27 +8,13 @@ import { isValidEmail, normalizeEmail } from "@/lib/validation";
 import { logServerEvent } from "@/lib/auditLog";
 import { sendMail } from "@/lib/mail";
 
-  function getAllowedAdminEmails() {
-    const fromEnv = String(process.env.ADMIN_ALLOWED_EMAILS || "")
-      .split(",")
-      .map((v) => v.trim().toLowerCase())
-      .filter(Boolean);
-
-    if (fromEnv.length > 0) return fromEnv;
-
-    return [
-      "thefifthagefilms@gmail.com",
-      "rahulchakradharperepogu@gmail.com",
-    ];
-  }
-
 export async function POST(req) {
   const ip = getClientIp(req);
 
   try {
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
       return NextResponse.json(
-        { success: false, error: "Email service not configured. Missing EMAIL_USER or EMAIL_PASS in environment." },
+        { success: false, error: "Email service not configured." },
         { status: 503 }
       );
     }
@@ -37,7 +23,7 @@ export async function POST(req) {
     const normalizedEmail = normalizeEmail(email);
 
     const ipLimiter = await enforceRateLimit({
-      scope: "otp_send_ip",
+      scope: "signup_otp_ip",
       subject: ip,
       limit: 20,
       windowMs: 10 * 60 * 1000,
@@ -57,21 +43,8 @@ export async function POST(req) {
       );
     }
 
-      const allowedEmails = getAllowedAdminEmails();
-      if (!allowedEmails.includes(normalizedEmail)) {
-        await logServerEvent("admin_otp_send_failed", {
-          ip,
-          email: normalizedEmail,
-          message: "unauthorized_email",
-        });
-        return NextResponse.json(
-          { success: false, error: "Unauthorized" },
-          { status: 403 }
-        );
-      }
-
     const emailLimiter = await enforceRateLimit({
-      scope: "otp_send_email",
+      scope: "signup_otp_email",
       subject: normalizedEmail,
       limit: 8,
       windowMs: 15 * 60 * 1000,
@@ -86,21 +59,17 @@ export async function POST(req) {
 
     const now = Date.now();
 
-    // 🔎 Get all OTPs for this email (no orderBy to avoid index requirement)
     const snapshot = await adminDb
-      .collection("admin_otps")
+      .collection("signup_otps")
       .where("email", "==", normalizedEmail)
       .get();
 
     const docs = snapshot.docs.map((doc) => doc.data());
 
     if (docs.length > 0) {
-      // Sort manually (latest first)
       docs.sort((a, b) => b.createdAt - a.createdAt);
-
       const lastOtp = docs[0];
 
-      // ⛔ Cooldown: 60 seconds
       if (now - lastOtp.createdAt < 60 * 1000) {
         return NextResponse.json(
           { success: false, error: "Wait before requesting new OTP." },
@@ -108,7 +77,6 @@ export async function POST(req) {
         );
       }
 
-      // ⛔ Max 3 OTPs in 5 minutes
       const lastFiveMinutes = docs.filter(
         (doc) => now - doc.createdAt < 5 * 60 * 1000
       );
@@ -124,7 +92,7 @@ export async function POST(req) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = hashOtp(normalizedEmail, otp);
 
-    await adminDb.collection("admin_otps").add({
+    await adminDb.collection("signup_otps").add({
       email: normalizedEmail,
       otpHash,
       attempts: 0,
@@ -134,7 +102,7 @@ export async function POST(req) {
 
     await sendMail({
       to: normalizedEmail,
-      subject: "Admin OTP Verification",
+      subject: "Your Account Verification Code",
       text: `Your OTP is: ${otp}\nValid for 5 minutes.`,
       html: `
         <!DOCTYPE html>
@@ -152,12 +120,12 @@ export async function POST(req) {
                   <tr>
                     <td align="center" style="padding: 40px 30px; background: linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, rgba(255, 77, 141, 0.05) 100%); border-bottom: 1px solid rgba(255,255,255,0.05);">
                       <h1 style="margin: 0; font-size: 24px; font-weight: 900; color: #ffffff; letter-spacing: -0.5px;">Chakradhar Stream</h1>
-                      <p style="margin: 10px 0 0 0; font-size: 14px; color: #9ca3af; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;">Admin Verification</p>
+                      <p style="margin: 10px 0 0 0; font-size: 14px; color: #9ca3af; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;">Account Registration</p>
                     </td>
                   </tr>
                   <tr>
                     <td align="center" style="padding: 40px 30px;">
-                      <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #d1d5db;">You requested a one-time password to access the Admin Dashboard. Please use the verification code below to securely log in.</p>
+                      <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #d1d5db;">You are setting up a new account. Please use the verification code below to confirm your email address.</p>
                       
                       <div style="background-color: rgba(0, 212, 255, 0.05); border: 1px solid rgba(0, 212, 255, 0.2); border-radius: 12px; padding: 25px 20px; margin: 30px 0;">
                         <h2 style="margin: 0; font-size: 42px; font-weight: 900; color: #00d4ff; letter-spacing: 8px; font-family: monospace; text-shadow: 0 0 15px rgba(0,212,255,0.4);">${otp}</h2>
@@ -185,7 +153,7 @@ export async function POST(req) {
       `,
     });
 
-    await logServerEvent("admin_otp_sent", {
+    await logServerEvent("signup_otp_sent", {
       ip,
       email: normalizedEmail,
     });
@@ -193,8 +161,8 @@ export async function POST(req) {
     return NextResponse.json({ success: true });
 
   } catch (error) {
-    console.error("SEND OTP ERROR:", error);
-    await logServerEvent("admin_otp_send_failed", {
+    console.error("SEND SIGNUP OTP ERROR:", error);
+    await logServerEvent("signup_otp_send_failed", {
       ip,
       message: error?.message || "Unknown",
     });

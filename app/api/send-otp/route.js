@@ -58,7 +58,16 @@ export async function POST(req) {
     }
 
       const allowedEmails = getAllowedAdminEmails();
-      if (!allowedEmails.includes(normalizedEmail)) {
+      let isAllowed = allowedEmails.includes(normalizedEmail);
+      
+      if (!isAllowed) {
+        const adminDoc = await adminDb.collection("admins").doc(normalizedEmail).get();
+        if (adminDoc.exists) {
+          isAllowed = true;
+        }
+      }
+
+      if (!isAllowed) {
         await logServerEvent("admin_otp_send_failed", {
           ip,
           email: normalizedEmail,

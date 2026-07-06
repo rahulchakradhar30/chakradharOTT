@@ -14,6 +14,7 @@ const navItems = [
   { href: "/admin/search-analytics", label: "Analytics" },
   { href: "/admin/contacts", label: "Contacts" },
   { href: "/admin/users", label: "Users" },
+  { href: "/admin/sub-admins", label: "Sub-Admins" },
   { href: "/admin/settings", label: "Settings" },
 ];
 
@@ -24,6 +25,7 @@ export default function AdminLayout({ children }) {
   const [checking, setChecking] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
+  const [adminRole, setAdminRole] = useState("");
 
   const isLoginPage = pathname === "/admin/login";
 
@@ -42,6 +44,7 @@ export default function AdminLayout({ children }) {
         let authenticated = false;
         let email = "";
 
+        let role = "sub_admin";
         for (let attempt = 0; attempt < 3; attempt += 1) {
           const res = await fetch("/api/admin/session", {
             method: "GET",
@@ -57,6 +60,7 @@ export default function AdminLayout({ children }) {
             if (data?.authenticated) {
               authenticated = true;
               email = data.email || "admin";
+              role = data.role || "sub_admin";
               break;
             }
           }
@@ -72,6 +76,7 @@ export default function AdminLayout({ children }) {
         }
 
         setAdminEmail(email || "admin");
+        setAdminRole(role || "sub_admin");
       } catch {
         router.replace("/admin/login");
       } finally {
@@ -88,6 +93,22 @@ export default function AdminLayout({ children }) {
   };
 
   const isActive = (path) => pathname === path;
+
+  const filteredNavItems = navItems.filter((item) => {
+    if (adminRole === "sub_admin") {
+      return ["/admin", "/admin/movies", "/admin/contacts"].includes(item.href);
+    }
+    return true;
+  });
+
+  const isAllowedPath = () => {
+    if (isLoginPage) return true;
+    if (adminRole === "sub_admin") {
+      const isEditMoviePage = pathname.startsWith("/admin/movies/edit");
+      return ["/admin", "/admin/movies", "/admin/contacts"].includes(pathname) || isEditMoviePage;
+    }
+    return true;
+  };
 
   if (isLoginPage) return <>{children}</>;
 
@@ -115,10 +136,11 @@ export default function AdminLayout({ children }) {
           <div className="mb-6 rounded-xl border border-white/15 bg-black/20 p-3 text-xs text-gray-300">
             <p className="text-gray-400 mb-1">Signed in as</p>
             <p className="font-medium break-all">{adminEmail || "admin"}</p>
+            <p className="text-[10px] text-cyan-400 font-mono mt-1 capitalize">{adminRole.replace("_", " ")}</p>
           </div>
 
           <nav className="space-y-2 text-sm">
-            {navItems.map((item) => (
+            {filteredNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -179,7 +201,7 @@ export default function AdminLayout({ children }) {
               </div>
 
               <nav className="space-y-2 text-sm">
-                {navItems.map((item) => (
+                {filteredNavItems.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
@@ -212,7 +234,26 @@ export default function AdminLayout({ children }) {
       )}
 
       <main className="flex-1 p-5 md:p-10 pt-24 md:pt-10 overflow-y-auto w-full">
-        {children}
+        {!isLoginPage && !checking && !isAllowedPath() ? (
+          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6">
+            <div className="glass-card rounded-[2rem] p-8 md:p-12 max-w-md w-full border border-red-500/20 bg-red-950/10 shadow-2xl relative overflow-hidden">
+              <div className="absolute -top-12 -left-12 w-32 h-32 bg-red-500/10 rounded-full blur-2xl animate-pulse" />
+              <div className="text-6xl mb-6">🔒</div>
+              <h1 className="text-3xl font-black mb-3 text-red-400">Access Denied</h1>
+              <p className="text-sm text-gray-300 leading-relaxed mb-8">
+                This page is restricted to **Super Administrators**. Your current role (**Sub-Admin**) does not have permission to view this section.
+              </p>
+              <Link
+                href="/admin"
+                className="admin-button admin-button-primary px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-wider inline-block"
+              >
+                Back to Dashboard
+              </Link>
+            </div>
+          </div>
+        ) : (
+          children
+        )}
       </main>
     </div>
   );

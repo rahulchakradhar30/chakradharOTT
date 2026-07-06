@@ -15,6 +15,22 @@ export default function MoviesManagement() {
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [adminRole, setAdminRole] = useState("sub_admin");
+
+  useEffect(() => {
+    const checkRole = async () => {
+      try {
+        const res = await fetch("/api/admin/session");
+        if (res.ok) {
+          const data = await res.json();
+          setAdminRole(data.role || "sub_admin");
+        }
+      } catch (err) {
+        console.warn("Failed to check role:", err);
+      }
+    };
+    checkRole();
+  }, []);
 
   useEffect(() => {
     const fetchMovies = async () => {
@@ -117,12 +133,14 @@ export default function MoviesManagement() {
             />
           </div>
 
-          <Link
-            href="/admin/movies/create"
-            className="admin-button admin-button-primary"
-          >
-            + Upload New Movie
-          </Link>
+          {adminRole === "super_admin" && (
+            <Link
+              href="/admin/movies/create"
+              className="admin-button admin-button-primary"
+            >
+              + Upload New Movie
+            </Link>
+          )}
         </div>
       </div>
 
@@ -198,55 +216,69 @@ export default function MoviesManagement() {
                   Comments
                 </Link>
 
-                <button
-                  onClick={() => handleDelete(movie.id)}
-                  className="admin-button px-3 py-2 text-xs md:text-sm bg-rose-500/15 text-rose-100 border border-rose-300/20"
-                >
-                  Delete
-                </button>
+                {adminRole === "super_admin" && (
+                  <button
+                    onClick={() => handleDelete(movie.id)}
+                    className="admin-button px-3 py-2 text-xs md:text-sm bg-rose-500/15 text-rose-100 border border-rose-300/20"
+                  >
+                    Delete
+                  </button>
+                )}
               </div>
             </div>
 
             {/* STATUS TOGGLES */}
-            <div className="flex flex-wrap gap-3 text-sm">
+            {adminRole === "super_admin" ? (
+              <div className="flex flex-wrap gap-3 text-sm">
+                {/* ⭐ HERO */}
+                <button
+                  onClick={() => setHeroMovie(movie.id)}
+                  className={`admin-chip transition ${movie.isHero ? "border-rose-300/30 bg-rose-500/15 text-rose-100" : "bg-white/5 text-gray-300"}`}
+                >
+                  ⭐ Hero {movie.isHero ? "On" : "Off"}
+                </button>
 
-              {/* ⭐ HERO */}
-              <button
-                onClick={() => setHeroMovie(movie.id)}
-                className={`admin-chip transition ${movie.isHero ? "border-rose-300/30 bg-rose-500/15 text-rose-100" : "bg-white/5 text-gray-300"}`}
-              >
-                ⭐ Hero {movie.isHero ? "On" : "Off"}
-              </button>
+                {/* 🔥 TRENDING */}
+                <button
+                  onClick={() =>
+                    toggleField(
+                      movie.id,
+                      "isTrending",
+                      !!movie.isTrending
+                    )
+                  }
+                  className={`admin-chip transition ${movie.isTrending ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "bg-white/5 text-gray-300"}`}
+                >
+                  Trending {movie.isTrending ? "On" : "Off"}
+                </button>
 
-              {/* 🔥 TRENDING */}
-              <button
-                onClick={() =>
-                  toggleField(
-                    movie.id,
-                    "isTrending",
-                    !!movie.isTrending
-                  )
-                }
-                className={`admin-chip transition ${movie.isTrending ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "bg-white/5 text-gray-300"}`}
-              >
-                Trending {movie.isTrending ? "On" : "Off"}
-              </button>
-
-              {/* 🎯 FEATURED */}
-              <button
-                onClick={() =>
-                  toggleField(
-                    movie.id,
-                    "isFeatured",
-                    !!movie.isFeatured
-                  )
-                }
-                className={`admin-chip transition ${movie.isFeatured ? "border-amber-300/30 bg-amber-500/15 text-amber-100" : "bg-white/5 text-gray-300"}`}
-              >
-                Featured {movie.isFeatured ? "On" : "Off"}
-              </button>
-
-            </div>
+                {/* 🎯 FEATURED */}
+                <button
+                  onClick={() =>
+                    toggleField(
+                      movie.id,
+                      "isFeatured",
+                      !!movie.isFeatured
+                    )
+                  }
+                  className={`admin-chip transition ${movie.isFeatured ? "border-amber-300/30 bg-amber-500/15 text-amber-100" : "bg-white/5 text-gray-300"}`}
+                >
+                  Featured {movie.isFeatured ? "On" : "Off"}
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-3 text-sm opacity-60">
+                <span className={`admin-chip ${movie.isHero ? "border-rose-300/30 bg-rose-500/15 text-rose-100" : "bg-white/5 text-gray-400"}`}>
+                  ⭐ Hero {movie.isHero ? "Active" : "Inactive"}
+                </span>
+                <span className={`admin-chip ${movie.isTrending ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "bg-white/5 text-gray-400"}`}>
+                  Trending {movie.isTrending ? "Active" : "Inactive"}
+                </span>
+                <span className={`admin-chip ${movie.isFeatured ? "border-amber-300/30 bg-amber-500/15 text-amber-100" : "bg-white/5 text-gray-400"}`}>
+                  Featured {movie.isFeatured ? "Active" : "Inactive"}
+                </span>
+              </div>
+            )}
 
           </div>
         ))}

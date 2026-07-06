@@ -10,6 +10,7 @@ import {
   deleteDoc,
   orderBy,
   query,
+  getDocs,
 } from "firebase/firestore";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -72,6 +73,8 @@ export default function AdminContactsPage() {
   
   // Auth Session state
   const [adminEmail, setAdminEmail] = useState("");
+  const [adminRole, setAdminRole] = useState("sub_admin");
+  const [adminsList, setAdminsList] = useState([]);
   
   // Filtering & Search
   const [searchTerm, setSearchTerm] = useState("");
@@ -111,9 +114,24 @@ export default function AdminContactsPage() {
       .then((data) => {
         if (data?.authenticated) {
           setAdminEmail(data.email || "admin");
+          setAdminRole(data.role || "sub_admin");
         }
       })
       .catch((err) => console.error("Error fetching session:", err));
+  }, []);
+
+  /* FETCH ALL SUB-ADMINS FOR ASSIGNEES */
+  useEffect(() => {
+    const fetchAdminsList = async () => {
+      try {
+        const snap = await getDocs(collection(db, "admins"));
+        const list = snap.docs.map((d) => d.id);
+        setAdminsList(list);
+      } catch (err) {
+        console.warn("Failed to load admins for reassignments:", err);
+      }
+    };
+    fetchAdminsList();
   }, []);
 
   /* FIREBASE REAL-TIME SUBSCRIPTION */
@@ -208,6 +226,12 @@ export default function AdminContactsPage() {
 
   /* TICKET DYNAMIC FILTERING & PAGINATION */
   const filteredMessages = messages.filter((msg) => {
+    // If sub-admin, only show tickets assigned specifically to them
+    if (adminRole === "sub_admin" && adminEmail) {
+      const assigned = String(msg.assignedTo || "").trim().toLowerCase();
+      if (assigned !== adminEmail.toLowerCase()) return false;
+    }
+
     const status = getStatus(msg);
     const priority = getPriority(msg);
     const isArchived = !!msg.archived;
@@ -1132,12 +1156,22 @@ export default function AdminContactsPage() {
                     <span className="text-[10px] text-gray-500 font-bold uppercase">Assignee</span>
                     <select
                       value={activeTicket.assignedTo || "Unassigned"}
+                      disabled={adminRole === "sub_admin"}
                       onChange={(e) => handleUpdateAssignee(activeTicket.id, e.target.value)}
-                      className="bg-black/45 border border-white/10 text-xs text-gray-300 rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-cyan-500 font-semibold"
+                      className="bg-black/45 border border-white/10 text-xs text-gray-300 rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-cyan-500 font-semibold disabled:opacity-50"
                     >
                       <option value="Unassigned">Unassigned</option>
-                      {adminEmail && <option value={adminEmail}>{adminEmail}</option>}
-                      <option value="support@chakradharstream.com">support@chakradharstream.com</option>
+                      {/* Env super-admins */}
+                      <option value="thefifthagefilms@gmail.com">thefifthagefilms@gmail.com</option>
+                      <option value="rahulchakradharperepogu@gmail.com">rahulchakradharperepogu@gmail.com</option>
+                      {/* Dynamic custom admins/sub-admins */}
+                      {adminsList
+                        .filter((email) => email !== "thefifthagefilms@gmail.com" && email !== "rahulchakradharperepogu@gmail.com")
+                        .map((email) => (
+                          <option key={email} value={email}>
+                            {email}
+                          </option>
+                        ))}
                     </select>
                   </div>
 

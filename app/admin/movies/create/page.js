@@ -12,6 +12,8 @@ export default function CreateMovie() {
 
   const [loading, setLoading] = useState(false);
   const [dbGenres, setDbGenres] = useState([]);
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [scheduledTime, setScheduledTime] = useState("");
 
   const [form, setForm] = useState({
     title: "",
@@ -59,23 +61,35 @@ export default function CreateMovie() {
 
     const finalEmbed = normalizeYouTubeEmbed(form.embedLink);
 
+    let scheduledRelease = null;
+    if (isScheduled && scheduledTime) {
+      scheduledRelease = new Date(scheduledTime);
+    }
+
     const docRef = await addDoc(collection(db, "movies"), {
       ...form,
       embedLink: finalEmbed,
+      scheduledRelease,
       createdAt: Timestamp.now(),
     });
 
     try {
+      const isFuture = scheduledRelease && scheduledRelease.getTime() > Date.now();
+      const title = isFuture ? "New Movie Scheduled! 🕐" : "New Movie Released! 🎬";
+      const message = isFuture 
+        ? `A new movie has been scheduled: "${form.title}" will release on ${scheduledRelease.toLocaleString()}`
+        : `Watch the newly added movie: "${form.title}"`;
+
       await fetch("/api/notifications/broadcast", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          title: "New Movie Released! 🎬",
-          message: `Watch the newly added movie: "${form.title}"`,
+          title,
+          message,
           type: "movie",
-          link: `/movie/${docRef.id}`,
+          link: isFuture ? "/movies" : `/movie/${docRef.id}`,
         }),
       });
     } catch (notifErr) {
@@ -186,6 +200,27 @@ export default function CreateMovie() {
             className="admin-input focus-ring"
             onChange={(e) => handleChange("releaseDate", e.target.value)}
           />
+
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 text-sm font-semibold text-gray-300">
+              <input
+                type="checkbox"
+                checked={isScheduled}
+                onChange={(e) => setIsScheduled(e.target.checked)}
+                className="rounded border-white/15 bg-black/40 text-cyan-500 focus:ring-cyan-500 cursor-pointer"
+              />
+              Schedule Release Date & Time
+            </label>
+            {isScheduled && (
+              <input
+                type="datetime-local"
+                required
+                value={scheduledTime}
+                onChange={(e) => setScheduledTime(e.target.value)}
+                className="admin-input focus-ring text-white"
+              />
+            )}
+          </div>
 
         </div>
 

@@ -49,8 +49,18 @@ export async function POST(request) {
     // 1. Fetch catalog movies from Firestore with view counts
     const moviesSnapshot = await adminDb.collection("movies").get();
     const catalog = [];
+    const now = Date.now();
     moviesSnapshot.forEach((doc) => {
       const data = doc.data();
+
+      // Filter out future scheduled releases from AI CineGuide catalog
+      if (data.scheduledRelease) {
+        const releaseTime = data.scheduledRelease.toDate 
+          ? data.scheduledRelease.toDate().getTime() 
+          : new Date(data.scheduledRelease).getTime();
+        if (now < releaseTime) return;
+      }
+
       const viewsReal = data.viewsReal || 0;
       const viewsBoost = data.viewsBoost || 0;
       const totalViews = viewsReal + viewsBoost;

@@ -21,10 +21,19 @@ export default function MoviesPage() {
         setLoading(true);
         setError(null);
         const snapshot = await getDocs(collection(db, "movies"));
-        const movieList = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        const now = Date.now();
+        const movieList = snapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }))
+          .filter((m) => {
+            if (!m.scheduledRelease) return true;
+            const releaseTime = m.scheduledRelease.toDate 
+              ? m.scheduledRelease.toDate().getTime() 
+              : new Date(m.scheduledRelease).getTime();
+            return now >= releaseTime;
+          });
         setMovies(movieList);
       } catch (err) {
         console.error("Error fetching movies:", err);

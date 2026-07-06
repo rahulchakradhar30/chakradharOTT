@@ -26,10 +26,20 @@ export default function WatchPartyLobby() {
     const fetchMovies = async () => {
       try {
         const snap = await getDocs(collection(db, "movies"));
-        const list = snap.docs.map((doc) => ({
-          id: doc.id,
-          title: doc.data().title || "Untitled",
-        }));
+        const now = Date.now();
+        const list = snap.docs
+          .map((doc) => ({
+            id: doc.id,
+            title: doc.data().title || "Untitled",
+            scheduledRelease: doc.data().scheduledRelease,
+          }))
+          .filter((m) => {
+            if (!m.scheduledRelease) return true;
+            const releaseTime = m.scheduledRelease.toDate 
+              ? m.scheduledRelease.toDate().getTime() 
+              : new Date(m.scheduledRelease).getTime();
+            return now >= releaseTime;
+          });
         setMovies(list);
         if (!selectedMovieId && list.length > 0) {
           setSelectedMovieId(list[0].id);

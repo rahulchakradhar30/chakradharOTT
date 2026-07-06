@@ -20,10 +20,19 @@ export default function TriviaHubPage() {
     const fetchMovies = async () => {
       try {
         const moviesSnap = await getDocs(collection(db, "movies"));
-        const moviesList = moviesSnap.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        const now = Date.now();
+        const moviesList = moviesSnap.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }))
+          .filter((m) => {
+            if (!m.scheduledRelease) return true;
+            const releaseTime = m.scheduledRelease.toDate 
+              ? m.scheduledRelease.toDate().getTime() 
+              : new Date(m.scheduledRelease).getTime();
+            return now >= releaseTime;
+          });
         setMovies(moviesList);
       } catch (err) {
         console.error("Error loading movies for trivia:", err);
@@ -80,7 +89,8 @@ export default function TriviaHubPage() {
   // Fetch and subscribe to current user's profile XP in realtime
   useEffect(() => {
     if (!user) {
-      setCurrentUserXP(0);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCurrentUserXP((prev) => (prev !== 0 ? 0 : prev));
       return;
     }
     const userRef = doc(db, "users", user.uid);

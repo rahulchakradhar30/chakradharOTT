@@ -35,11 +35,20 @@ export default function AICineGuidePage() {
     const fetchMovies = async () => {
       try {
         const snapshot = await getDocs(collection(db, "movies"));
+        const now = Date.now();
         setMovies(
-          snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }))
+          snapshot.docs
+            .map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            }))
+            .filter((m) => {
+              if (!m.scheduledRelease) return true;
+              const releaseTime = m.scheduledRelease.toDate 
+                ? m.scheduledRelease.toDate().getTime() 
+                : new Date(m.scheduledRelease).getTime();
+              return now >= releaseTime;
+            })
         );
       } catch (err) {
         console.error("Error loading movies for AI Assistant:", err);

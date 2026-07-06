@@ -454,12 +454,30 @@ export default function Home() {
         setPremieres(liveList);
         setScheduledPremieresData(scheduledList);
 
-        const heroMovie =
-          heroSnap.docs.map((d) => ({ id: d.id, ...d.data() }))[0];
+        const isMovieReleased = (movie) => {
+          if (!movie) return false;
+          if (!movie.scheduledRelease) return true;
+          const releaseTime = movie.scheduledRelease.toDate 
+            ? movie.scheduledRelease.toDate().getTime() 
+            : new Date(movie.scheduledRelease).getTime();
+          return now.getTime() >= releaseTime;
+        };
 
-        const trendingMovies = trendingSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        const featuredMovies = featuredSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        const newMovies = newSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const heroMovie = heroSnap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter(isMovieReleased)[0];
+
+        const trendingMovies = trendingSnap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter(isMovieReleased);
+
+        const featuredMovies = featuredSnap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter(isMovieReleased);
+
+        const newMovies = newSnap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter(isMovieReleased);
 
         setHero(
           heroMovie ||

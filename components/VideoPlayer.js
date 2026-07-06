@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { auth } from "@/firebase";
 import { ChatIcon, TrophyIcon, SparklesIcon, PlayIcon } from "@/components/Icon";
+import FaceOverlay from './xray/FaceOverlay';
 
 export default function VideoPlayer({
   src,
@@ -271,6 +272,11 @@ export default function VideoPlayer({
         }}
         onClick={handlePlayPause}
       />
+
+      {/* Face bounding boxes overlay */}
+      {movieId && (
+        <FaceOverlay videoRef={videoRef} mediaId={movieId} currentTimeMs={Math.floor(currentTime*1000)} />
+      )}
 
       {/* Floating Timed Comments Screen Display */}
       <AnimatePresence>

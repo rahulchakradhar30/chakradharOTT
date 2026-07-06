@@ -51,10 +51,16 @@ service cloud.firestore {
     // Movies Collection
     match /movies/{movieId} {
       allow read: if true;
-      allow write: if request.auth != null && (
+      allow create, delete: if request.auth != null && (
         request.auth.token.admin == true ||
         request.auth.token.email == 'thefifthagefilms@gmail.com' ||
         request.auth.token.email == 'rahulchakradharperepogu@gmail.com'
+      );
+      allow update: if request.auth != null && (
+        request.auth.token.admin == true ||
+        request.auth.token.email == 'thefifthagefilms@gmail.com' ||
+        request.auth.token.email == 'rahulchakradharperepogu@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.token.email))
       );
     }
 
@@ -145,6 +151,21 @@ service cloud.firestore {
     // Rate Limiting (Admin-only read/write)
     match /rate_limits/{limitId} {
       allow read, write: if false; // Only accessible via Firebase Admin SDK
+    }
+
+    // Admins Collection (Super-admins write, custom admins read)
+    match /admins/{adminEmail} {
+      allow read: if request.auth != null && (
+        request.auth.token.admin == true ||
+        request.auth.token.email == 'thefifthagefilms@gmail.com' ||
+        request.auth.token.email == 'rahulchakradharperepogu@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.token.email))
+      );
+      allow write: if request.auth != null && (
+        request.auth.token.admin == true ||
+        request.auth.token.email == 'thefifthagefilms@gmail.com' ||
+        request.auth.token.email == 'rahulchakradharperepogu@gmail.com'
+      );
     }
 
     // Default deny all other collections

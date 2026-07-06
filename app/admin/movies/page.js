@@ -10,6 +10,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import Link from "next/link";
+import { StarIcon, FlameIcon, TargetIcon } from "@/components/Icon";
 
 export default function MoviesManagement() {
   const [movies, setMovies] = useState([]);
@@ -233,9 +234,9 @@ export default function MoviesManagement() {
                 {/* ⭐ HERO */}
                 <button
                   onClick={() => setHeroMovie(movie.id)}
-                  className={`admin-chip transition ${movie.isHero ? "border-rose-300/30 bg-rose-500/15 text-rose-100" : "bg-white/5 text-gray-300"}`}
+                  className={`admin-chip transition flex items-center gap-1 ${movie.isHero ? "border-rose-300/30 bg-rose-500/15 text-rose-100" : "bg-white/5 text-gray-300"}`}
                 >
-                  ⭐ Hero {movie.isHero ? "On" : "Off"}
+                  <StarIcon className="w-3.5 h-3.5" /> Hero {movie.isHero ? "On" : "Off"}
                 </button>
 
                 {/* 🔥 TRENDING */}
@@ -247,9 +248,9 @@ export default function MoviesManagement() {
                       !!movie.isTrending
                     )
                   }
-                  className={`admin-chip transition ${movie.isTrending ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "bg-white/5 text-gray-300"}`}
+                  className={`admin-chip transition flex items-center gap-1 ${movie.isTrending ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "bg-white/5 text-gray-300"}`}
                 >
-                  Trending {movie.isTrending ? "On" : "Off"}
+                  <FlameIcon className="w-3.5 h-3.5" /> Trending {movie.isTrending ? "On" : "Off"}
                 </button>
 
                 {/* 🎯 FEATURED */}
@@ -261,21 +262,21 @@ export default function MoviesManagement() {
                       !!movie.isFeatured
                     )
                   }
-                  className={`admin-chip transition ${movie.isFeatured ? "border-amber-300/30 bg-amber-500/15 text-amber-100" : "bg-white/5 text-gray-300"}`}
+                  className={`admin-chip transition flex items-center gap-1 ${movie.isFeatured ? "border-amber-300/30 bg-amber-500/15 text-amber-100" : "bg-white/5 text-gray-300"}`}
                 >
-                  Featured {movie.isFeatured ? "On" : "Off"}
+                  <TargetIcon className="w-3.5 h-3.5" /> Featured {movie.isFeatured ? "On" : "Off"}
                 </button>
               </div>
             ) : (
               <div className="flex flex-wrap gap-3 text-sm opacity-60">
-                <span className={`admin-chip ${movie.isHero ? "border-rose-300/30 bg-rose-500/15 text-rose-100" : "bg-white/5 text-gray-400"}`}>
-                  ⭐ Hero {movie.isHero ? "Active" : "Inactive"}
+                <span className={`admin-chip flex items-center gap-1 ${movie.isHero ? "border-rose-300/30 bg-rose-500/15 text-rose-100" : "bg-white/5 text-gray-400"}`}>
+                  <StarIcon className="w-3.5 h-3.5" /> Hero {movie.isHero ? "Active" : "Inactive"}
                 </span>
-                <span className={`admin-chip ${movie.isTrending ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "bg-white/5 text-gray-400"}`}>
-                  Trending {movie.isTrending ? "Active" : "Inactive"}
+                <span className={`admin-chip flex items-center gap-1 ${movie.isTrending ? "border-emerald-300/30 bg-emerald-500/15 text-emerald-100" : "bg-white/5 text-gray-400"}`}>
+                  <FlameIcon className="w-3.5 h-3.5" /> Trending {movie.isTrending ? "Active" : "Inactive"}
                 </span>
-                <span className={`admin-chip ${movie.isFeatured ? "border-amber-300/30 bg-amber-500/15 text-amber-100" : "bg-white/5 text-gray-400"}`}>
-                  Featured {movie.isFeatured ? "Active" : "Inactive"}
+                <span className={`admin-chip flex items-center gap-1 ${movie.isFeatured ? "border-amber-300/30 bg-amber-500/15 text-amber-100" : "bg-white/5 text-gray-400"}`}>
+                  <TargetIcon className="w-3.5 h-3.5" /> Featured {movie.isFeatured ? "Active" : "Inactive"}
                 </span>
               </div>
             )}

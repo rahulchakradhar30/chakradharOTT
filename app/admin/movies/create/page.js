@@ -75,7 +75,7 @@ export default function CreateMovie() {
 
     try {
       const isFuture = scheduledRelease && scheduledRelease.getTime() > Date.now();
-      const title = isFuture ? "New Movie Scheduled! 🕐" : "New Movie Released! 🎬";
+      const title = isFuture ? "New Movie Scheduled!" : "New Movie Released!";
       const message = isFuture 
         ? `A new movie has been scheduled: "${form.title}" will release on ${scheduledRelease.toLocaleString()}`
         : `Watch the newly added movie: "${form.title}"`;

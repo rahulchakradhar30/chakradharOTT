@@ -28,7 +28,7 @@ export async function POST(request) {
     ];
     if (sensitiveKeywords.some(keyword => normalizedMessage.includes(keyword))) {
       return Response.json({
-        text: "I'm sorry, but I am not authorized to discuss administrative dashboards, login portals, security configurations, or private credentials. I can only assist you with searching for movies, ratings, and stats from our catalog! 🍿 How can I help you find your next film?"
+        text: "I'm sorry, but I am not authorized to discuss administrative dashboards, login portals, security configurations, or private credentials. I can only assist you with searching for movies, ratings, and stats from our catalog! How can I help you find your next film?"
       });
     }
 

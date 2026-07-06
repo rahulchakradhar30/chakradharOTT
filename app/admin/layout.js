@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import { LockIcon } from "@/components/Icon";
 
 const navItems = [
   { href: "/admin", label: "Dashboard" },
@@ -238,7 +239,7 @@ export default function AdminLayout({ children }) {
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6">
             <div className="glass-card rounded-[2rem] p-8 md:p-12 max-w-md w-full border border-red-500/20 bg-red-950/10 shadow-2xl relative overflow-hidden">
               <div className="absolute -top-12 -left-12 w-32 h-32 bg-red-500/10 rounded-full blur-2xl animate-pulse" />
-              <div className="text-6xl mb-6">🔒</div>
+              <LockIcon className="w-16 h-16 text-red-400 mx-auto mb-6" />
               <h1 className="text-3xl font-black mb-3 text-red-400">Access Denied</h1>
               <p className="text-sm text-gray-300 leading-relaxed mb-8">
                 This page is restricted to **Super Administrators**. Your current role (**Sub-Admin**) does not have permission to view this section.

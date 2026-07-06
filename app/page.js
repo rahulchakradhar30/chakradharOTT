@@ -18,6 +18,7 @@ import CardWishlistIcon from "@/components/CardWishlistIcon";
 import MovieHoverCard from "@/components/MovieHoverCard";
 import { SkeletonHero, SkeletonGrid } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
+import { SparklesIcon, PlayIcon, ClockIcon, WarningIcon } from "@/components/Icon";
 
 function toDateSafe(value) {
   if (!value) return null;
@@ -145,8 +146,8 @@ function CinematicHero({ movie, loading }) {
             transition={{ duration: 0.6 }}
             className="flex flex-wrap items-center gap-2"
           >
-            <span className="animate-softPulse text-xs md:text-sm tracking-widest uppercase px-4 py-2 rounded-full glass-card border-cyan-300/50 backdrop-blur-md font-semibold">
-              ✨ Featured Tonight
+            <span className="animate-softPulse text-xs md:text-sm tracking-widest uppercase px-4 py-2 rounded-full glass-card border-cyan-300/50 backdrop-blur-md font-semibold flex items-center gap-1.5">
+              <SparklesIcon className="w-4 h-4 text-cyan-300" /> Featured Tonight
             </span>
             {movie.genre && (
               <span className="text-xs md:text-sm px-4 py-2 rounded-full bg-white/10 border border-white/25 backdrop-blur-sm font-medium">
@@ -184,9 +185,9 @@ function CinematicHero({ movie, loading }) {
           >
             <Link
               href={`/movie/${movie.id}`}
-              className="focus-ring admin-button admin-button-primary px-8 md:px-10 py-3.5 rounded-full text-base md:text-lg font-bold shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 transition-all hover:-translate-y-0.5"
+              className="focus-ring admin-button admin-button-primary px-8 md:px-10 py-3.5 rounded-full text-base md:text-lg font-bold shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 transition-all hover:-translate-y-0.5 flex items-center gap-2"
             >
-              ▶ Watch Now
+              <PlayIcon className="w-5 h-5" /> Watch Now
             </Link>
             <Link
               href="/movies"
@@ -254,13 +255,21 @@ function PremiereRow({ premieres, scheduled, loading }) {
         <div className="absolute inset-0 p-5 md:p-6 flex flex-col justify-between relative z-10">
           <div className="flex flex-wrap gap-2 text-xs">
             <span
-              className={`px-3 py-1.5 rounded-full backdrop-blur-md font-bold uppercase tracking-widest ${
+              className={`px-3 py-1.5 rounded-full backdrop-blur-md font-bold uppercase tracking-widest flex items-center gap-1.5 ${
                 p.status === "live"
                   ? "bg-red-500/80 border border-red-300/50 text-white animate-pulse"
                   : "bg-cyan-500/60 border border-cyan-300/40 text-white"
               }`}
             >
-              {p.status === "live" ? "🔴 LIVE NOW" : "🕐 Coming"}
+              {p.status === "live" ? (
+                <>
+                  <span className="w-2.5 h-2.5 bg-white rounded-full animate-ping" /> LIVE NOW
+                </>
+              ) : (
+                <>
+                  <ClockIcon className="w-3.5 h-3.5" /> Coming
+                </>
+              )}
             </span>
             {p.ticketRequired && p.ticketPrice && (
               <span className="px-3 py-1.5 rounded-full bg-white/15 border border-white/25 backdrop-blur-md font-bold">
@@ -517,7 +526,7 @@ export default function Home() {
     return (
       <div className="min-h-screen flex items-center justify-center text-center px-4">
         <div className="glass-card rounded-2xl px-6 py-8 max-w-sm w-full">
-          <div className="text-5xl mb-4">⚠️</div>
+          <WarningIcon className="w-12 h-12 text-amber-500 mx-auto mb-4" />
           <h2 className="text-2xl font-black mb-2">Something went wrong</h2>
           <p className="text-gray-300 text-sm mb-6">
             We&apos;re having trouble loading content. Please try refreshing the page.

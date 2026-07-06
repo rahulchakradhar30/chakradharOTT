@@ -30,18 +30,74 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/Toast";
+import {
+  UserIcon,
+  AnalyticsIcon,
+  WishlistIcon,
+  TicketIcon,
+  ChatIcon,
+  BellIcon,
+  TrophyIcon,
+  CreditCardIcon,
+  SettingsIcon,
+  LockIcon,
+  LogOutIcon,
+  MovieIcon,
+  ClockIcon,
+  FlameIcon,
+  SparklesIcon,
+  WarningIcon
+} from "@/components/Icon";
+
+function TabIcon({ tabKey, className = "w-4 h-4" }) {
+  switch (tabKey) {
+    case "overview": return <UserIcon className={className} />;
+    case "activity": return <AnalyticsIcon className={className} />;
+    case "wishlist": return <WishlistIcon className={className} />;
+    case "tickets": return <TicketIcon className={className} />;
+    case "support": return <ChatIcon className={className} />;
+    case "notifications": return <BellIcon className={className} />;
+    case "achievements": return <TrophyIcon className={className} />;
+    case "payments": return <CreditCardIcon className={className} />;
+    case "settings": return <SettingsIcon className={className} />;
+    case "security": return <LockIcon className={className} />;
+    default: return null;
+  }
+}
+
+function AchievementIcon({ id, className = "w-8 h-8" }) {
+  switch (id) {
+    case "first_movie": return <MovieIcon className={className + " text-cyan-400"} />;
+    case "super_fan": return <SparklesIcon className={className + " text-amber-400"} />;
+    case "marathoner": return <ClockIcon className={className + " text-blue-400"} />;
+    case "binge_master": return <TrophyIcon className={className + " text-yellow-400"} />;
+    case "weekly_streak": return <FlameIcon className={className + " text-rose-500"} />;
+    case "first_ticket": return <ChatIcon className={className + " text-purple-400"} />;
+    default: return <TrophyIcon className={className} />;
+  }
+}
+
+function MetricIcon({ label, className = "w-5 h-5 text-cyan-300 mx-auto" }) {
+  switch (label) {
+    case "Today Watch": return <ClockIcon className={className} />;
+    case "Weekly Watch": return <TicketIcon className={className} />;
+    case "Monthly Watch": return <AnalyticsIcon className={className} />;
+    case "Lifetime Watch": return <SparklesIcon className={className} />;
+    default: return null;
+  }
+}
 
 const TABS = [
-  { key: "overview", label: "Overview", icon: "👤" },
-  { key: "activity", label: "My Activity", icon: "📊" },
-  { key: "wishlist", label: "My List", icon: "❤️" },
-  { key: "tickets", label: "Tickets", icon: "🎟️" },
-  { key: "support", label: "Support Tickets", icon: "💬" },
-  { key: "notifications", label: "Notifications", icon: "🔔" },
-  { key: "achievements", label: "Achievements", icon: "🏆" },
-  { key: "payments", label: "Payments", icon: "💳" },
-  { key: "settings", label: "Settings", icon: "⚙️" },
-  { key: "security", label: "Security", icon: "🔒" },
+  { key: "overview", label: "Overview" },
+  { key: "activity", label: "My Activity" },
+  { key: "wishlist", label: "My List" },
+  { key: "tickets", label: "Tickets" },
+  { key: "support", label: "Support Tickets" },
+  { key: "notifications", label: "Notifications" },
+  { key: "achievements", label: "Achievements" },
+  { key: "payments", label: "Payments" },
+  { key: "settings", label: "Settings" },
+  { key: "security", label: "Security" },
 ];
 
 const defaultSettings = {
@@ -56,12 +112,12 @@ const defaultSettings = {
 
 // Achievement library definition
 const ACHIEVEMENT_LIST = [
-  { id: "first_movie", title: "First Premiere", desc: "Watched your first movie segment!", icon: "🎬" },
-  { id: "super_fan", title: "Super Fan", desc: "Added 10 or more movies to your continue watching history!", icon: "🌟" },
-  { id: "marathoner", title: "Marathoner", desc: "Completed 50 hours of playback watch-time!", icon: "🏃" },
-  { id: "binge_master", title: "Binge Master", desc: "Completed 100 hours of playback watch-time!", icon: "👑" },
-  { id: "weekly_streak", title: "Loyal Streamer", desc: "Maintained a 7-day daily login streak!", icon: "🔥" },
-  { id: "first_ticket", title: "Reporter", desc: "Filed your first support ticket!", icon: "📞" },
+  { id: "first_movie", title: "First Premiere", desc: "Watched your first movie segment!" },
+  { id: "super_fan", title: "Super Fan", desc: "Added 10 or more movies to your continue watching history!" },
+  { id: "marathoner", title: "Marathoner", desc: "Completed 50 hours of playback watch-time!" },
+  { id: "binge_master", title: "Binge Master", desc: "Completed 100 hours of playback watch-time!" },
+  { id: "weekly_streak", title: "Loyal Streamer", desc: "Maintained a 7-day daily login streak!" },
+  { id: "first_ticket", title: "Reporter", desc: "Filed your first support ticket!" },
 ];
 
 export default function ProfilePage() {
@@ -541,7 +597,7 @@ export default function ProfilePage() {
               }`}
             >
               <span className="flex items-center gap-3">
-                <span className="text-base">{tab.icon}</span>
+                <TabIcon tabKey={tab.key} className="w-4 h-4 text-current" />
                 {tab.label}
               </span>
               {tab.key === "notifications" && unreadNotificationsCount > 0 ? (
@@ -560,7 +616,7 @@ export default function ProfilePage() {
             }}
             className="w-full flex items-center gap-3 p-3.5 rounded-2xl text-xs font-bold text-red-400 hover:bg-red-500/10 transition"
           >
-            <span>🚪</span>
+            <LogOutIcon className="w-4 h-4" />
             Log Out
           </button>
         </div>
@@ -586,15 +642,15 @@ export default function ProfilePage() {
                   {/* WATCH TIME METRICS SUMMARY */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[
-                      { label: "Today Watch", value: `${watchHours.daily} hrs`, icon: "⏱️" },
-                      { label: "Weekly Watch", value: `${watchHours.weekly} hrs`, icon: "📅" },
-                      { label: "Monthly Watch", value: `${watchHours.monthly} hrs`, icon: "📊" },
-                      { label: "Lifetime Watch", value: `${watchHours.lifetime} hrs`, icon: "♾️" }
+                      { label: "Today Watch", value: `${watchHours.daily} hrs` },
+                      { label: "Weekly Watch", value: `${watchHours.weekly} hrs` },
+                      { label: "Monthly Watch", value: `${watchHours.monthly} hrs` },
+                      { label: "Lifetime Watch", value: `${watchHours.lifetime} hrs` }
                     ].map((m, i) => (
-                      <div key={i} className="p-4 rounded-2xl bg-zinc-950 border border-white/5 text-center">
-                        <span className="text-lg">{m.icon}</span>
-                        <p className="text-[10px] uppercase font-black tracking-widest text-gray-400 mt-2">{m.label}</p>
-                        <p className="text-base font-extrabold text-cyan-300 mt-1">{m.value}</p>
+                      <div key={i} className="p-4 rounded-2xl bg-zinc-950 border border-white/5 text-center flex flex-col justify-between items-center gap-2">
+                        <MetricIcon label={m.label} />
+                        <p className="text-[10px] uppercase font-black tracking-widest text-gray-400 mt-1">{m.label}</p>
+                        <p className="text-base font-extrabold text-cyan-300 mt-0.5">{m.value}</p>
                       </div>
                     ))}
                   </div>
@@ -1002,7 +1058,7 @@ export default function ProfilePage() {
 
                   {notifications.length === 0 ? (
                     <div className="text-center py-16">
-                      <p className="text-5xl mb-4">🔔</p>
+                      <BellIcon className="w-12 h-12 text-gray-500 mx-auto mb-4" />
                       <p className="text-gray-400 font-medium">Your notification center is clear.</p>
                     </div>
                   ) : (
@@ -1019,8 +1075,8 @@ export default function ProfilePage() {
                                 : "bg-cyan-500/5 border-cyan-400/25"
                             }`}
                           >
-                            <span className="text-2xl mt-0.5">
-                              {notif.type === "achievement" ? "🏆" : "💬"}
+                            <span className="shrink-0 text-cyan-400 mt-0.5">
+                              {notif.type === "achievement" ? <TrophyIcon className="w-5 h-5 text-yellow-400" /> : <ChatIcon className="w-5 h-5 text-cyan-400" />}
                             </span>
                             <div className="flex-1 space-y-1">
                               <div className="flex justify-between items-start gap-2">
@@ -1063,10 +1119,10 @@ export default function ProfilePage() {
                               : "bg-zinc-950 border-white/5 opacity-55 grayscale"
                           }`}
                         >
-                          <div className={`w-14 h-14 rounded-full shrink-0 flex items-center justify-center text-3xl ${
-                            isUnlocked ? "bg-yellow-400/25 text-yellow-300 border border-yellow-400/40" : "bg-white/5 border border-white/10"
+                          <div className={`w-14 h-14 rounded-full shrink-0 flex items-center justify-center ${
+                            isUnlocked ? "bg-yellow-400/25 border border-yellow-400/40" : "bg-white/5 border border-white/10"
                           }`}>
-                            {ach.icon}
+                            <AchievementIcon id={ach.id} />
                           </div>
                           <div className="flex-1 space-y-1">
                             <div className="flex items-center gap-2">
@@ -1076,8 +1132,8 @@ export default function ProfilePage() {
                                   Unlocked ✓
                                 </span>
                               ) : (
-                                <span className="text-[9px] font-black uppercase text-gray-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">
-                                  Locked 🔒
+                                <span className="text-[9px] font-black uppercase text-gray-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                  <LockIcon className="w-2.5 h-2.5" /> Locked
                                 </span>
                               )}
                             </div>
@@ -1096,7 +1152,7 @@ export default function ProfilePage() {
                   <h2 className="text-2xl md:text-3xl font-black mb-6">Payment History</h2>
                   {paymentHistory.length === 0 ? (
                     <div className="text-center py-16">
-                      <p className="text-5xl mb-4">💳</p>
+                      <CreditCardIcon className="w-12 h-12 text-gray-500 mx-auto mb-4" />
                       <p className="text-gray-400">No payment history found.</p>
                     </div>
                   ) : (
@@ -1190,8 +1246,11 @@ export default function ProfilePage() {
                 <div>
                   <h2 className="text-2xl md:text-3xl font-black mb-6">Account Security</h2>
                   {user.providerData?.[0]?.providerId === "google.com" ? (
-                    <div className="p-5 rounded-2xl bg-white/5 border border-white/10 text-xs leading-relaxed text-gray-300">
-                      🔒 Your account is authenticated via **Google Single Sign-On**. Credential management and password security are managed securely directly through your Google Account configurations.
+                    <div className="p-5 rounded-2xl bg-white/5 border border-white/10 text-xs leading-relaxed text-gray-300 flex items-start gap-2.5">
+                      <LockIcon className="w-4 h-4 text-cyan-300 shrink-0 mt-0.5" />
+                      <span>
+                        Your account is authenticated via **Google Single Sign-On**. Credential management and password security are managed securely directly through your Google Account configurations.
+                      </span>
                     </div>
                   ) : (
                     <form onSubmit={handlePasswordChange} className="space-y-5 max-w-md">

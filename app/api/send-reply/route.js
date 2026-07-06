@@ -209,7 +209,7 @@ export async function POST(req) {
     if (userId) {
       try {
         await adminDb.collection("users").doc(userId).collection("notifications").add({
-          title: "New Support Reply! 💬",
+          title: "New Support Reply!",
           message: `Our support team has posted a reply to your ticket: "${text.slice(0, 60)}${text.length > 60 ? "..." : ""}"`,
           type: "support_reply",
           read: false,

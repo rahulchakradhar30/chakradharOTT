@@ -67,7 +67,7 @@ export async function POST(req) {
 
     // Broadcast notification to all users
     notifyAllUsers({
-      title: "New Poster Uploaded! 🎨",
+      title: "New Poster Uploaded!",
       message: `A new poster has been posted: "${caption.trim().slice(0, 50)}${caption.trim().length > 50 ? "..." : ""}"`,
       type: "poster",
       link: "/posters"

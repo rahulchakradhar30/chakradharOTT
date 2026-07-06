@@ -6,6 +6,7 @@ import { collection, getDocs } from "firebase/firestore";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
+import { RobotIcon } from "@/components/Icon";
 
 export default function AICineGuidePage() {
   const [movies, setMovies] = useState([]);
@@ -13,7 +14,7 @@ export default function AICineGuidePage() {
     {
       id: "welcome",
       sender: "ai",
-      text: "Hello! I am your AI CineGuide. 🍿\n\nWhat are you in the mood for tonight? Ask me for recommendations by genre, rating, release year, or tell me your current mood (e.g. 'I want a mind-bending thriller' or 'Show me something light-hearted').",
+      text: "Hello! I am your AI CineGuide.\n\nWhat are you in the mood for tonight? Ask me for recommendations by genre, rating, release year, or tell me your current mood (e.g. 'I want a mind-bending thriller' or 'Show me something light-hearted').",
       timestamp: new Date(),
     },
   ]);
@@ -24,10 +25,10 @@ export default function AICineGuidePage() {
   const messagesEndRef = useRef(null);
 
   const STARTER_PROMPTS = [
-    { text: "🎬 Best action movies", query: "action" },
-    { text: "🧠 Mind-bending Sci-Fi", query: "sci-fi" },
-    { text: "⭐ Top rated films", query: "top rated" },
-    { text: "📅 Recent drops", query: "recent" },
+    { text: "Best action movies", query: "action" },
+    { text: "Mind-bending Sci-Fi", query: "sci-fi" },
+    { text: "Top rated films", query: "top rated" },
+    { text: "Recent drops", query: "recent" },
   ];
 
   // Fetch all movies for local searching and matching
@@ -239,7 +240,7 @@ export default function AICineGuidePage() {
                   {
                     id: "welcome",
                     sender: "ai",
-                    text: "Hello! I am your AI CineGuide. 🍿\n\nWhat are you in the mood for tonight? Ask me for recommendations by genre, rating, release year, or tell me your current mood.",
+                    text: "Hello! I am your AI CineGuide.\n\nWhat are you in the mood for tonight? Ask me for recommendations by genre, rating, release year, or tell me your current mood.",
                     timestamp: new Date(),
                   }
                 ]);
@@ -260,8 +261,8 @@ export default function AICineGuidePage() {
                 }`}
               >
                 {msg.sender === "ai" && (
-                  <div className="w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-sm shrink-0">
-                    🤖
+                  <div className="w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center shrink-0">
+                    <RobotIcon className="w-4 h-4 text-cyan-300" />
                   </div>
                 )}
 

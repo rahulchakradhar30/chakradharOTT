@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { db } from "@/firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
+import { LockIcon } from "@/components/Icon";
 
 export default function SubAdminsManagement() {
   const [admins, setAdmins] = useState([]);
@@ -90,7 +91,7 @@ export default function SubAdminsManagement() {
   if (adminRole !== "super_admin") {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-6">
-        <div className="text-5xl mb-4">🔒</div>
+        <LockIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
         <h2 className="text-xl font-bold text-red-400">Restricted Access</h2>
         <p className="text-sm text-gray-400 mt-2">Only Super-Admins can manage administrator roles.</p>
       </div>

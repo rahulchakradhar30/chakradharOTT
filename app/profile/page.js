@@ -47,6 +47,7 @@ const TABS = [
 const defaultSettings = {
   premiereReminders: true,
   emailNotifications: true,
+  browserNotifications: true,
   autoplayTrailers: false,
   dataSaver: false,
   subtitlesDefault: "English",
@@ -1147,6 +1148,17 @@ export default function ProfilePage() {
                       hint="Updates for releases and account alerts"
                       value={settings.emailNotifications}
                       onChange={(value) => setSettings((prev) => ({ ...prev, emailNotifications: value }))}
+                    />
+                    <SettingToggle
+                      label="Browser Push Notifications"
+                      hint="Receive alerts on releases and support responses"
+                      value={settings.browserNotifications !== false}
+                      onChange={(value) => {
+                        setSettings((prev) => ({ ...prev, browserNotifications: value }));
+                        if (value && typeof window !== "undefined" && "Notification" in window) {
+                          Notification.requestPermission();
+                        }
+                      }}
                     />
                     <SettingToggle
                       label="Autoplay Trailers"

@@ -69,6 +69,7 @@ export async function POST(req) {
     const recipientEmail = String(ticketData.email || "").trim().toLowerCase();
     const recipientName = String(ticketData.name || "Customer").trim();
     const originalMessage = String(ticketData.message || "").trim();
+    const userId = ticketData.userId || null;
 
     if (!recipientEmail) {
       return NextResponse.json(
@@ -203,6 +204,21 @@ export async function POST(req) {
     };
 
     await ticketRef.update(updatePayload);
+
+    // Create in-app support reply notification for the user
+    if (userId) {
+      try {
+        await adminDb.collection("users").doc(userId).collection("notifications").add({
+          title: "New Support Reply! 💬",
+          message: `Our support team has posted a reply to your ticket: "${text.slice(0, 60)}${text.length > 60 ? "..." : ""}"`,
+          type: "support_reply",
+          read: false,
+          createdAt: new Date(),
+        });
+      } catch (notifErr) {
+        console.error("Failed to create in-app notification for ticket reply:", notifErr);
+      }
+    }
 
     await logServerEvent(emailStatus === "success" ? "contact_reply_sent" : "contact_reply_failed", {
       ip,

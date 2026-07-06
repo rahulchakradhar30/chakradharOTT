@@ -59,11 +59,28 @@ export default function CreateMovie() {
 
     const finalEmbed = normalizeYouTubeEmbed(form.embedLink);
 
-    await addDoc(collection(db, "movies"), {
+    const docRef = await addDoc(collection(db, "movies"), {
       ...form,
       embedLink: finalEmbed,
       createdAt: Timestamp.now(),
     });
+
+    try {
+      await fetch("/api/notifications/broadcast", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: "New Movie Released! 🎬",
+          message: `Watch the newly added movie: "${form.title}"`,
+          type: "movie",
+          link: `/movie/${docRef.id}`,
+        }),
+      });
+    } catch (notifErr) {
+      console.warn("Failed to broadcast movie release notification:", notifErr);
+    }
 
     setLoading(false);
     alert("Movie uploaded successfully");

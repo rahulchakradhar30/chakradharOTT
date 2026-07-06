@@ -2,6 +2,7 @@ import "@/app/globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CookieBanner from "@/components/CookieBanner";
+import NotificationListener from "@/components/NotificationListener";
 import { ToastProvider } from "@/components/Toast";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
@@ -65,6 +66,7 @@ export default function RootLayout({ children }) {
           <AuthProvider>
             <ThemeProvider>
               <Navbar />
+              <NotificationListener />
               <main className="flex-grow pt-20 md:pt-24">
                 {children}
               </main>

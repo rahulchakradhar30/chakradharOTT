@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifyAdminSession } from "@/lib/adminAuth";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { FieldValue } from "firebase-admin/firestore";
+import { notifyAllUsers } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
@@ -62,6 +63,14 @@ export async function POST(req) {
       likesCount: 0,
       commentsCount: 0,
       createdAt: FieldValue.serverTimestamp(),
+    });
+
+    // Broadcast notification to all users
+    notifyAllUsers({
+      title: "New Poster Uploaded! 🎨",
+      message: `A new poster has been posted: "${caption.trim().slice(0, 50)}${caption.trim().length > 50 ? "..." : ""}"`,
+      type: "poster",
+      link: "/posters"
     });
 
     return NextResponse.json({ success: true, id: docRef.id });

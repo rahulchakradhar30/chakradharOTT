@@ -6,6 +6,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { getTrendingContent } from "@/lib/searchEngine";
 import { SkeletonGrid } from "@/components/Skeleton";
+import { slugifyGenre } from "@/lib/seo";
 
 const GENRES = [
   { name: "Action", icon: "💥", color: "from-red-600 to-red-900" },
@@ -70,7 +71,7 @@ export default function DiscoverPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: index * 0.05 }}
               >
-                <Link href={`/genre/${encodeURIComponent(genre.name)}`}>
+                <Link href={`/genre/${slugifyGenre(genre.name)}`}>
                   <div
                     className={`relative h-40 rounded-2xl bg-gradient-to-br ${genre.color} overflow-hidden border border-white/10 hover:border-white/30 transition group cursor-pointer`}
                   >

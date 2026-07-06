@@ -1,8 +1,11 @@
+import { getReadableGenreName, slugifyGenre } from "@/lib/seo";
+
 export default function Head({ params }) {
-  const genre = decodeURIComponent(params?.genre || "Genre");
-  const title = `${genre} Movies & Series | Chakradhar Stream`;
-  const description = `Discover ${genre.toLowerCase()} movies and series on Chakradhar Stream.`;
-  const canonical = `https://chakradharstream.vercel.app/genre/${encodeURIComponent(genre)}`;
+  const genreSlug = params?.genre || "";
+  const genreName = getReadableGenreName(genreSlug) || "Genre";
+  const title = `${genreName} Movies & Series | Chakradhar Stream`;
+  const description = `Discover ${genreName.toLowerCase()} movies and series on Chakradhar Stream.`;
+  const canonical = `https://chakradharstream.vercel.app/genre/${slugifyGenre(genreSlug)}`;
 
   return (
     <>

@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { getContentByGenre } from "@/lib/searchEngine";
 import { SkeletonGrid } from "@/components/Skeleton";
 import EmptyState from "@/components/EmptyState";
+import { getReadableGenreName, slugifyGenre } from "@/lib/seo";
 
 const GENRE_DESCRIPTIONS = {
   Action: "Heart-pounding adventures filled with thrilling sequences",
@@ -37,8 +38,9 @@ const GENRE_COLORS = {
 
 export default function GenrePage() {
   const params = useParams();
-  const genre = decodeURIComponent(params.genre || "");
+  const genreSlug = params.genre || "";
 
+  const [genreName, setGenreName] = useState(getReadableGenreName(genreSlug));
   const [content, setContent] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -48,8 +50,29 @@ export default function GenrePage() {
       try {
         setLoading(true);
         setError(null);
-        const data = await getContentByGenre(genre);
+        const data = await getContentByGenre(genreSlug);
         setContent(data);
+
+        // Resolve original database capitalization/spacing if a match exists in the records
+        const targetSlug = slugifyGenre(genreSlug);
+        let foundName = null;
+        for (const item of data) {
+          if (!item.genre) continue;
+          const parts = String(item.genre).split(",");
+          for (const part of parts) {
+            if (slugifyGenre(part) === targetSlug) {
+              foundName = part.trim();
+              break;
+            }
+          }
+          if (foundName) break;
+        }
+
+        if (foundName) {
+          setGenreName(foundName);
+        } else {
+          setGenreName(getReadableGenreName(genreSlug));
+        }
       } catch (err) {
         console.error("Error loading genre content:", err);
         setError("Failed to load content");
@@ -58,13 +81,13 @@ export default function GenrePage() {
       }
     };
 
-    if (genre) {
+    if (genreSlug) {
       loadContent();
     }
-  }, [genre]);
+  }, [genreSlug]);
 
-  const gradientClass = GENRE_COLORS[genre] || "from-blue-600 to-blue-900";
-  const description = GENRE_DESCRIPTIONS[genre] || "Explore amazing content";
+  const gradientClass = GENRE_COLORS[genreName] || "from-blue-600 to-blue-900";
+  const description = GENRE_DESCRIPTIONS[genreName] || "Explore amazing content";
 
   return (
     <div className="min-h-screen">
@@ -83,7 +106,7 @@ export default function GenrePage() {
             <p className="text-sm md:text-base uppercase tracking-widest text-white/80 mb-2">
               Genre
             </p>
-            <h1 className="text-4xl md:text-6xl font-black mb-4 text-white">{genre}</h1>
+            <h1 className="text-4xl md:text-6xl font-black mb-4 text-white">{genreName}</h1>
             <p className="text-lg md:text-xl text-white/90 max-w-2xl">{description}</p>
             <div className="mt-6 flex gap-3">
               <div className="px-4 py-2 rounded-full bg-white/15 border border-white/30 text-sm">
@@ -107,17 +130,17 @@ export default function GenrePage() {
         ) : content.length === 0 ? (
           <EmptyState
             title="No content available"
-            description={`No ${genre.toLowerCase()} titles available yet. Check back soon!`}
+            description={`No ${genreName.toLowerCase()} titles available yet. Check back soon!`}
             icon="🎬"
           />
         ) : (
           <>
             <div className="mb-8">
               <h2 className="text-2xl md:text-3xl font-black tracking-tight">
-                All {genre} Content
+                All {genreName} Content
               </h2>
               <p className="text-gray-400 text-sm mt-2">
-                Browse {content.length} amazing {genre.toLowerCase()} titles
+                Browse {content.length} amazing {genreName.toLowerCase()} titles
               </p>
             </div>
 
@@ -169,3 +192,4 @@ export default function GenrePage() {
     </div>
   );
 }
+

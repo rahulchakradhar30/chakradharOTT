@@ -1,4 +1,6 @@
-import { SITE_URL } from "@/lib/seo";
+import { SITE_URL, slugifyGenre } from "@/lib/seo";
+
+export const dynamic = "force-dynamic";
 
 const STATIC_ROUTES = [
   "/",
@@ -35,6 +37,10 @@ function createUrl(path) {
   return `${SITE_URL}${path}`;
 }
 
+/**
+ * Generates the dynamic XML sitemap.
+ * @returns {Promise<import('next').MetadataRoute.Sitemap>}
+ */
 export default async function sitemap() {
   let movies = [];
   let premieres = [];
@@ -59,35 +65,84 @@ export default async function sitemap() {
     console.error("Sitemap generation error:", error);
   }
 
-  const genreMap = new Map();
+  // Parse and extract unique genres, filtering out null/undefined/empty/malformed values
+  const genreSet = new Set();
   [...movies, ...premieres].forEach((item) => {
     if (item?.genre) {
-      genreMap.set(String(item.genre).trim(), true);
+      const parts = String(item.genre).split(",");
+      parts.forEach((part) => {
+        const trimmed = part.trim();
+        if (
+          trimmed &&
+          trimmed.toLowerCase() !== "undefined" &&
+          trimmed.toLowerCase() !== "null"
+        ) {
+          genreSet.add(trimmed);
+        }
+      });
     }
   });
 
-  const dynamicGenres = Array.from(genreMap.keys()).filter(Boolean);
+  // Map unique genres to unique slugs to prevent duplicates
+  const uniqueGenres = Array.from(genreSet);
+  const slugSet = new Set();
+  const dynamicGenres = [];
+
+  uniqueGenres.forEach((genre) => {
+    const slug = slugifyGenre(genre);
+    if (slug && !slugSet.has(slug)) {
+      slugSet.add(slug);
+      dynamicGenres.push({
+        name: genre,
+        slug: slug,
+      });
+    }
+  });
+
+  // Filter and validate movies to remove drafts or entries with malformed/missing IDs
+  const validMovies = movies.filter(
+    (movie) =>
+      movie &&
+      movie.id &&
+      typeof movie.id === "string" &&
+      movie.id.trim() &&
+      !movie.id.includes(" ") &&
+      movie.id.toLowerCase() !== "undefined" &&
+      movie.id.toLowerCase() !== "null"
+  );
+
+  // Filter and validate premieres to remove drafts or entries with malformed/missing IDs
+  const validPremieres = premieres.filter(
+    (premiere) =>
+      premiere &&
+      premiere.id &&
+      typeof premiere.id === "string" &&
+      premiere.id.trim() &&
+      !premiere.id.includes(" ") &&
+      premiere.id.toLowerCase() !== "undefined" &&
+      premiere.id.toLowerCase() !== "null"
+  );
 
   return [
     ...STATIC_ROUTES.map((path) => ({
       url: createUrl(path),
       lastModified: new Date(),
       changeFrequency: path === "/" ? "daily" : "weekly",
-      priority: path === "/" ? 1 : 0.7,
+      priority: path === "/" ? 1.0 : 0.7,
     })),
-    ...dynamicGenres.map((genre) => ({
-      url: createUrl(`/genre/${encodeURIComponent(genre)}`),
+    ...dynamicGenres.map((genreInfo) => ({
+      url: createUrl(`/genre/${genreInfo.slug}`),
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.6,
     })),
-    ...movies.map((movie) => ({
+    ...validMovies.map((movie) => ({
       url: createUrl(`/movie/${movie.id}`),
       lastModified: toDate(movie.updatedAt || movie.createdAt),
       changeFrequency: "weekly",
       priority: 0.9,
     })),
-    ...premieres.map((premiere) => ({
+    ...validPremieres.map((premiere) => ({
       url: createUrl(`/premiere/${premiere.id}`),
       lastModified: toDate(premiere.updatedAt || premiere.createdAt || premiere.startTime),
       changeFrequency: "weekly",
@@ -95,3 +150,4 @@ export default async function sitemap() {
     })),
   ];
 }
+

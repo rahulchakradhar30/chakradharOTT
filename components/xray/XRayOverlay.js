@@ -31,7 +31,14 @@ export default function XRayOverlay({ mediaId, currentTimeMs }) {
       {scene.behindTheScenes && <div className="bts">{scene.behindTheScenes}</div>}
       <h5>Actors</h5>
       <ul>
-        {(scene.actorsOnScreen || []).map(a => <li key={a.personId}>{a.name} {a.role ? `— ${a.role}` : ''}</li>)}
+        {(scene.actorsOnScreen || []).map(a => (
+          <li key={a.personId}>
+            <a href={`/people/${a.personId}`}>{a.name}</a> {a.role ? `— ${a.role}` : ''}
+            {a.faceBBox && (
+              <div className="face-bbox">BBox: {a.faceBBox.x},{a.faceBBox.y},{a.faceBBox.w},{a.faceBBox.h}</div>
+            )}
+          </li>
+        ))}
       </ul>
       {scene.trivia && scene.trivia.length > 0 && (
         <section className="scene-trivia">

@@ -18,7 +18,7 @@ import CardWishlistIcon from "@/components/CardWishlistIcon";
 import MovieHoverCard from "@/components/MovieHoverCard";
 import { SkeletonHero, SkeletonGrid } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
-import { SparklesIcon, PlayIcon, ClockIcon, WarningIcon } from "@/components/Icon";
+import { SparklesIcon, PlayIcon, ClockIcon, WarningIcon, PosterIcon, WishlistIcon, ChatIcon } from "@/components/Icon";
 
 function toDateSafe(value) {
   if (!value) return null;
@@ -615,13 +615,19 @@ export default function Home() {
                           className="object-cover group-hover:scale-105 transition duration-700"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-cyan-900 to-blue-900 flex items-center justify-center text-4xl">🖼️</div>
+                        <div className="w-full h-full bg-gradient-to-br from-cyan-900 to-blue-900 flex items-center justify-center">
+                          <PosterIcon className="w-8 h-8 text-cyan-300" />
+                        </div>
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition duration-300 flex flex-col justify-end p-3">
                         <p className="text-xs text-white line-clamp-2">{poster.caption || ""}</p>
-                        <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-300">
-                          <span>❤️ {poster.likesCount || 0}</span>
-                          <span>💬 {poster.commentsCount || 0}</span>
+                        <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-300 font-semibold">
+                          <span className="flex items-center gap-0.5">
+                            <WishlistIcon className="w-3 h-3 text-rose-500 fill-current" /> {poster.likesCount || 0}
+                          </span>
+                          <span className="flex items-center gap-0.5">
+                            <ChatIcon className="w-3 h-3 text-cyan-400" /> {poster.commentsCount || 0}
+                          </span>
                         </div>
                       </div>
                     </motion.div>

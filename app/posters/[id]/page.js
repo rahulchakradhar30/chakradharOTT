@@ -15,10 +15,8 @@ import {
   query,
   where,
   getDocs,
-  onSnapshot,
-  orderBy,
-  serverTimestamp,
 } from "firebase/firestore";
+import { WishlistIcon, ChatIcon, MovieIcon } from "@/components/Icon";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -264,20 +262,26 @@ export default function PosterDetailPage() {
                     exit={{ scale: 0.5 }}
                     transition={{ duration: 0.15 }}
                   >
-                    {liked ? "❤️" : "🤍"}
+                    {liked ? (
+                      <WishlistIcon className="w-4 h-4 text-red-500 fill-current" />
+                    ) : (
+                      <WishlistIcon className="w-4 h-4 text-gray-300" />
+                    )}
                   </motion.span>
                 </AnimatePresence>
                 {likeCount}
               </button>
 
-              <span className="text-sm text-gray-400">💬 {comments.length} comments</span>
+              <span className="text-sm text-gray-400 flex items-center gap-1">
+                <ChatIcon className="w-4 h-4 text-cyan-400" /> {comments.length} comments
+              </span>
 
               {poster.movieId && (
                 <Link
                   href={`/movie/${poster.movieId}`}
-                  className="ml-auto bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 px-4 py-2 rounded-full text-xs font-semibold transition"
+                  className="ml-auto bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 px-4 py-2 rounded-full text-xs font-semibold transition flex items-center gap-1"
                 >
-                  🎬 Watch Movie
+                  <MovieIcon className="w-3.5 h-3.5" /> Watch Movie
                 </Link>
               )}
             </div>

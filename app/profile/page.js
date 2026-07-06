@@ -758,7 +758,7 @@ export default function ProfilePage() {
                   <h2 className="text-2xl md:text-3xl font-black mb-6">My Favorites List</h2>
                   {wishlist.length === 0 ? (
                     <div className="text-center py-16">
-                      <p className="text-5xl mb-4">❤️</p>
+                      <WishlistIcon className="w-12 h-12 text-rose-500/60 mx-auto mb-4" />
                       <p className="text-gray-400">No items added to your list yet.</p>
                     </div>
                   ) : (
@@ -776,7 +776,9 @@ export default function ProfilePage() {
                                 className="w-full h-full object-cover"
                               />
                             ) : (
-                              <div className="w-full h-full bg-cyan-950 flex items-center justify-center">🎬</div>
+                              <div className="w-full h-full bg-cyan-950 flex items-center justify-center">
+                                <MovieIcon className="w-8 h-8 text-cyan-300" />
+                              </div>
                             )}
                           </div>
                           <div className="p-3">
@@ -801,7 +803,7 @@ export default function ProfilePage() {
                   <h2 className="text-2xl md:text-3xl font-black mb-6">Booked Premiere Tickets</h2>
                   {tickets.length === 0 ? (
                     <div className="text-center py-16">
-                      <p className="text-5xl mb-4">🎟️</p>
+                      <TicketIcon className="w-12 h-12 text-cyan-500/60 mx-auto mb-4" />
                       <p className="text-gray-400">No premiere tickets booked yet.</p>
                     </div>
                   ) : (
@@ -1000,7 +1002,7 @@ export default function ProfilePage() {
                     <div>
                       {supportTickets.length === 0 ? (
                         <div className="text-center py-16">
-                          <p className="text-5xl mb-4">💬</p>
+                          <ChatIcon className="w-12 h-12 text-cyan-500/60 mx-auto mb-4" />
                           <p className="text-gray-400">No support tickets found.</p>
                         </div>
                       ) : (

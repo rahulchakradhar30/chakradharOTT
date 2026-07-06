@@ -6,6 +6,7 @@ import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { WishlistIcon, ChatIcon, PosterIcon } from "@/components/Icon";
 
 export default function PostersGalleryPage() {
   const [posters, setPosters] = useState([]);
@@ -90,15 +91,21 @@ export default function PostersGalleryPage() {
                         />
                       )
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-cyan-900 to-blue-900 flex items-center justify-center text-5xl">🖼️</div>
+                      <div className="w-full h-full bg-gradient-to-br from-cyan-900 to-blue-900 flex items-center justify-center">
+                        <PosterIcon className="w-10 h-10 text-cyan-300" />
+                      </div>
                     )}
 
                     {/* Hover Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition duration-300 flex flex-col justify-end p-4">
                       <p className="text-sm text-white line-clamp-2 font-medium">{poster.caption || "View poster"}</p>
-                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-300">
-                        <span>❤️ {poster.likesCount || 0}</span>
-                        <span>💬 {poster.commentsCount || 0}</span>
+                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-300 font-semibold">
+                        <span className="flex items-center gap-1">
+                          <WishlistIcon className="w-3.5 h-3.5 text-rose-500 fill-current" /> {poster.likesCount || 0}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <ChatIcon className="w-3.5 h-3.5 text-cyan-400" /> {poster.commentsCount || 0}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -106,9 +113,13 @@ export default function PostersGalleryPage() {
                   {/* Below card info (mobile friendly) */}
                   <div className="mt-2 px-1">
                     <p className="text-xs text-gray-300 line-clamp-1">{poster.caption || ""}</p>
-                    <div className="flex items-center gap-3 mt-1 text-[11px] text-gray-500">
-                      <span>❤️ {poster.likesCount || 0}</span>
-                      <span>💬 {poster.commentsCount || 0}</span>
+                    <div className="flex items-center gap-3 mt-1 text-[11px] text-gray-500 font-semibold">
+                      <span className="flex items-center gap-1">
+                        <WishlistIcon className="w-3.5 h-3.5 text-rose-500 fill-current" /> {poster.likesCount || 0}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <ChatIcon className="w-3.5 h-3.5 text-cyan-400" /> {poster.commentsCount || 0}
+                      </span>
                     </div>
                   </div>
                 </Link>

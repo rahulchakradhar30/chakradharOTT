@@ -7,6 +7,7 @@ import { db } from "@/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
+import { SparklesIcon, ChatIcon, MovieIcon } from "@/components/Icon";
 
 export default function WatchPartyLobby() {
   const router = useRouter();
@@ -142,9 +143,15 @@ export default function WatchPartyLobby() {
             Synchronize movies with friends in real time, chat dynamically, and connect via low-latency audio/video feeds directly in the browser. Outperform ordinary streaming feeds.
           </p>
           <div className="flex flex-wrap gap-4 text-xs text-cyan-200 font-semibold">
-            <span className="flex items-center gap-1">⚡ Instant Sync</span>
-            <span className="flex items-center gap-1">💬 Real-time Chat</span>
-            <span className="flex items-center gap-1">🎥 WebRTC Lobbies</span>
+            <span className="flex items-center gap-1.5">
+              <SparklesIcon className="w-3.5 h-3.5 text-cyan-300" /> Instant Sync
+            </span>
+            <span className="flex items-center gap-1.5">
+              <ChatIcon className="w-3.5 h-3.5 text-cyan-300" /> Real-time Chat
+            </span>
+            <span className="flex items-center gap-1.5">
+              <MovieIcon className="w-3.5 h-3.5 text-cyan-300" /> WebRTC Lobbies
+            </span>
           </div>
         </motion.div>
 

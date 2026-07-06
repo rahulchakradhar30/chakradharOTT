@@ -38,7 +38,7 @@ export async function POST(req) {
       );
     }
 
-    const { ticketId, message, status } = await req.json();
+    const { ticketId, message, status, attachments } = await req.json();
 
     if (!ticketId || typeof ticketId !== "string") {
       return NextResponse.json(
@@ -54,6 +54,16 @@ export async function POST(req) {
         { status: 400 }
       );
     }
+
+    const validAttachments = Array.isArray(attachments)
+      ? attachments.filter(
+          (att) =>
+            att &&
+            typeof att.name === "string" &&
+            typeof att.url === "string" &&
+            att.url.startsWith("http")
+        )
+      : [];
 
     const ticketRef = adminDb.collection("contacts").doc(ticketId);
     const ticketSnap = await ticketRef.get();
@@ -96,11 +106,42 @@ export async function POST(req) {
     let emailError = null;
     let resendData = null;
 
+    // Build Attachments HTML section
+    let attachmentsHtml = "";
+    if (validAttachments.length > 0) {
+      attachmentsHtml = `
+        <div style="margin-top: 30px; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 20px;">
+          <h4 style="margin: 0 0 10px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af;">Attachments</h4>
+          <ul style="margin: 0; padding: 0; list-style-type: none;">
+            ${validAttachments
+              .map(
+                (att) => `
+              <li style="margin-bottom: 8px;">
+                <a href="${att.url}" target="_blank" style="color: #06b6d4; text-decoration: none; font-size: 14px; font-weight: 600; display: inline-flex; items-center; gap: 5px;">
+                  📎 ${att.name}
+                </a>
+              </li>
+            `
+              )
+              .join("")}
+          </ul>
+        </div>
+      `;
+    }
+
+    // Build Plain-text Fallback
+    let plainTextContent = `Hello ${recipientName},\n\nOur support team has posted a reply to your inquiry:\n\n${text}\n\n`;
+    if (validAttachments.length > 0) {
+      plainTextContent += "Attachments:\n" + validAttachments.map((att) => `- ${att.name}: ${att.url}`).join("\n") + "\n\n";
+    }
+    plainTextContent += `Original Inquiry:\n"${originalMessage}"\n\n---\nChakradhar Stream Support Team`;
+
     try {
       resendData = await resend.emails.send({
         from: "Chakradhar Stream Support <onboarding@resend.dev>",
         to: [recipientEmail],
         subject: `Re: Support Ticket - Chakradhar Stream`,
+        text: plainTextContent,
         html: `
           <div style="background-color: #0c1328; padding: 45px 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f3f4f6;">
             <div style="max-width: 600px; margin: 0 auto; background-color: #060b19; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; overflow: hidden; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65);">
@@ -122,8 +163,11 @@ export async function POST(req) {
                   <p style="margin: 0; font-size: 15px; line-height: 1.65; color: #ffffff; white-space: pre-wrap;">${text}</p>
                 </div>
 
+                <!-- Attachments Section -->
+                ${attachmentsHtml}
+
                 <!-- Original Query Box -->
-                <div style="border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 25px;">
+                <div style="border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 25px; margin-top: 30px;">
                   <h4 style="margin: 0 0 12px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af;">Original Inquiry</h4>
                   <div style="font-size: 14px; line-height: 1.6; color: #9ca3af; font-style: italic; background-color: rgba(0, 0, 0, 0.15); padding: 15px 20px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.04);">
                     "${originalMessage}"
@@ -141,7 +185,7 @@ export async function POST(req) {
           </div>
         `,
       });
-      
+
       if (resendData && resendData.error) {
         emailStatus = "failed";
         emailError = resendData.error.message || JSON.stringify(resendData.error);
@@ -155,10 +199,12 @@ export async function POST(req) {
     const replyId = crypto.randomUUID();
     const replyObject = {
       id: replyId,
+      emailId: resendData?.id || null,
       content: text,
       repliedBy: sessionEmail,
       repliedAt: new Date().toISOString(),
       emailStatus,
+      attachments: validAttachments,
     };
 
     // Update document using adminDb
@@ -169,6 +215,7 @@ export async function POST(req) {
       replyContent: text,
       emailStatus,
       messageStatus: status || "Replied",
+      lastEmailId: resendData?.id || null,
       replies: FieldValue.arrayUnion(replyObject),
     };
 

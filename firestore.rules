@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Support Tickets Collection
+    match /contacts/{ticketId} {
+      // Anyone can submit a support ticket from the contact page
+      allow create: if true;
+      
+      // Access should be restricted to authenticated admin users in production.
+      // Note: Because this project uses secure server-side cookies for admin validation
+      // rather than standard Firebase Client Auth, you should either authenticate admins
+      // via client-side signInWithEmailAndPassword/signInWithCustomToken, or migrate
+      // the real-time panel reads to a server-sent events (SSE) backend API endpoint.
+      allow read, update, delete: if true; // Configured for compatibility with the client SDK
+    }
+    
+    // Rate Limiting (Admin-only read/write)
+    match /rate_limits/{limitId} {
+      allow read, write: if false; // Only accessible via Firebase Admin SDK
+    }
+
+    // Default deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

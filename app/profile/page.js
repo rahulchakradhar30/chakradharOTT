@@ -32,6 +32,7 @@ const TABS = [
   { key: "activity", label: "Activity", icon: "📊" },
   { key: "wishlist", label: "My List", icon: "❤️" },
   { key: "tickets", label: "Tickets", icon: "🎟️" },
+  { key: "support", label: "Support Tickets", icon: "💬" },
   { key: "payments", label: "Payments", icon: "💳" },
   { key: "settings", label: "Settings", icon: "⚙️" },
   { key: "security", label: "Security", icon: "🔒" },
@@ -59,6 +60,8 @@ export default function ProfilePage() {
   const [watchHistory, setWatchHistory] = useState([]);
   const [tickets, setTickets] = useState([]);
   const [paymentHistory, setPaymentHistory] = useState([]);
+  const [supportTickets, setSupportTickets] = useState([]);
+  const [selectedSupportTicket, setSelectedSupportTicket] = useState(null);
 
   const [profile, setProfile] = useState({
     name: "",
@@ -114,12 +117,13 @@ export default function ProfilePage() {
           }));
         }
 
-        const [wishlistSnap, commentSnap, ratingSnap, watchSnap, ticketsSnap] = await Promise.all([
+        const [wishlistSnap, commentSnap, ratingSnap, watchSnap, ticketsSnap, supportSnap] = await Promise.all([
           getDocs(collection(db, "users", user.uid, "wishlist")),
           getDocs(query(collection(db, "comments"), where("userId", "==", user.uid))),
           getDocs(query(collection(db, "ratings"), where("userId", "==", user.uid))),
           getDocs(query(collection(db, "views"), where("userId", "==", user.uid))),
           getDocs(collection(db, "users", user.uid, "tickets")),
+          getDocs(query(collection(db, "contacts"), where("email", "==", user.email.toLowerCase()))),
         ]);
 
         const allWishlist = wishlistSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -127,6 +131,7 @@ export default function ProfilePage() {
         const allRatings = ratingSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
         const allWatch = watchSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
         const allTickets = ticketsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const allSupport = supportSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
         setWishlist(allWishlist);
         setComments(allComments);
@@ -137,6 +142,21 @@ export default function ProfilePage() {
           allTickets.sort((a, b) => {
             const aDate = a.createdAt?.toDate?.()?.getTime?.() || 0;
             const bDate = b.createdAt?.toDate?.()?.getTime?.() || 0;
+            return bDate - aDate;
+          })
+        );
+
+        const now = new Date();
+        const sixMonthsAgo = now.getTime() - 180 * 24 * 60 * 60 * 1000;
+        const filteredSupport = allSupport.filter(ticket => {
+          const ticketDate = ticket.createdAt ? (ticket.createdAt.toDate ? ticket.createdAt.toDate().getTime() : new Date(ticket.createdAt).getTime()) : 0;
+          return ticketDate >= sixMonthsAgo;
+        });
+
+        setSupportTickets(
+          filteredSupport.sort((a, b) => {
+            const aDate = a.createdAt?.toDate?.()?.getTime?.() || new Date(a.createdAt).getTime() || 0;
+            const bDate = b.createdAt?.toDate?.()?.getTime?.() || new Date(b.createdAt).getTime() || 0;
             return bDate - aDate;
           })
         );
@@ -583,6 +603,57 @@ export default function ProfilePage() {
                 </div>
               )}
 
+              {/* SUPPORT TAB */}
+              {activeTab === "support" && (
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-black mb-6">Support Tickets</h2>
+                  <p className="text-xs text-gray-400 mb-6 leading-relaxed">
+                    View complaints and questions raised within the last 6 months using your registered email address. Click a ticket to track status and read replies.
+                  </p>
+
+                  {supportTickets.length === 0 ? (
+                    <div className="text-center py-16">
+                      <p className="text-5xl mb-4">💬</p>
+                      <p className="text-gray-400">No support tickets found linked to your email.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {supportTickets.map((ticket) => {
+                        const status = ticket.messageStatus || "New";
+                        const date = ticket.createdAt ? (ticket.createdAt.toDate ? ticket.createdAt.toDate().toLocaleDateString() : new Date(ticket.createdAt).toLocaleDateString()) : "";
+                        return (
+                          <div
+                            key={ticket.id}
+                            onClick={() => setSelectedSupportTicket(ticket)}
+                            className="rounded-2xl border border-white/10 hover:border-cyan-500/35 bg-black/25 p-5 cursor-pointer transition text-left space-y-3"
+                          >
+                            <div className="flex justify-between items-start gap-2">
+                              <h4 className="font-bold text-sm text-cyan-300 truncate">Ticket #{ticket.id}</h4>
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase border ${
+                                status === "New"
+                                  ? "border-blue-500/20 bg-blue-500/10 text-blue-400"
+                                  : status === "Pending"
+                                  ? "border-amber-500/20 bg-amber-500/10 text-amber-400"
+                                  : status === "Replied"
+                                  ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                                  : "border-gray-500/20 bg-gray-500/10 text-gray-400"
+                              }`}>
+                                {status}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">{ticket.message}</p>
+                            <div className="flex justify-between items-center text-[10px] text-gray-500 border-t border-white/5 pt-2">
+                              <span>Submitted: {date}</span>
+                              <span className="text-cyan-400 font-bold hover:underline">Track Updates →</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* PAYMENTS TAB */}
               {activeTab === "payments" && (
                 <div>
@@ -725,8 +796,111 @@ export default function ProfilePage() {
           </AnimatePresence>
         </main>
       </div>
+
+      {/* USER SUPPORT TICKET DETAIL TIMELINE MODAL */}
+      {selectedSupportTicket && (
+        <div 
+          className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-[110] p-4 text-left font-sans"
+          onClick={() => setSelectedSupportTicket(null)}
+        >
+          <div 
+            className="glass-card rounded-[2rem] w-full max-w-2xl border border-white/10 p-5 md:p-6 space-y-5 flex flex-col max-h-[85vh] text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center border-b border-white/5 pb-3">
+              <div>
+                <h3 className="font-bold text-gray-200">Ticket Status Timeline</h3>
+                <p className="text-xs text-gray-500 font-mono mt-0.5">ID: {selectedSupportTicket.id}</p>
+              </div>
+              <button 
+                onClick={() => setSelectedSupportTicket(null)}
+                className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-semibold text-gray-400 hover:text-white transition"
+              >
+                Close ×
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto pr-1 space-y-4 scrollbar-thin">
+              <div className="relative border-l border-white/10 pl-6 space-y-6 ml-3">
+                
+                {/* 1. Original User Inquiry */}
+                <div className="relative">
+                  <span className="absolute -left-[31px] top-1.5 h-4 w-4 rounded-full bg-blue-500 border-4 border-[#0a1020] flex items-center justify-center shadow" />
+                  <div className="bg-black/35 border border-white/5 rounded-2xl p-4.5 space-y-2">
+                    <div className="flex justify-between items-center text-[10px] text-gray-500 font-bold border-b border-white/5 pb-1.5">
+                      <span>YOUR COMPLAINT</span>
+                      <span>{formatTime(selectedSupportTicket.createdAt)}</span>
+                    </div>
+                    <p className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed">
+                      {selectedSupportTicket.message}
+                    </p>
+                    {selectedSupportTicket.imageUrl && (
+                      <div className="pt-2">
+                        <a href={selectedSupportTicket.imageUrl} target="_blank" rel="noreferrer" className="text-xs text-cyan-400 underline hover:text-cyan-300">
+                          View Attached Image 📎
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Admin Replies (Excluding private internal notes!) */}
+                {selectedSupportTicket.replies && selectedSupportTicket.replies.map((reply, i) => (
+                  <div key={i} className="relative">
+                    <span className="absolute -left-[31px] top-1.5 h-4 w-4 rounded-full bg-emerald-500 border-4 border-[#0a1020] flex items-center justify-center shadow" />
+                    <div className="bg-emerald-500/5 border border-emerald-500/15 p-4.5 rounded-2xl space-y-2">
+                      <div className="flex justify-between items-center text-[10px] text-emerald-400 font-bold border-b border-white/5 pb-1.5">
+                        <span>SUPPORT RESPONSE ({reply.repliedBy?.split("@")[0] || "Support"})</span>
+                        <span>{formatTime(reply.repliedAt)}</span>
+                      </div>
+                      <p className="text-xs text-gray-300 whitespace-pre-wrap leading-relaxed font-sans">
+                        {reply.content}
+                      </p>
+                      
+                      {reply.attachments && reply.attachments.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-white/5">
+                          {reply.attachments.map((att, attIdx) => (
+                            <a
+                              key={attIdx}
+                              href={att.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[10px] text-cyan-400 hover:text-cyan-300 font-semibold bg-white/5 px-2 py-0.5 rounded border border-white/10"
+                            >
+                              📎 {att.name}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center text-xs text-gray-500 border-t border-white/5 pt-3">
+              <span>Status: {selectedSupportTicket.messageStatus || "New"}</span>
+              <span>Updated: {selectedSupportTicket.repliedAt ? formatTime(selectedSupportTicket.repliedAt) : "No updates"}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
+}
+
+function formatTime(dateVal) {
+  if (!dateVal) return "";
+  const d = dateVal.toDate ? dateVal.toDate() : new Date(dateVal);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 /* Sub-components */

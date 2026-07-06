@@ -35,6 +35,8 @@ export async function POST(req) {
     const name = sanitizeText(body?.name, 120);
     const email = String(body?.email || "").trim().toLowerCase();
     const message = sanitizeText(body?.message, 4000);
+    const userId = body?.userId ? String(body.userId).trim() : null;
+    const imageUrl = body?.imageUrl ? String(body.imageUrl).trim() : null;
 
     if (!name || !isValidEmail(email) || message.length < 5) {
       return NextResponse.json(
@@ -43,18 +45,23 @@ export async function POST(req) {
       );
     }
 
-    await adminDb.collection("contacts").add({
+    const docRef = await adminDb.collection("contacts").add({
+      userId,
       name,
       email,
       message,
+      imageUrl,
       createdAt: FieldValue.serverTimestamp(),
       source: "web",
       ip,
+      messageStatus: "New",
+      isRead: false,
+      archived: false,
     });
 
-    await logServerEvent("contact_created", { email, ip });
+    await logServerEvent("contact_created", { email, ip, ticketId: docRef.id });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, ticketId: docRef.id });
   } catch (error) {
     console.error("CONTACT API ERROR:", error);
     await logServerEvent("contact_create_failed", {

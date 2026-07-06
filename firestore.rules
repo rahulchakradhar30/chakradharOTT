@@ -7,12 +7,17 @@ service cloud.firestore {
       // Anyone can submit a support ticket from the contact page
       allow create: if true;
       
-      // Access should be restricted to authenticated admin users in production.
-      // Note: Because this project uses secure server-side cookies for admin validation
-      // rather than standard Firebase Client Auth, you should either authenticate admins
-      // via client-side signInWithEmailAndPassword/signInWithCustomToken, or migrate
-      // the real-time panel reads to a server-sent events (SSE) backend API endpoint.
-      allow read, update, delete: if true; // Configured for compatibility with the client SDK
+      // Allow single document retrieval (so anonymous ticket tracking works if they know the ID)
+      allow get: if true;
+
+      // Restrict collection listing and querying to admins or the ticket owner
+      allow list: if request.auth != null && (
+        request.auth.token.admin == true || 
+        resource.data.userId == request.auth.uid
+      );
+      
+      // Restrict editing and deleting strictly to authenticated admins
+      allow update, delete: if request.auth != null && request.auth.token.admin == true;
     }
     
     // Rate Limiting (Admin-only read/write)

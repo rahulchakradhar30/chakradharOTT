@@ -138,7 +138,7 @@ export async function POST(req) {
 
     try {
       resendData = await resend.emails.send({
-        from: "Chakradhar Stream Support <onboarding@resend.dev>",
+        from: process.env.RESEND_FROM_EMAIL || "Chakradhar Stream Support <onboarding@resend.dev>",
         to: [recipientEmail],
         subject: `Re: Support Ticket - Chakradhar Stream`,
         text: plainTextContent,

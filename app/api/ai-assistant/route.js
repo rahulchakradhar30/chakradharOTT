@@ -12,6 +12,26 @@ export async function POST(request) {
       );
     }
 
+    // Intercept sensitive administrative queries
+    const lastUserMessage = messages[messages.length - 1]?.content || messages[messages.length - 1]?.text || "";
+    const normalizedMessage = lastUserMessage.toLowerCase();
+    const sensitiveKeywords = [
+      "admin",
+      "dashboard",
+      "credentials",
+      "password",
+      "secret",
+      "database",
+      "firestore rules",
+      "lockout",
+      "security rules"
+    ];
+    if (sensitiveKeywords.some(keyword => normalizedMessage.includes(keyword))) {
+      return Response.json({
+        text: "I'm sorry, but I am not authorized to discuss administrative dashboards, login portals, security configurations, or private credentials. I can only assist you with searching for movies, ratings, and stats from our catalog! 🍿 How can I help you find your next film?"
+      });
+    }
+
     // Optional user authorization check
     const authHeader = request.headers.get("Authorization");
     let userId = null;
@@ -26,17 +46,23 @@ export async function POST(request) {
       }
     }
 
-    // 1. Fetch catalog movies from Firestore
+    // 1. Fetch catalog movies from Firestore with view counts
     const moviesSnapshot = await adminDb.collection("movies").get();
     const catalog = [];
     moviesSnapshot.forEach((doc) => {
       const data = doc.data();
+      const viewsReal = data.viewsReal || 0;
+      const viewsBoost = data.viewsBoost || 0;
+      const totalViews = viewsReal + viewsBoost;
       catalog.push({
         id: doc.id,
         title: data.title || "Untitled",
         genre: data.genre || "N/A",
         rating: data.rating || 0,
+        releaseDate: data.releaseDate || "",
+        director: data.director || "N/A",
         description: data.description || "",
+        views: totalViews,
       });
     });
 
@@ -45,15 +71,17 @@ export async function POST(request) {
     const systemPrompt = {
       role: "system",
       content: `You are AI CineGuide, a friendly, extremely knowledgeable cinematic concierge on Chakradhar Stream (an OTT platform).
-Your job is to recommend movies to users from the provided catalog.
+Your job is to recommend movies to users and answer any catalog-related questions (such as most watched movies, ratings, genres, and view statistics) using the exact data provided below.
 
-Here is the exact catalog of movies available on the platform:
+Here is the exact catalog of movies available on the platform, including their total display views:
 ${catalogString}
 
 INSTRUCTIONS:
 1. Always be conversational, warm, and highlight why the recommended movies fit their request or mood.
 2. You can ONLY recommend movies that are present in the catalog. If no movie in the catalog matches their request, explain this nicely and recommend the closest alternatives or highest-rated options from the catalog.
-3. At the very end of your response, you MUST output a parseable list of the recommended movie IDs from the catalog matching your suggestions. Format it exactly like this (on new lines):
+3. If users ask about stats (e.g. "which is the most watched film", "show me movies with the most views"), refer to the "views" field of the catalog to answer them accurately and details.
+4. You must NEVER share information about administrative sections of the website, such as the admin dashboard, admin login credentials, database configuration, or security rules. If asked, politely divert them.
+5. At the very end of your response, you MUST output a parseable list of the recommended movie IDs from the catalog matching your suggestions. Format it exactly like this (on new lines):
 [RECOMMENDATIONS]
 movie_id_1, movie_id_2, ...
 [/RECOMMENDATIONS]

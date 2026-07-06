@@ -173,12 +173,20 @@ export default function AdminPostersPage() {
                   </div>
                 )}
 
-                <button
-                  onClick={() => handleDelete(poster.id)}
-                  className="w-full mt-2 bg-red-600/20 hover:bg-red-600/40 text-red-300 text-xs py-2 rounded-xl transition font-semibold"
-                >
-                  Delete Poster
-                </button>
+                <div className="flex gap-2 mt-2">
+                  <Link
+                    href={`/admin/posters/edit/${poster.id}`}
+                    className="flex-1 text-center bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-300 text-xs py-2 rounded-xl transition font-semibold"
+                  >
+                    Edit Poster
+                  </Link>
+                  <button
+                    onClick={() => handleDelete(poster.id)}
+                    className="flex-1 bg-red-600/20 hover:bg-red-600/40 text-red-300 text-xs py-2 rounded-xl transition font-semibold"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </motion.div>
           ))}

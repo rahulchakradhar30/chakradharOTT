@@ -232,15 +232,15 @@ export default function AdminPremieresPage() {
                 <p className="text-xs text-gray-500 mb-2">
                   <span className="text-gray-400">Display:</span>{" "}
                   {premiere.displayTime
-                    ? premiere.displayTime.toDate().toLocaleString()
+                    ? (premiere.displayTime.toDate ? premiere.displayTime.toDate().toLocaleString() : new Date(premiere.displayTime).toLocaleString())
                     : premiere.startTime
-                    ? premiere.startTime.toDate().toLocaleString()
+                    ? (premiere.startTime.toDate ? premiere.startTime.toDate().toLocaleString() : new Date(premiere.startTime).toLocaleString())
                     : "No date set"}
                 </p>
                 <p className="text-xs text-gray-500 mb-3">
                   <span className="text-gray-400">Live:</span>{" "}
                   {premiere.startTime
-                    ? premiere.startTime.toDate().toLocaleString()
+                    ? (premiere.startTime.toDate ? premiere.startTime.toDate().toLocaleString() : new Date(premiere.startTime).toLocaleString())
                     : "No date set"}
                 </p>
               </Link>

@@ -26,6 +26,26 @@ service cloud.firestore {
       );
     }
     
+    // Premieres Collection
+    match /premieres/{premiereId} {
+      allow read: if true;
+      allow write: if request.auth != null && (
+        request.auth.token.admin == true ||
+        request.auth.token.email == 'thefifthagefilms@gmail.com' ||
+        request.auth.token.email == 'rahulchakradharperepogu@gmail.com'
+      );
+    }
+
+    // Posters Collection
+    match /posters/{posterId} {
+      allow read: if true;
+      allow write: if request.auth != null && (
+        request.auth.token.admin == true ||
+        request.auth.token.email == 'thefifthagefilms@gmail.com' ||
+        request.auth.token.email == 'rahulchakradharperepogu@gmail.com'
+      );
+    }
+    
     // Rate Limiting (Admin-only read/write)
     match /rate_limits/{limitId} {
       allow read, write: if false; // Only accessible via Firebase Admin SDK

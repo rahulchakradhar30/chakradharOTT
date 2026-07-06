@@ -29,6 +29,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { useToast } from "@/components/Toast";
 
 const TABS = [
   { key: "overview", label: "Overview", icon: "👤" },
@@ -65,6 +66,7 @@ const ACHIEVEMENT_LIST = [
 export default function ProfilePage() {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const { addToast } = useToast();
 
   const [activeTab, setActiveTab] = useState("overview");
   const [loadingPage, setLoadingPage] = useState(true);
@@ -78,6 +80,8 @@ export default function ProfilePage() {
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [supportTickets, setSupportTickets] = useState([]);
   const [selectedSupportTicket, setSelectedSupportTicket] = useState(null);
+  const [userReplyText, setUserReplyText] = useState("");
+  const [sendingUserReply, setSendingUserReply] = useState(false);
   
   // Real-time states
   const [notifications, setNotifications] = useState([]);
@@ -153,13 +157,19 @@ export default function ProfilePage() {
     );
     const unsubTickets = onSnapshot(ticketsQuery, (snap) => {
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setSupportTickets(
-        all.sort((a, b) => {
-          const aDate = a.createdAt?.toDate?.()?.getTime?.() || new Date(a.createdAt).getTime() || 0;
-          const bDate = b.createdAt?.toDate?.()?.getTime?.() || new Date(b.createdAt).getTime() || 0;
-          return bDate - aDate;
-        })
-      );
+      const sorted = all.sort((a, b) => {
+        const aDate = a.createdAt?.toDate?.()?.getTime?.() || new Date(a.createdAt).getTime() || 0;
+        const bDate = b.createdAt?.toDate?.()?.getTime?.() || new Date(b.createdAt).getTime() || 0;
+        return bDate - aDate;
+      });
+      setSupportTickets(sorted);
+      
+      // Update selected support ticket in real-time
+      setSelectedSupportTicket((current) => {
+        if (!current) return null;
+        const updated = sorted.find(t => t.id === current.id);
+        return updated || current;
+      });
     }, (err) => {
       console.warn("Support tickets listener failed:", err);
     });
@@ -375,6 +385,41 @@ export default function ProfilePage() {
       await batch.commit();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleSendUserReply = async (e) => {
+    e.preventDefault();
+    if (!selectedSupportTicket || !userReplyText.trim()) return;
+
+    try {
+      setSendingUserReply(true);
+      const ticketRef = doc(db, "contacts", selectedSupportTicket.id);
+      
+      const newReply = {
+        id: crypto.randomUUID(),
+        content: userReplyText.trim(),
+        repliedBy: user.email,
+        repliedAt: new Date().toISOString(),
+        sender: "user",
+        emailStatus: "not_applicable",
+      };
+
+      const currentReplies = selectedSupportTicket.replies || [];
+
+      await updateDoc(ticketRef, {
+        replies: [...currentReplies, newReply],
+        messageStatus: "Pending",
+        isRead: false,
+      });
+
+      addToast("Reply sent successfully!", "success");
+      setUserReplyText("");
+    } catch (err) {
+      console.error("Failed to send user reply:", err);
+      addToast(err.message || "Failed to send reply.", "error");
+    } finally {
+      setSendingUserReply(false);
     }
   };
 
@@ -771,22 +816,128 @@ export default function ProfilePage() {
                         )}
                       </div>
 
-                      <div className="space-y-3">
-                        <p className="text-[10px] uppercase tracking-wider font-black text-gray-500">Replies & Conversations</p>
-                        {selectedSupportTicket.replies && selectedSupportTicket.replies.length > 0 ? (
-                          selectedSupportTicket.replies.map((reply, i) => (
-                            <div key={i} className="bg-emerald-500/5 border border-emerald-500/15 p-4 rounded-2xl text-xs space-y-1">
-                              <div className="flex justify-between items-center text-[9px] text-emerald-400 font-black uppercase">
-                                <span>Agent Response ({reply.repliedBy?.split("@")[0] || "Support"})</span>
-                                <span>{reply.repliedAt ? new Date(reply.repliedAt).toLocaleString() : ""}</span>
-                              </div>
-                              <p className="text-gray-200 leading-relaxed whitespace-pre-wrap">{reply.content}</p>
+                      {(() => {
+                        const timeline = [
+                          {
+                            id: "original",
+                            sender: "user",
+                            author: "You",
+                            date: selectedSupportTicket.createdAt,
+                            content: selectedSupportTicket.message,
+                            imageUrl: selectedSupportTicket.imageUrl
+                          }
+                        ];
+
+                        if (selectedSupportTicket.replies && selectedSupportTicket.replies.length > 0) {
+                          selectedSupportTicket.replies.forEach((rep) => {
+                            const isUserReply = rep.sender === "user" || (rep.repliedBy && rep.repliedBy.toLowerCase() === selectedSupportTicket.email.toLowerCase());
+                            timeline.push({
+                              id: rep.id,
+                              sender: isUserReply ? "user" : "admin",
+                              author: isUserReply ? "You" : `Agent (${rep.repliedBy?.split("@")[0] || "Support"})`,
+                              date: rep.repliedAt,
+                              content: rep.content,
+                              attachments: rep.attachments || []
+                            });
+                          });
+                        }
+
+                        // Sort ascending by date
+                        timeline.sort((a, b) => {
+                          const aTime = a.date?.toDate ? a.date.toDate().getTime() : new Date(a.date).getTime();
+                          const bTime = b.date?.toDate ? b.date.toDate().getTime() : new Date(b.date).getTime();
+                          return aTime - bTime;
+                        });
+
+                        return (
+                          <div className="space-y-4">
+                            <p className="text-[10px] uppercase tracking-wider font-black text-gray-500">Replies & Conversations</p>
+                            <div className="space-y-3.5 max-h-[380px] overflow-y-auto pr-2 bg-black/25 border border-white/5 rounded-3xl p-4 flex flex-col gap-2 scrollbar-thin">
+                              {timeline.map((item, idx) => {
+                                const isUser = item.sender === "user";
+                                const dateStr = item.date ? (item.date.toDate ? item.date.toDate().toLocaleString() : new Date(item.date).toLocaleString()) : "";
+
+                                return (
+                                  <div key={item.id || idx} className={`flex ${isUser ? "justify-end text-right" : "justify-start text-left"}`}>
+                                    <div className={`p-4 rounded-2xl max-w-[85%] text-xs space-y-1.5 ${
+                                      isUser 
+                                        ? "bg-cyan-600/90 text-white rounded-tr-none" 
+                                        : "bg-zinc-800/80 border border-white/5 text-white rounded-tl-none"
+                                    }`}>
+                                      <div className={`flex justify-between items-center gap-4 text-[9px] uppercase font-black ${
+                                        isUser ? "text-cyan-200" : "text-emerald-400"
+                                      }`}>
+                                        <span>{item.author}</span>
+                                        <span>{dateStr}</span>
+                                      </div>
+                                      <p className="leading-relaxed whitespace-pre-wrap text-left">{item.content}</p>
+                                      
+                                      {/* Clickable attachments */}
+                                      {item.attachments && item.attachments.length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5 pt-1.5 mt-1.5 border-t border-white/5">
+                                          {item.attachments.map((att, attIdx) => (
+                                            <a
+                                              key={attIdx}
+                                              href={att.url}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="text-[10px] text-cyan-200 hover:text-cyan-100 font-semibold bg-white/10 px-2 py-0.5 rounded border border-white/10 transition inline-flex items-center gap-1"
+                                            >
+                                              📎 {att.name}
+                                            </a>
+                                          ))}
+                                        </div>
+                                      )}
+
+                                      {item.imageUrl && (
+                                        <div className="pt-1.5 mt-1.5 border-t border-white/5">
+                                          <a href={item.imageUrl} target="_blank" rel="noreferrer" className="text-cyan-200 underline font-bold">
+                                            View Image Attachment 📎
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
-                          ))
-                        ) : (
-                          <p className="text-xs text-gray-500 italic">No agent answers received yet. We will notify you here shortly.</p>
-                        )}
-                      </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* USER REPLY COMPOSER FORM */}
+                      <form onSubmit={handleSendUserReply} className="border-t border-white/5 pt-4 space-y-3">
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] uppercase font-black text-gray-400 tracking-wider">
+                            Send a reply
+                          </label>
+                          <span className="text-[10px] text-gray-500">
+                            Updates ticket to Pending for Admin response
+                          </span>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <textarea
+                            value={userReplyText}
+                            onChange={(e) => setUserReplyText(e.target.value)}
+                            placeholder="Type your message to support..."
+                            className="bg-black/40 border border-white/10 text-xs text-gray-300 rounded-2xl px-4 py-3 focus:outline-none focus:border-cyan-500 flex-1 h-16 leading-relaxed resize-none font-sans"
+                            disabled={sendingUserReply}
+                            required
+                          />
+                          <button
+                            type="submit"
+                            disabled={sendingUserReply || !userReplyText.trim()}
+                            className="px-5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-black uppercase tracking-wider rounded-2xl transition self-end h-16 flex items-center justify-center shrink-0"
+                          >
+                            {sendingUserReply ? (
+                              <span className="h-4 w-4 border-2 border-white/20 border-t-white animate-spin rounded-full" />
+                            ) : (
+                              "Send"
+                            )}
+                          </button>
+                        </div>
+                      </form>
                     </div>
                   ) : (
                     <div>

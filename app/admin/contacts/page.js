@@ -615,13 +615,14 @@ export default function AdminContactsPage() {
       imageUrl: ticket.imageUrl
     });
 
-    // 2. Admin Replies
+    // 2. Admin/User Replies
     if (ticket.replies && ticket.replies.length > 0) {
       ticket.replies.forEach((rep) => {
+        const isUserReply = rep.sender === "user" || (rep.repliedBy && rep.repliedBy.toLowerCase() === ticket.email.toLowerCase());
         timeline.push({
           id: rep.id,
-          type: "reply",
-          author: rep.repliedBy || "Admin",
+          type: isUserReply ? "user_reply" : "reply",
+          author: rep.repliedBy || (isUserReply ? "User" : "Admin"),
           date: rep.repliedAt,
           content: rep.content,
           emailStatus: rep.emailStatus,
@@ -1176,6 +1177,23 @@ export default function AdminContactsPage() {
                                   </a>
                                 </div>
                               )}
+                            </div>
+                          </div>
+                        );
+                      } else if (item.type === "user_reply") {
+                        // User Reply node
+                        return (
+                          <div key={item.id || idx} className="relative">
+                            <span className="absolute -left-[31px] top-1.5 h-4 w-4 rounded-full bg-cyan-500 border-4 border-[#060b19] flex items-center justify-center shadow" />
+                            
+                            <div className="bg-[#0e172a]/85 border border-cyan-500/20 rounded-2xl p-5 space-y-2">
+                              <div className="flex justify-between items-center text-[10px] text-cyan-400 font-bold border-b border-white/5 pb-2">
+                                <p>CLIENT REPLY BY {String(item.author).toUpperCase()}</p>
+                                <p>{formatTime(item.date)}</p>
+                              </div>
+                              <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                {item.content}
+                              </p>
                             </div>
                           </div>
                         );

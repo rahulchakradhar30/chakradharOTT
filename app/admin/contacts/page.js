@@ -609,7 +609,8 @@ export default function AdminContactsPage() {
       author: ticket.name,
       email: ticket.email,
       date: ticket.createdAt,
-      content: ticket.message
+      content: ticket.message,
+      imageUrl: ticket.imageUrl
     });
 
     // 2. Admin Replies
@@ -1163,6 +1164,13 @@ export default function AdminContactsPage() {
                                 {activeTicket.ip && <p>IP: {activeTicket.ip}</p>}
                                 {activeTicket.source && <p>Source: {activeTicket.source}</p>}
                               </div>
+                              {item.imageUrl && (
+                                <div className="mt-2 pt-2 border-t border-white/5">
+                                  <a href={item.imageUrl} target="_blank" rel="noreferrer" className="text-cyan-400 underline hover:text-cyan-300 text-[11px] font-bold">
+                                    View Attached Image 📎
+                                  </a>
+                                </div>
+                              )}
                             </div>
                           </div>
                         );

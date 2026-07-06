@@ -212,7 +212,10 @@ export function AuthProvider({ children }) {
       const userRef = doc(db, "users", firebaseUser.uid);
       const userSnap = await getDoc(userRef);
       
-      // Look for duplicate profile documents under a different UID
+      // We removed the automatic merging of different UIDs to strictly enforce a SINGLE USER IDENTITY.
+      // If a user gets here with a new UID but their email is already in use, it means Firebase settings
+      // allowed multiple accounts. We should log a warning, as Firebase Auth should ideally be set to
+      // "Link accounts that use the same email" to prevent this.
       const dupQuery = query(collection(db, "users"), where("email", "==", emailLower));
       const dupSnap = await getDocs(dupQuery);
       
@@ -224,8 +227,8 @@ export function AuthProvider({ children }) {
       });
       
       if (existingProfileId) {
-        // Merge legacy profile activities under this UID
-        await mergeUserProfiles(firebaseUser.uid, existingProfileId, emailLower);
+        console.warn("Multiple UIDs found for the same email! A duplicate Firebase Auth account was created.");
+        // We do not delete the old profile anymore. The app enforces 1 account per email via Auth settings.
       }
       
       let photoURL = firebaseUser.photoURL || "";
@@ -301,6 +304,9 @@ export function AuthProvider({ children }) {
       return cred.user;
     } catch (err) {
       console.warn("Firebase Google login failed, code:", err.code, err);
+      if (err.code === "auth/account-exists-with-different-credential") {
+        throw new Error("An account already exists with this email address. Please sign in using your Email & Password instead.");
+      }
       if (err.code === "auth/popup-blocked") {
         try {
           await signInWithRedirect(auth, provider);

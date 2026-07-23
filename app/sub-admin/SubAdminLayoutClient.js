@@ -252,14 +252,14 @@ export default function SubAdminLayoutClient({ children }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#060b19] text-white flex flex-col md:flex-row">
+    <div className="min-h-screen bg-[#0f0f0f] text-white flex flex-col md:flex-row">
       {/* DESKTOP SIDEBAR */}
-      <aside className="hidden md:flex w-64 border-r border-white/10 p-6 flex-col justify-between shrink-0 sticky top-0 h-screen overflow-y-auto bg-[#040814]/90 backdrop-blur-xl">
+      <aside className="hidden md:flex w-64 border-r border-white/10 p-6 flex-col justify-between shrink-0 sticky top-0 h-screen overflow-y-auto bg-[#181818]">
         {sidebarContent}
       </aside>
 
       {/* MOBILE HEADER */}
-      <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#040814]/95 sticky top-0 z-40 backdrop-blur-xl">
+      <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#0f0f0f] sticky top-0 z-40">
         <div className="flex items-center gap-2">
           <LockShieldIcon className="w-5 h-5 text-cyan-400 shrink-0" />
           <div>

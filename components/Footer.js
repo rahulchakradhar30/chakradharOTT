@@ -12,7 +12,7 @@ export default function Footer() {
     return null;
   }
   return (
-    <footer className="mt-16 border-t border-white/10 bg-[#050915]/70 backdrop-blur-xl text-sm relative z-10">
+    <footer className="mt-16 border-t border-white/10 bg-[#0f0f0f] text-sm relative z-10">
       <div className="max-w-7xl mx-auto px-4 md:px-10 py-12 space-y-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           {/* Left section containing brand, links, and support */}

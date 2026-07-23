@@ -309,14 +309,14 @@ export default function AdminLayoutClient({ children }) {
   );
 
   return (
-    <div className="app-shell flex min-h-screen text-white">
+    <div className="flex min-h-screen bg-[#0f0f0f] text-white">
       {/* DESKTOP SIDEBAR */}
-      <aside className="hidden md:flex w-72 bg-[#060b19]/90 backdrop-blur-xl p-6 flex-col justify-between border-r border-white/10 shadow-2xl shadow-black/30 fixed top-0 left-0 h-full z-40 overflow-y-auto">
+      <aside className="hidden md:flex w-72 bg-[#181818] p-6 flex-col justify-between border-r border-white/10 shadow-2xl fixed top-0 left-0 h-full z-40 overflow-y-auto">
         {sidebarContent}
       </aside>
 
       {/* MOBILE HEADER */}
-      <div className="md:hidden fixed top-0 left-0 w-full bg-[#060b19]/95 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-4 py-3 z-50 safe-area-top">
+      <div className="md:hidden fixed top-0 left-0 w-full bg-[#0f0f0f] border-b border-white/10 flex items-center justify-between px-4 py-3 z-50 safe-area-top">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMenuOpen(true)}

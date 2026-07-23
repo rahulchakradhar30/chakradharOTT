@@ -138,8 +138,8 @@ export default function Navbar() {
         transition={{ duration: 0.5 }}
         className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 ${
           scrolled
-            ? "bg-[#050814]/80 backdrop-blur-2xl border-b border-white/10"
-            : "bg-gradient-to-b from-[#04060f]/85 to-transparent"
+            ? "bg-[#0f0f0f]/95 backdrop-blur-2xl border-b border-white/10"
+            : "bg-[#0f0f0f]/85 backdrop-blur-md border-b border-white/5"
         }`}
       >
         <div className="px-4 md:px-8 lg:px-14 py-4">

@@ -3,6 +3,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { FieldValue } from "firebase-admin/firestore";
 import { enforceRateLimit, getClientIp } from "@/lib/rateLimit";
 import { isValidEmail, sanitizeText } from "@/lib/validation";
+import { notifyAdmins } from "@/lib/notifications";
 import { logServerEvent } from "@/lib/auditLog";
 
 export const runtime = "nodejs";
@@ -58,6 +59,15 @@ export async function POST(req) {
       isRead: false,
       archived: false,
     });
+
+    // Send site notification & email alert to all administrators
+    notifyAdmins({
+      title: `📩 New Support Message from ${name}`,
+      message: `User ${name} (${email}) sent a new message: "${message.slice(0, 150)}..."`,
+      type: "contact_submission",
+      link: "/admin/contacts",
+      sendEmail: true,
+    }).catch((err) => console.warn("Failed to notify admins of contact message:", err));
 
     await logServerEvent("contact_created", { email, ip, ticketId: docRef.id });
 

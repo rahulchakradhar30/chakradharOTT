@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { verifyAdminSession } from "@/lib/adminAuth";
 import { sendMail } from "@/lib/mail";
+import { notifyAdmins } from "@/lib/notifications";
 import { logServerEvent } from "@/lib/auditLog";
 
 export const runtime = "nodejs";
@@ -123,8 +124,16 @@ export async function POST(req) {
 
     await newMailRef.set(mailDoc);
 
-    // Send external email notification if sending to a specific admin
-    if (cleanRecipient !== "all" && cleanRecipient !== cleanSender) {
+    // Send site notification & email alert to administrators
+    if (cleanRecipient === "all") {
+      notifyAdmins({
+        title: `📢 Broadcast Announcement: ${cleanSubject}`,
+        message: `Administrator ${cleanSender} published a broadcast message: "${cleanBody.slice(0, 150)}..."`,
+        type: "admin_mail",
+        link: "/admin/mail",
+        sendEmail: true,
+      }).catch((e) => console.warn("Broadcast notify error:", e));
+    } else if (cleanRecipient !== cleanSender) {
       try {
         await sendMail({
           to: cleanRecipient,

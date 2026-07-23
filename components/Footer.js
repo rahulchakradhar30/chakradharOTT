@@ -1,67 +1,116 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import Script from "next/script";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import { MailIcon, SendIcon, CheckCircleIcon, StarIcon } from "@/components/Icon";
 
 export default function Footer() {
   const pathname = usePathname();
+  const { user } = useAuth();
+
+  const [feedback, setFeedback] = useState("");
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      setEmail(user.email || "");
+      setName(user.displayName || user.email?.split("@")[0] || "");
+    }
+  }, [user]);
 
   // Hide Footer on all /admin and /sub-admin routes
   if (pathname?.startsWith("/admin") || pathname?.startsWith("/sub-admin")) {
     return null;
   }
+
+  const handleFeedbackSubmit = async (e) => {
+    e.preventDefault();
+    if (!feedback.trim()) return;
+
+    try {
+      setLoading(true);
+      setError("");
+
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim() || "Platform Viewer",
+          email: email.trim() || "feedback@viewer.com",
+          subject: "Platform Experience & Feedback",
+          message: feedback.trim(),
+          userId: user?.uid || null,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to send feedback");
+      }
+
+      setSubmitted(true);
+      setFeedback("");
+    } catch (err) {
+      console.warn("Feedback submission error:", err);
+      setError("Failed to send feedback. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <footer className="mt-16 border-t border-white/10 bg-[#0f0f0f] text-sm relative z-10">
       <div className="max-w-7xl mx-auto px-4 md:px-10 py-12 space-y-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          
           {/* Left section containing brand, links, and support */}
           <div className="lg:col-span-7 grid md:grid-cols-3 gap-8 text-center md:text-left">
             <div className="space-y-3">
               <h2 className="text-white font-black text-xl tracking-tight">
                 CHAKRADHAR STREAM
               </h2>
-              <p className="text-xs md:text-sm text-gray-400 max-w-sm leading-relaxed">
+              <p className="text-xs text-gray-400 max-w-sm leading-relaxed">
                 Premium movies, limited-run premieres, and cinematic storytelling crafted for modern audiences.
               </p>
             </div>
 
-            <div className="flex flex-col gap-2.5 text-gray-300">
+            <div className="flex flex-col gap-2.5 text-gray-300 text-xs">
               <span className="text-xs uppercase tracking-[0.2em] text-gray-400 font-bold mb-1">Navigation</span>
-              <Link href="/movies" className="hover:text-cyan-300 transition-colors">
+              <Link href="/movies" className="hover:text-red-400 transition-colors">
                 Browse Movies
               </Link>
-              <Link href="/terms" className="hover:text-cyan-300 transition-colors">
+              <Link href="/terms" className="hover:text-red-400 transition-colors">
                 Terms & Conditions
               </Link>
-              <Link href="/privacy" className="hover:text-cyan-300 transition-colors">
+              <Link href="/privacy" className="hover:text-red-400 transition-colors">
                 Privacy Policy
               </Link>
-              <Link href="/contact" className="hover:text-cyan-300 transition-colors">
-                Contact
+              <Link href="/contact" className="hover:text-red-400 transition-colors">
+                Support & Contact
               </Link>
             </div>
 
-            <div className="space-y-2.5 text-gray-300">
+            <div className="space-y-2.5 text-gray-300 text-xs">
               <span className="text-xs uppercase tracking-[0.2em] text-gray-400 font-bold">Support</span>
-              <p className="text-sm">
+              <p className="text-sm font-semibold text-white">
                 thefifthagefilms@gmail.com
               </p>
               <p className="text-xs text-gray-500">Response within 24 hours</p>
             </div>
           </div>
 
-          {/* Right section containing the feedback card */}
+          {/* Right section containing Native Instant Feedback Form */}
           <div className="lg:col-span-5">
-            <div className="relative group overflow-hidden bg-white/[0.01] hover:bg-white/[0.02] border border-white/10 hover:border-cyan-500/30 rounded-2xl p-6 backdrop-blur-md shadow-2xl transition-all duration-500">
-              {/* Decorative cyan glow behind card */}
-              <div className="absolute -right-20 -top-20 w-40 h-40 bg-cyan-500/5 rounded-full blur-3xl group-hover:bg-cyan-500/10 transition-all duration-700 pointer-events-none" />
-
+            <div className="bg-[#212121] border border-white/10 rounded-2xl p-6 shadow-xl relative overflow-hidden">
               <div className="flex items-center gap-2.5 mb-2">
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
-                  </svg>
+                <div className="w-8 h-8 rounded-lg bg-red-600/20 border border-red-500/30 text-red-500 flex items-center justify-center">
+                  <StarIcon className="w-4 h-4 text-red-500" />
                 </div>
                 <h3 className="text-white font-bold text-base tracking-tight">
                   Share Your Experience
@@ -69,119 +118,70 @@ export default function Footer() {
               </div>
 
               <p className="text-xs text-gray-400 mb-4 leading-relaxed">
-                Help us improve Chakradhar Stream with your feedback.
+                Help us improve Chakradhar Stream with your thoughts & feedback.
               </p>
 
-              {/* FormFacade target element */}
-              <div className="relative min-h-[300px] w-full flex items-center justify-center">
-                <div id="ff-compose" className="w-full">
-                  {/* Spinner inside the form element which gets replaced when FormFacade finishes loading */}
-                  <div className="flex flex-col items-center justify-center py-12 space-y-3">
-                    <div className="w-7 h-7 border-2 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin"></div>
-                    <span className="text-xs text-gray-500 tracking-wider">Loading feedback form...</span>
-                  </div>
+              {submitted ? (
+                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-5 text-center space-y-2 animate-fadeIn">
+                  <CheckCircleIcon className="w-8 h-8 text-emerald-400 mx-auto" />
+                  <p className="font-bold text-sm text-white">Thank You for Your Feedback!</p>
+                  <p className="text-xs text-emerald-300/90">Your response has been sent directly to our development team.</p>
+                  <button
+                    type="button"
+                    onClick={() => setSubmitted(false)}
+                    className="mt-2 text-xs text-gray-400 hover:text-white underline"
+                  >
+                    Send another message
+                  </button>
                 </div>
-              </div>
+              ) : (
+                <form onSubmit={handleFeedbackSubmit} className="space-y-3">
+                  {!user && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        placeholder="Your Name (Optional)"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full px-3 py-2 bg-[#181818] border border-white/10 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
+                      />
+                      <input
+                        type="email"
+                        placeholder="Your Email (Optional)"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full px-3 py-2 bg-[#181818] border border-white/10 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-red-500"
+                      />
+                    </div>
+                  )}
+
+                  <textarea
+                    rows={3}
+                    required
+                    value={feedback}
+                    onChange={(e) => setFeedback(e.target.value)}
+                    placeholder="Tell us what features or movies you would like to see..."
+                    className="w-full px-3 py-2 bg-[#181818] border border-white/10 rounded-lg text-xs text-white placeholder-gray-500 focus:outline-none focus:border-red-500 resize-none"
+                  />
+
+                  {error && <p className="text-xs text-rose-400">{error}</p>}
+
+                  <button
+                    type="submit"
+                    disabled={loading || !feedback.trim()}
+                    className="w-full py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:opacity-90 transition rounded-lg text-xs font-bold text-white uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <SendIcon className="w-3.5 h-3.5" />
+                    <span>{loading ? "Sending..." : "Submit Feedback"}</span>
+                  </button>
+                </form>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Global style overrides for the FormFacade injected elements inside footer */}
-        <style dangerouslySetInnerHTML={{
-          __html: `
-          #ff-compose {
-            width: 100%;
-          }
-          #ff-compose .ff-form {
-            background: transparent !important;
-            background-color: transparent !important;
-            color: #e2e8f0 !important;
-            border: none !important;
-            box-shadow: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
-          }
-          #ff-compose .ff-section {
-            background: transparent !important;
-            border: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
-          }
-          #ff-compose .ff-title, 
-          #ff-compose .ff-description {
-            display: none !important;
-          }
-          #ff-compose .ff-item {
-            margin-bottom: 1rem !important;
-          }
-          #ff-compose .ff-item label {
-            color: #94a3b8 !important;
-            font-weight: 500 !important;
-            font-size: 0.8rem !important;
-            margin-bottom: 0.25rem !important;
-          }
-          #ff-compose .ff-form input[type="text"],
-          #ff-compose .ff-form input[type="email"],
-          #ff-compose .ff-form textarea,
-          #ff-compose .ff-form select {
-            background: rgba(255, 255, 255, 0.02) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            color: #f8fafc !important;
-            border-radius: 0.5rem !important;
-            padding: 0.5rem 0.75rem !important;
-            font-size: 0.8rem !important;
-            width: 100% !important;
-            transition: all 0.2s ease !important;
-          }
-          #ff-compose .ff-form input[type="text"]:focus,
-          #ff-compose .ff-form input[type="email"]:focus,
-          #ff-compose .ff-form textarea:focus,
-          #ff-compose .ff-form select:focus {
-            border-color: rgba(6, 182, 212, 0.4) !important;
-            background: rgba(255, 255, 255, 0.04) !important;
-            outline: none !important;
-          }
-          #ff-compose .ff-form button,
-          #ff-compose .ff-form .btn-primary,
-          #ff-compose .ff-form #ff-submit-root,
-          #ff-compose .ff-form input[type="submit"] {
-            background: linear-gradient(135deg, #06b6d4, #0891b2) !important;
-            color: #ffffff !important;
-            font-weight: 600 !important;
-            border: none !important;
-            border-radius: 0.5rem !important;
-            padding: 0.5rem 1rem !important;
-            font-size: 0.8rem !important;
-            cursor: pointer !important;
-            transition: all 0.2s ease !important;
-            box-shadow: 0 4px 10px rgba(6, 182, 212, 0.15) !important;
-            width: auto !important;
-            display: inline-flex !important;
-          }
-          #ff-compose .ff-form button:hover,
-          #ff-compose .ff-form .btn-primary:hover,
-          #ff-compose .ff-form #ff-submit-root:hover,
-          #ff-compose .ff-form input[type="submit"]:hover {
-            background: linear-gradient(135deg, #0891b2, #0e7490) !important;
-            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3) !important;
-            transform: translateY(-0.5px) !important;
-          }
-          #ff-compose a {
-            color: #22d3ee !important;
-            text-decoration: none !important;
-          }
-          #ff-compose a:hover {
-            color: #67e8f9 !important;
-          }
-        `}} />
-
-        <Script
-          src="https://formfacade.com/include/111331476523137867874/form/1FAIpQLScS6JdNRLTzsnEXq7xyUsAQrqnTscaGDONhQ5Z8lp3Ngjpxzg/classic.js?div=ff-compose"
-          strategy="lazyOnload"
-        />
-
         <div className="border-t border-white/10 pt-5 text-center text-xs text-gray-500">
-          © {new Date().getFullYear()} Chakradhar STREAM Platform • Created by Rahul Chakradhar & The Fifth Age Films Productions • Version 3.0
+          © {new Date().getFullYear()} Chakradhar STREAM Platform • Created by Rahul Chakradhar & The Fifth Age Films Productions • Version 3.2.0
         </div>
       </div>
     </footer>

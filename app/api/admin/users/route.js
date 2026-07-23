@@ -45,12 +45,32 @@ export async function GET(req) {
   }
 }
 
+function getAllowedAdminEmails() {
+  const fromEnv = String(process.env.ADMIN_ALLOWED_EMAILS || "")
+    .split(",")
+    .map((v) => v.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (fromEnv.length > 0) return fromEnv;
+
+  return [
+    "thefifthagefilms@gmail.com",
+    "rahulchakradharperepogu@gmail.com",
+  ];
+}
+
 export async function POST(req) {
   try {
     const token = req.cookies.get("admin-session")?.value || "";
     const email = verifyAdminSession(token);
     if (!email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const normalizedEmail = email.toLowerCase();
+    const allowedSuperAdmins = getAllowedAdminEmails();
+    if (!allowedSuperAdmins.includes(normalizedEmail)) {
+      return NextResponse.json({ error: "Forbidden — only Super Administrators can edit or delete user accounts." }, { status: 403 });
     }
 
     const { action, targetUid, data } = await req.json();

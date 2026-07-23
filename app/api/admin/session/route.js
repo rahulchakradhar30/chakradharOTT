@@ -39,15 +39,33 @@ const DEFAULT_SUB_ADMIN_PERMISSIONS = {
   settings: false,
 };
 
+const SUB_ADMIN_MODULE_TO_ROUTE = {
+  dashboard: "/sub-admin",
+  movies: "/sub-admin/movies",
+  premieres: "/sub-admin/premieres",
+  posters: "/sub-admin/posters",
+  discovery: "/sub-admin/discovery",
+  genres: "/sub-admin/genres",
+  analytics: "/sub-admin/analytics",
+  contacts: "/sub-admin/contacts",
+  users: "/sub-admin/users",
+  drafts: "/sub-admin/drafts",
+  mail: "/sub-admin/mail",
+  notifications: "/sub-admin/notifications",
+  settings: "/sub-admin/settings",
+};
+
 function resolvePermissions(role, customPermissions) {
   if (role === "super_admin") {
     return {
       navItems: ["*"],
+      subAdminNavItems: Object.values(SUB_ADMIN_MODULE_TO_ROUTE),
       canCreate: true,
       canDelete: true,
       canManageAdmins: true,
       canManageSettings: true,
       canBroadcast: true,
+      homeRedirect: "/admin",
       modules: Object.keys(MODULE_TO_ROUTE).reduce((acc, key) => {
         acc[key] = true;
         return acc;
@@ -66,13 +84,19 @@ function resolvePermissions(role, customPermissions) {
     .filter((mod) => permsMap[mod] && MODULE_TO_ROUTE[mod])
     .map((mod) => MODULE_TO_ROUTE[mod]);
 
+  const subAdminNavItems = Object.keys(permsMap)
+    .filter((mod) => permsMap[mod] && SUB_ADMIN_MODULE_TO_ROUTE[mod])
+    .map((mod) => SUB_ADMIN_MODULE_TO_ROUTE[mod]);
+
   return {
     navItems,
+    subAdminNavItems,
     canCreate: Boolean(permsMap.movies || permsMap.premieres || permsMap.posters),
     canDelete: false,
     canManageAdmins: false,
     canManageSettings: Boolean(permsMap.settings),
     canBroadcast: Boolean(permsMap.mail),
+    homeRedirect: "/sub-admin",
     modules: permsMap,
   };
 }

@@ -97,8 +97,13 @@ export default function AdminLayoutClient({ children }) {
           return;
         }
 
+        if (role === "sub_admin") {
+          router.replace("/sub-admin");
+          return;
+        }
+
         setAdminEmail(email || "admin");
-        setAdminRole(role || "sub_admin");
+        setAdminRole(role || "super_admin");
         setAdminName(name || "");
         setPermissions(perms);
       } catch {

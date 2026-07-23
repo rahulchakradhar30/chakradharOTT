@@ -120,7 +120,8 @@ export default function AdminLogin() {
 
       if (data.success) {
         await new Promise((resolve) => setTimeout(resolve, 150));
-        window.location.replace("/admin");
+        const targetPath = adminRole === "sub_admin" ? "/sub-admin" : "/admin";
+        window.location.replace(targetPath);
       } else {
         setErrorMsg(data.error || "Invalid or expired OTP. Please try again.");
       }

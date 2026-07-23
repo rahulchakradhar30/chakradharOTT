@@ -15,9 +15,10 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
  */
 export default function FaceOverlay({ videoRef, mediaId, currentTimeMs }){
   const [scene, setScene] = useState(null);
+  const [videoDims, setVideoDims] = useState({ displayW: 0, displayH: 0, intrinsicW: 0, intrinsicH: 0 });
 
   useEffect(()=>{
-    if (!mediaId || currentTimeMs == null) { setScene(null); return; }
+    if (!mediaId || currentTimeMs == null) return;
     let cancelled = false;
     (async ()=>{
       const col = collection(db, `media/${mediaId}/xray`);
@@ -30,26 +31,39 @@ export default function FaceOverlay({ videoRef, mediaId, currentTimeMs }){
     return ()=>{ cancelled = true; };
   },[mediaId, currentTimeMs]);
 
-  if (!scene || !videoRef?.current) return null;
+  useEffect(() => {
+    let animId;
+    if (videoRef?.current) {
+      animId = requestAnimationFrame(() => {
+        const video = videoRef.current;
+        if (!video) return;
+        const rect = video.getBoundingClientRect ? video.getBoundingClientRect() : { width: video.clientWidth || 0, height: video.clientHeight || 0 };
+        const displayW = rect.width || video.clientWidth || 0;
+        const displayH = rect.height || video.clientHeight || 0;
+        const intrinsicW = video.videoWidth || displayW;
+        const intrinsicH = video.videoHeight || displayH;
 
-  const video = videoRef.current;
-  const rect = video.getBoundingClientRect ? video.getBoundingClientRect() : { width: video.clientWidth || 0, height: video.clientHeight || 0 };
-  const displayW = rect.width || video.clientWidth || 0;
-  const displayH = rect.height || video.clientHeight || 0;
-  const intrinsicW = video.videoWidth || displayW;
-  const intrinsicH = video.videoHeight || displayH;
+        setVideoDims({ displayW, displayH, intrinsicW, intrinsicH });
+      });
+    }
+    return () => {
+      if (animId) cancelAnimationFrame(animId);
+    };
+  }, [videoRef, currentTimeMs]);
+
+  if (!scene) return null;
+
+  const { intrinsicW, intrinsicH } = videoDims;
 
   function toPercentCoords(bbox){
     if (!bbox) return null;
-    // if bbox values appear normalized (<=1), use directly
     if (bbox.x <= 1 && bbox.y <= 1 && bbox.w <= 1 && bbox.h <= 1){
       return { left: bbox.x * 100, top: bbox.y * 100, width: bbox.w * 100, height: bbox.h * 100 };
     }
-    // else interpret as pixel coords relative to intrinsic size
-    const left = (bbox.x / intrinsicW) * 100;
-    const top = (bbox.y / intrinsicH) * 100;
-    const width = (bbox.w / intrinsicW) * 100;
-    const height = (bbox.h / intrinsicH) * 100;
+    const left = intrinsicW ? (bbox.x / intrinsicW) * 100 : 0;
+    const top = intrinsicH ? (bbox.y / intrinsicH) * 100 : 0;
+    const width = intrinsicW ? (bbox.w / intrinsicW) * 100 : 0;
+    const height = intrinsicH ? (bbox.h / intrinsicH) * 100 : 0;
     return { left, top, width, height };
   }
 

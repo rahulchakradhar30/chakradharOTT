@@ -36,7 +36,6 @@ export default function AnalyticsDashboard() {
 
     const loadAnalytics = async () => {
       try {
-        setLoading(true);
 
         const timeframe = new Date();
         timeframe.setDate(timeframe.getDate() - 30);

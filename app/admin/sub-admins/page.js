@@ -34,10 +34,7 @@ export default function SubAdminsManagement() {
 
   // Real-time listener for admins collection
   useEffect(() => {
-    if (adminRole !== "super_admin") {
-      setLoading(false);
-      return;
-    }
+    if (adminRole !== "super_admin") return;
 
     const unsubscribe = onSnapshot(
       collection(db, "admins"),

@@ -25,11 +25,7 @@ export default function PremiereJoinClient() {
   const [ticketChecking, setTicketChecking] = useState(true);
 
   useEffect(() => {
-    if (!id) {
-      setError("Invalid premiere link");
-      setLoading(false);
-      return;
-    }
+    if (!id) return;
 
     const docRef = doc(db, "premieres", String(id));
 

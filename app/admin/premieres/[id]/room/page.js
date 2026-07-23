@@ -48,12 +48,7 @@ export default function PremiereRoomPage() {
 
   /* FETCH PREMIERE */
   useEffect(() => {
-    if (!id) return;
-
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    if (!id || !user) return;
 
     const fetchPremiere = async () => {
       try {

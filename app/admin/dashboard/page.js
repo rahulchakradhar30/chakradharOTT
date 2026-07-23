@@ -28,7 +28,6 @@ export default function AdminDashboard() {
 
     const loadStats = async () => {
       try {
-        setLoading(true);
 
         const moviesSnap = await getDocs(collection(db, "movies"));
         const premiersSnap = await getDocs(collection(db, "premieres"));

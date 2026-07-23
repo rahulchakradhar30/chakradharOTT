@@ -88,10 +88,7 @@ export default function TriviaClient() {
 
   // Fetch and subscribe to current user's profile XP in realtime
   useEffect(() => {
-    if (!user) {
-      setCurrentUserXP((prev) => (prev !== 0 ? 0 : prev));
-      return;
-    }
+    if (!user) return;
     const userRef = doc(db, "users", user.uid);
     const unsubscribeUser = onSnapshot(userRef, (docSnap) => {
       if (docSnap.exists()) {

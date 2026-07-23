@@ -25,11 +25,7 @@ export default function PremiereTicketsClient() {
   const [redeeming, setRedeeming] = useState(false);
 
   useEffect(() => {
-    if (!id) {
-      setError("Invalid premiere link");
-      setLoading(false);
-      return;
-    }
+    if (!id) return;
 
     const fetchPremiere = async () => {
       try {

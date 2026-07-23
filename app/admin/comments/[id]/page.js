@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { db } from "@/firebase";
 import {
   doc,
@@ -15,24 +16,15 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 
-export default function CommentManager({ params }) {
-  const [movieId, setMovieId] = useState(null);
+export default function CommentManager() {
+  const params = useParams();
+  const movieId = params?.id;
   const [movieTitle, setMovieTitle] = useState("");
   const [comments, setComments] = useState([]);
   const [selected, setSelected] = useState([]);
   const [replyTo, setReplyTo] = useState(null);
   const [replyText, setReplyText] = useState("");
   const [loading, setLoading] = useState(true);
-
-  /* ---------- Resolve Params ---------- */
-
-  useEffect(() => {
-    const resolveParams = async () => {
-      const resolved = await params;
-      setMovieId(resolved.id);
-    };
-    resolveParams();
-  }, [params]);
 
   /* ---------- Fetch Data ---------- */
 

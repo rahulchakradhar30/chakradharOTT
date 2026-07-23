@@ -9,14 +9,15 @@ import {
   collection,
   getDocs,
 } from "firebase/firestore";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { normalizeYouTubeEmbed } from "@/lib/youtube";
 import ImageUploadSelector from "@/components/ImageUploadSelector";
 
-export default function EditMovie({ params }) {
+export default function EditMovie() {
+  const params = useParams();
+  const movieId = params?.id;
   const router = useRouter();
   const [movie, setMovie] = useState(null);
-  const [movieId, setMovieId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [dbGenres, setDbGenres] = useState([]);
 
@@ -37,15 +38,6 @@ export default function EditMovie({ params }) {
     };
     fetchGenres();
   }, []);
-
-  /* ---------- Resolve Params ---------- */
-  useEffect(() => {
-    const resolveParams = async () => {
-      const resolved = await params;
-      setMovieId(resolved.id);
-    };
-    resolveParams();
-  }, [params]);
 
   /* ---------- Fetch Movie ---------- */
   useEffect(() => {

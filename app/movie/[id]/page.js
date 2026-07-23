@@ -195,14 +195,14 @@ export default async function MovieDetail({ params }) {
             {/* Left: Studio Avatar + Name + Subscribe Pill */}
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-red-600 text-white font-black flex items-center justify-center text-sm shadow-md shrink-0">
-                TS
+                CS
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1">
                   <span className="font-bold text-sm text-white truncate">Chakradhar Stream</span>
                   <span className="text-cyan-400 text-xs">✓</span>
                 </div>
-                <p className="text-[11px] text-gray-400 font-medium">15.4M subscribers</p>
+                <p className="text-[11px] text-gray-400 font-medium">Official Channel</p>
               </div>
 
               <Link
@@ -221,7 +221,7 @@ export default async function MovieDetail({ params }) {
               <div className="flex items-center bg-white/10 hover:bg-white/15 rounded-full text-xs font-semibold text-white overflow-hidden border border-white/10">
                 <button type="button" className="px-3.5 py-2 flex items-center gap-1.5 hover:bg-white/10 transition border-r border-white/10">
                   <ThumbsUpIcon className="w-4 h-4 text-white" />
-                  <span>{totalViews > 0 ? (totalViews * 2.5).toLocaleString() : "2.5K"}</span>
+                  <span>{movie.likesCount || totalViews || 0}</span>
                 </button>
                 <button type="button" className="px-3.5 py-2 hover:bg-white/10 transition">
                   <ThumbsDownIcon className="w-4 h-4 text-white" />
@@ -323,9 +323,11 @@ export default async function MovieDetail({ params }) {
                     sizes="160px"
                     className="object-cover group-hover:scale-105 transition duration-300"
                   />
-                  <div className="absolute bottom-1 right-1 bg-black/80 text-[10px] font-bold text-white px-1.5 py-0.5 rounded">
-                    4K
-                  </div>
+                  {rec.quality && (
+                    <div className="absolute bottom-1 right-1 bg-black/80 text-[10px] font-bold text-white px-1.5 py-0.5 rounded">
+                      {rec.quality}
+                    </div>
+                  )}
                 </div>
 
                 <div className="min-w-0 flex flex-col justify-center space-y-1">

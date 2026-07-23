@@ -15,6 +15,7 @@ const ALL_SUB_ADMIN_NAV_ITEMS = [
   { href: "/sub-admin/genres", moduleKey: "genres", label: "Genres", icon: "🏷️" },
   { href: "/sub-admin/analytics", moduleKey: "analytics", label: "Analytics", icon: "📈" },
   { href: "/sub-admin/contacts", moduleKey: "contacts", label: "Contacts", icon: "📬" },
+  { href: "/sub-admin/attendance", moduleKey: "dashboard", label: "Attendance & Leaves", icon: "📅" },
   { href: "/sub-admin/users", moduleKey: "users", label: "Users", icon: "👥" },
   { href: "/sub-admin/drafts", moduleKey: "drafts", label: "Drafts", icon: "📝" },
   { href: "/sub-admin/mail", moduleKey: "mail", label: "Admin Mail", icon: "✉️" },

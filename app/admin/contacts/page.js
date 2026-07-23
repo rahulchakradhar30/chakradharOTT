@@ -1123,7 +1123,7 @@ export default function AdminContactsPage() {
                 </div>
 
                 {/* Quick actions panel */}
-                <div className="bg-black/20 p-3 rounded-2xl border border-white/5 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div className="bg-black/20 p-3 rounded-2xl border border-white/5 grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
                   
                   {/* Status update selector */}
                   <div className="flex flex-col gap-1">
@@ -1148,9 +1148,9 @@ export default function AdminContactsPage() {
                       onChange={(e) => handleUpdatePriority(activeTicket.id, e.target.value)}
                       className="bg-black/45 border border-white/10 text-xs text-gray-300 rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-cyan-500 font-semibold"
                     >
-                      <option value="Low">Low</option>
-                      <option value="Medium">Medium</option>
                       <option value="High">High</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Low">Low</option>
                     </select>
                   </div>
 
@@ -1164,10 +1164,8 @@ export default function AdminContactsPage() {
                       className="bg-black/45 border border-white/10 text-xs text-gray-300 rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-cyan-500 font-semibold disabled:opacity-50"
                     >
                       <option value="Unassigned">Unassigned</option>
-                      {/* Env super-admins */}
                       <option value="thefifthagefilms@gmail.com">thefifthagefilms@gmail.com</option>
                       <option value="rahulchakradharperepogu@gmail.com">rahulchakradharperepogu@gmail.com</option>
-                      {/* Dynamic custom admins/sub-admins */}
                       {adminsList
                         .filter((email) => email !== "thefifthagefilms@gmail.com" && email !== "rahulchakradharperepogu@gmail.com")
                         .map((email) => (

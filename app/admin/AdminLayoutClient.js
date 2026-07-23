@@ -18,6 +18,7 @@ const ALL_NAV_ITEMS = [
   { href: "/admin/contacts", label: "Contacts", icon: "📬" },
   { href: "/admin/users", label: "Users", icon: "👥" },
   { href: "/admin/sub-admins", label: "Sub-Admins", icon: "🔐" },
+  { href: "/admin/attendance", label: "Attendance & Leaves", icon: "📅" },
   { href: "/admin/drafts", label: "Drafts", icon: "📝" },
   { href: "/admin/mail", label: "Admin Mail", icon: "✉️" },
   { href: "/admin/notifications", label: "Notifications", icon: "🔔" },

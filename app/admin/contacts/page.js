@@ -248,8 +248,8 @@ export default function AdminContactsPage() {
     const matchesPriority =
       priorityFilter === "all" || priority.toLowerCase() === priorityFilter.toLowerCase();
 
-    // Filter by Search text
-    const searchStr = `${msg.name} ${msg.email} ${msg.message} ${msg.source || ""} ${msg.assignedTo || ""}`.toLowerCase();
+    // Filter by Search text (Includes Ticket ID e.g. CS184920, Subject, Name, Email, Message)
+    const searchStr = `${msg.ticketId || ""} ${msg.id} ${msg.subject || ""} ${msg.name} ${msg.email} ${msg.message} ${msg.source || ""} ${msg.assignedTo || ""}`.toLowerCase();
     const matchesSearch = searchStr.includes(searchTerm.toLowerCase());
 
     return matchesStatus && matchesPriority && matchesSearch;

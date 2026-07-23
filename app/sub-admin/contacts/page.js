@@ -107,8 +107,8 @@ export default function SubAdminContacts() {
               <div key={t.id} className="admin-surface p-5 rounded-2xl space-y-3 border border-white/10">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
                   <div className="space-y-0.5">
-                    <span className="text-[10px] font-mono text-cyan-400 uppercase">Ticket #{t.id.slice(0, 8)}</span>
-                    <h3 className="text-sm font-bold text-white">{t.name} ({t.email})</h3>
+                    <span className="text-[10px] font-mono font-black text-cyan-400 uppercase">Ticket #{t.ticketId || t.id}</span>
+                    <h3 className="text-sm font-bold text-white">{t.subject ? `${t.subject} — ` : ""}{t.name} ({t.email})</h3>
                   </div>
 
                   <div className="flex items-center gap-2">

@@ -271,3 +271,92 @@ a {
 .animate-softPulse {
   animation: softPulse 2.2s ease-in-out infinite;
 }
+
+/* ── iOS Safe Area Support ── */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* ── Mobile Admin Styles ── */
+@media (max-width: 768px) {
+  .admin-title {
+    font-size: clamp(1.4rem, 5vw, 2rem);
+    line-height: 1.15;
+  }
+
+  .admin-lead {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .admin-kicker {
+    font-size: 0.65rem;
+  }
+
+  .admin-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .admin-input,
+  .admin-textarea,
+  .admin-select {
+    padding: 0.75rem 0.85rem;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+    border-radius: 0.85rem;
+  }
+
+  .admin-button {
+    padding: 0.75rem 1rem;
+    min-height: 44px; /* Touch-friendly minimum */
+    font-size: 0.875rem;
+  }
+
+  .admin-surface {
+    border-radius: 1.25rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  }
+
+  .admin-chip {
+    font-size: 0.65rem;
+    padding: 0.25rem 0.6rem;
+  }
+
+  .glass-card {
+    border-radius: 1.25rem;
+  }
+}
+
+/* ── Touch-friendly elements ── */
+button,
+a,
+input[type="checkbox"],
+input[type="radio"],
+select {
+  touch-action: manipulation;
+}
+
+/* Ensure minimum tap target size on mobile */
+@media (max-width: 768px) {
+  button:not(.admin-chip),
+  a.admin-button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ── Smooth scrolling ── */
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ── Prevent overscroll on iOS ── */
+body {
+  overscroll-behavior-y: none;
+}

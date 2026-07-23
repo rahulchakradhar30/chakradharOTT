@@ -3,17 +3,21 @@
 import { useState, useEffect } from "react";
 import { db } from "@/firebase";
 import { collection, addDoc, Timestamp, getDocs } from "firebase/firestore";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { normalizeYouTubeEmbed } from "@/lib/youtube";
 import ImageUploadSelector from "@/components/ImageUploadSelector";
+import { useAutoSave, loadDraft } from "@/lib/drafts";
 
 export default function CreateMovie() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const draftIdParam = searchParams?.get("draftId") || null;
 
   const [loading, setLoading] = useState(false);
   const [dbGenres, setDbGenres] = useState([]);
   const [isScheduled, setIsScheduled] = useState(false);
   const [scheduledTime, setScheduledTime] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
 
   const [form, setForm] = useState({
     title: "",
@@ -29,6 +33,50 @@ export default function CreateMovie() {
     isFeatured: false,
     isTrending: false,
   });
+
+  // Auto-save hook
+  const { lastSaved, saving: autoSaving, clearDraft } = useAutoSave(
+    form,
+    "movie",
+    adminEmail,
+    10000
+  );
+
+  // Fetch admin email
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const res = await fetch("/api/admin/session");
+        if (res.ok) {
+          const data = await res.json();
+          setAdminEmail(data.email || "");
+        }
+      } catch (err) {
+        console.warn(err);
+      }
+    };
+    fetchSession();
+  }, []);
+
+  // Load draft if draftId is present
+  useEffect(() => {
+    if (!draftIdParam) return;
+    const load = async () => {
+      try {
+        const draft = await loadDraft(draftIdParam);
+        if (draft?.data) {
+          setForm((prev) => ({ ...prev, ...draft.data }));
+          if (draft.data.scheduledTime) {
+            setIsScheduled(true);
+            setScheduledTime(draft.data.scheduledTime);
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to load draft:", err);
+      }
+    };
+    load();
+  }, [draftIdParam]);
 
   useEffect(() => {
     const fetchGenres = async () => {
@@ -96,20 +144,48 @@ export default function CreateMovie() {
       console.warn("Failed to broadcast movie release notification:", notifErr);
     }
 
+    // Clear the draft after successful submission
+    await clearDraft();
+
     setLoading(false);
     alert("Movie uploaded successfully");
     router.push("/admin/movies");
   };
 
   return (
-    <div className="space-y-10 max-w-5xl mx-auto">
+    <div className="space-y-10 max-w-5xl mx-auto pb-16">
 
       {/* HEADER */}
       <div className="admin-section">
         <p className="admin-kicker">Content Studio</p>
         <h1 className="admin-title">Upload new movie</h1>
         <p className="admin-lead">Add new movie details, media links, and visibility flags in one clean flow.</p>
+        {draftIdParam && (
+          <p className="text-xs text-cyan-400 mt-2">📝 Resuming from saved draft</p>
+        )}
       </div>
+
+      {/* AUTO-SAVE INDICATOR */}
+      {adminEmail && (
+        <div className="flex items-center gap-3 text-xs text-gray-500">
+          {autoSaving ? (
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              Saving draft...
+            </span>
+          ) : lastSaved ? (
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-green-400" />
+              Draft auto-saved at {lastSaved.toLocaleTimeString()}
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-gray-500" />
+              Changes will be auto-saved
+            </span>
+          )}
+        </div>
+      )}
 
       {/* FORM */}
       <form
@@ -124,6 +200,7 @@ export default function CreateMovie() {
             type="text"
             placeholder="Movie title"
             required
+            value={form.title}
             className="admin-input focus-ring"
             onChange={(e) => handleChange("title", e.target.value)}
           />
@@ -131,6 +208,7 @@ export default function CreateMovie() {
           <input
             type="text"
             placeholder="Tagline"
+            value={form.tagline}
             className="admin-input focus-ring"
             onChange={(e) => handleChange("tagline", e.target.value)}
           />
@@ -138,6 +216,7 @@ export default function CreateMovie() {
           <input
             type="text"
             placeholder="Director name"
+            value={form.director}
             className="admin-input focus-ring"
             onChange={(e) => handleChange("director", e.target.value)}
           />
@@ -145,6 +224,7 @@ export default function CreateMovie() {
           <textarea
             placeholder="Description"
             rows="4"
+            value={form.description}
             className="admin-textarea focus-ring"
             onChange={(e) => handleChange("description", e.target.value)}
           />
@@ -158,6 +238,7 @@ export default function CreateMovie() {
             type="text"
             placeholder="Paste any YouTube link"
             required
+            value={form.embedLink}
             className="admin-input focus-ring"
             onChange={(e) => handleChange("embedLink", e.target.value)}
           />
@@ -197,6 +278,7 @@ export default function CreateMovie() {
 
           <input
             type="date"
+            value={form.releaseDate}
             className="admin-input focus-ring"
             onChange={(e) => handleChange("releaseDate", e.target.value)}
           />
@@ -230,6 +312,7 @@ export default function CreateMovie() {
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
+              checked={form.isFeatured}
               onChange={(e) =>
                 handleChange("isFeatured", e.target.checked)
               }
@@ -240,6 +323,7 @@ export default function CreateMovie() {
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
+              checked={form.isTrending}
               onChange={(e) =>
                 handleChange("isTrending", e.target.checked)
               }
@@ -250,13 +334,15 @@ export default function CreateMovie() {
         </div>
 
         {/* SUBMIT */}
-        <button
-          type="submit"
-          disabled={loading}
-          className="admin-button admin-button-primary w-full md:w-auto disabled:opacity-60"
-        >
-          {loading ? "Uploading..." : "Upload Movie"}
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            type="submit"
+            disabled={loading}
+            className="admin-button admin-button-primary flex-1 disabled:opacity-60"
+          >
+            {loading ? "Uploading..." : "Upload Movie"}
+          </button>
+        </div>
 
       </form>
 

@@ -2,11 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/Toast";
 import { db } from "@/firebase";
 import { doc, collection, onSnapshot, query, orderBy } from "firebase/firestore";
 
 export default function NotificationListener() {
   const { user } = useAuth();
+  const { addToast } = useToast();
   const sessionStartTime = useRef(new Date());
 
   useEffect(() => {
@@ -45,6 +47,11 @@ export default function NotificationListener() {
           
           // Verify it's a new notification since session started, and not marked read
           if (notifDate >= sessionStartTime.current && !notif.read) {
+            // Trigger in-app toast
+            if (addToast) {
+              addToast(`${notif.title}: ${notif.message}`, "info", 5000);
+            }
+
             // Check if settings allow browser notifications
             if (browserNotificationsEnabled && typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
               try {
@@ -65,7 +72,8 @@ export default function NotificationListener() {
       unsubUser();
       unsubNotif();
     };
-  }, [user]);
+  }, [user, addToast]);
 
   return null;
 }
+

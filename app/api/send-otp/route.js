@@ -79,6 +79,25 @@ export async function POST(req) {
         );
       }
 
+      // Check if admin account is disabled
+      if (!allowedEmails.includes(normalizedEmail)) {
+        const adminDoc = await adminDb.collection("admins").doc(normalizedEmail).get();
+        if (adminDoc.exists) {
+          const adminData = adminDoc.data();
+          if (adminData.status === "disabled" || adminData.status === "removed") {
+            await logServerEvent("admin_otp_send_failed", {
+              ip,
+              email: normalizedEmail,
+              message: "account_disabled",
+            });
+            return NextResponse.json(
+              { success: false, error: "Your admin account has been disabled." },
+              { status: 403 }
+            );
+          }
+        }
+      }
+
     const emailLimiter = await enforceRateLimit({
       scope: "otp_send_email",
       subject: normalizedEmail,

@@ -1,16 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { db } from "@/firebase";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { normalizeYouTubeEmbed } from "@/lib/youtube";
 import ImageUploadSelector from "@/components/ImageUploadSelector";
+import { useAutoSave, loadDraft } from "@/lib/drafts";
 
 export default function CreatePremierePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const draftIdParam = searchParams?.get("draftId") || null;
 
   const [loading, setLoading] = useState(false);
+  const [adminEmail, setAdminEmail] = useState("");
 
   const [form, setForm] = useState({
     title: "",
@@ -26,6 +30,46 @@ export default function CreatePremierePage() {
     adminQuota: 0,
     countAdminQuotaInRevenue: false,
   });
+
+  // Auto-save hook
+  const { lastSaved, saving: autoSaving, clearDraft } = useAutoSave(
+    form,
+    "premiere",
+    adminEmail,
+    10000
+  );
+
+  // Fetch admin email
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const res = await fetch("/api/admin/session");
+        if (res.ok) {
+          const data = await res.json();
+          setAdminEmail(data.email || "");
+        }
+      } catch (err) {
+        console.warn(err);
+      }
+    };
+    fetchSession();
+  }, []);
+
+  // Load draft if draftId is present
+  useEffect(() => {
+    if (!draftIdParam) return;
+    const load = async () => {
+      try {
+        const draft = await loadDraft(draftIdParam);
+        if (draft?.data) {
+          setForm((prev) => ({ ...prev, ...draft.data }));
+        }
+      } catch (err) {
+        console.warn("Failed to load draft:", err);
+      }
+    };
+    load();
+  }, [draftIdParam]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -54,7 +98,7 @@ export default function CreatePremierePage() {
         bannerImage: form.bannerImage || "",
         thumbnailImage: form.thumbnailImage || "",
         displayTime: form.displayTime ? Timestamp.fromDate(new Date(form.displayTime)) : null,
-        startTime: Timestamp.fromDate(new Date(form.startTime)), // ✅ FIXED
+        startTime: Timestamp.fromDate(new Date(form.startTime)),
         status: "scheduled",
         ticketRequired: form.ticketRequired,
         ticketPrice: Number(form.ticketPrice || 0),
@@ -66,7 +110,9 @@ export default function CreatePremierePage() {
         createdAt: Timestamp.now(),
       });
 
-      // ✅ FIXED REDIRECT
+      // Clear the draft after successful submission
+      await clearDraft();
+
       router.push(`/admin/premieres/${docRef.id}`);
 
     } catch (err) {
@@ -78,13 +124,38 @@ export default function CreatePremierePage() {
   };
 
   return (
-    <div className="space-y-10 max-w-4xl mx-auto">
+    <div className="space-y-10 max-w-4xl mx-auto pb-16">
 
       <div className="admin-section">
         <p className="admin-kicker">Live Events</p>
         <h1 className="admin-title">Create premiere</h1>
         <p className="admin-lead">Set the live stream, access policy, and ticket rules in one place.</p>
+        {draftIdParam && (
+          <p className="text-xs text-cyan-400 mt-2">📝 Resuming from saved draft</p>
+        )}
       </div>
+
+      {/* AUTO-SAVE INDICATOR */}
+      {adminEmail && (
+        <div className="flex items-center gap-3 text-xs text-gray-500">
+          {autoSaving ? (
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              Saving draft...
+            </span>
+          ) : lastSaved ? (
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-green-400" />
+              Draft auto-saved at {lastSaved.toLocaleTimeString()}
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-gray-500" />
+              Changes will be auto-saved
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="admin-surface rounded-[1.75rem] p-6 md:p-10 shadow-xl space-y-6">
 
@@ -92,6 +163,7 @@ export default function CreatePremierePage() {
         <input
           name="title"
           placeholder="Premiere Title"
+          value={form.title}
           onChange={handleChange}
           className="admin-input focus-ring"
         />
@@ -100,6 +172,7 @@ export default function CreatePremierePage() {
         <textarea
           name="description"
           placeholder="Description (optional)"
+          value={form.description}
           onChange={handleChange}
           className="admin-textarea focus-ring"
         />
@@ -108,6 +181,7 @@ export default function CreatePremierePage() {
         <input
           name="embedLink"
           placeholder="Paste ANY YouTube Link"
+          value={form.embedLink}
           onChange={handleChange}
           className="admin-input focus-ring"
         />
@@ -132,6 +206,7 @@ export default function CreatePremierePage() {
         <input
           type="datetime-local"
           name="startTime"
+          value={form.startTime}
           onChange={handleChange}
           className="admin-input focus-ring"
         />
@@ -144,6 +219,7 @@ export default function CreatePremierePage() {
           <input
             type="datetime-local"
             name="displayTime"
+            value={form.displayTime}
             onChange={handleChange}
             className="admin-input focus-ring"
           />
@@ -154,7 +230,7 @@ export default function CreatePremierePage() {
 
         {/* PAID */}
         <div className="flex items-center gap-3 admin-panel p-4 rounded-2xl">
-          <input type="checkbox" name="ticketRequired" onChange={handleChange} />
+          <input type="checkbox" name="ticketRequired" checked={form.ticketRequired} onChange={handleChange} />
           <label>Paid Premiere</label>
         </div>
 
@@ -163,6 +239,7 @@ export default function CreatePremierePage() {
             name="ticketPrice"
             type="number"
             placeholder="Ticket Price"
+            value={form.ticketPrice}
             onChange={handleChange}
             className="admin-input focus-ring"
           />
@@ -177,6 +254,7 @@ export default function CreatePremierePage() {
             name="ticketLimit"
             type="number"
             placeholder="e.g., 100, 500, or 0 for unlimited"
+            value={form.ticketLimit}
             onChange={handleChange}
             className="admin-input focus-ring"
             min="0"
@@ -195,6 +273,7 @@ export default function CreatePremierePage() {
             name="adminQuota"
             type="number"
             placeholder="e.g., 50 free tickets"
+            value={form.adminQuota}
             onChange={handleChange}
             className="admin-input focus-ring"
             min="0"
@@ -210,6 +289,7 @@ export default function CreatePremierePage() {
             <input
               type="checkbox"
               name="countAdminQuotaInRevenue"
+              checked={form.countAdminQuotaInRevenue}
               onChange={handleChange}
             />
             <label>Count admin quota tickets in revenue?</label>

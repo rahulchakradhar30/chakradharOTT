@@ -20,6 +20,22 @@ export default function AdminSettings() {
 
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [adminRole, setAdminRole] = useState("sub_admin");
+
+  useEffect(() => {
+    const checkRole = async () => {
+      try {
+        const res = await fetch("/api/admin/session");
+        if (res.ok) {
+          const data = await res.json();
+          setAdminRole(data.role || "sub_admin");
+        }
+      } catch (err) {
+        console.warn(err);
+      }
+    };
+    checkRole();
+  }, []);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -53,7 +69,6 @@ export default function AdminSettings() {
       if (!settingsSnap.empty) {
         await updateDoc(settingsSnap.docs[0].ref, settings);
       } else {
-        // Create if doesn't exist
         await updateDoc(doc(db, "settings", "global"), settings);
       }
       setSaved(true);
@@ -65,7 +80,7 @@ export default function AdminSettings() {
   };
 
   return (
-    <div className="space-y-10 pb-16">
+    <div className="space-y-10 pb-28 md:pb-16">
       {/* HEADER */}
       <motion.div initial={{ opacity: 0, y: 25 }} animate={{ opacity: 1, y: 0 }} className="admin-toolbar items-end">
         <div className="admin-section max-w-2xl">

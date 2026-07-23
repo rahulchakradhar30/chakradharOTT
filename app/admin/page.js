@@ -187,7 +187,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="space-y-12 animate-fadeUp pb-16">
+    <div className="space-y-8 md:space-y-12 animate-fadeUp pb-24 md:pb-16">
 
       {/* HEADER - Premium Style */}
       <motion.div initial={{ opacity: 0, y: 25 }} animate={{ opacity: 1, y: 0 }} className="admin-toolbar items-end">
@@ -201,14 +201,14 @@ export default function AdminDashboard() {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-3 w-full sm:w-auto">
-          <Link href="/admin/settings" className="admin-button admin-button-secondary text-sm">
+        <div className="flex flex-wrap gap-2 md:gap-3 w-full sm:w-auto">
+          <Link href="/admin/settings" className="admin-button admin-button-secondary text-xs md:text-sm flex-1 sm:flex-none">
             ⚙️ Settings
           </Link>
-          <Link href="/admin/movies/create" className="admin-button admin-button-secondary text-sm">
+          <Link href="/admin/movies/create" className="admin-button admin-button-secondary text-xs md:text-sm flex-1 sm:flex-none">
             + New Movie
           </Link>
-          <Link href="/admin/premieres/create" className="admin-button admin-button-primary text-sm">
+          <Link href="/admin/premieres/create" className="admin-button admin-button-primary text-xs md:text-sm flex-1 sm:flex-none">
             + New Premiere
           </Link>
         </div>
@@ -241,11 +241,11 @@ export default function AdminDashboard() {
       </motion.div>
 
       {/* MAIN STATS - Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard title="📊 Total Movies" value={numberFormatter.format(stats.movies)} loading={loading} helper="Live catalog size" tone="cyan" />
-        <StatCard title="⭐ Total Ratings" value={numberFormatter.format(stats.ratings)} loading={loading} helper="Community feedback" tone="blue" />
-        <StatCard title="💬 Total Comments" value={numberFormatter.format(stats.comments)} loading={loading} helper="Conversation volume" tone="pink" />
-        <StatCard title="👁️ Total Views" value={numberFormatter.format(stats.views)} loading={loading} helper="Watch activity" tone="amber" />
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
+        <StatCard title="📊 Movies" value={numberFormatter.format(stats.movies)} loading={loading} helper="Live catalog size" tone="cyan" />
+        <StatCard title="⭐ Ratings" value={numberFormatter.format(stats.ratings)} loading={loading} helper="Community feedback" tone="blue" />
+        <StatCard title="💬 Comments" value={numberFormatter.format(stats.comments)} loading={loading} helper="Conversation volume" tone="pink" />
+        <StatCard title="👁️ Views" value={numberFormatter.format(stats.views)} loading={loading} helper="Watch activity" tone="amber" />
       </div>
 
       {/* GAMIFICATION & ENGAGEMENT STATS */}
@@ -528,9 +528,9 @@ function StatCard({ title, value, loading, helper, tone }) {
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      className={`glass-card rounded-2xl md:rounded-3xl p-6 md:p-8 border ${borderTone} bg-gradient-to-br ${toneClass} hover:shadow-lg hover:shadow-current/20 transition-all duration-300`}
+      className={`glass-card rounded-xl md:rounded-3xl p-4 md:p-8 border ${borderTone} bg-gradient-to-br ${toneClass} hover:shadow-lg hover:shadow-current/20 transition-all duration-300 min-w-0`}
     >
-      <p className="text-xs uppercase tracking-widest font-bold text-gray-300 mb-3">
+      <p className="text-[10px] md:text-xs uppercase tracking-widest font-bold text-gray-300 mb-2 md:mb-3 truncate">
         {title}
       </p>
 
@@ -541,8 +541,8 @@ function StatCard({ title, value, loading, helper, tone }) {
         </div>
       ) : (
         <>
-          <p className="text-3xl md:text-4xl font-black text-white drop-shadow-lg">{value}</p>
-          <p className="mt-3 text-xs text-gray-400 font-medium">{helper}</p>
+          <p className="text-xl md:text-4xl font-black text-white drop-shadow-lg">{value}</p>
+          <p className="mt-2 md:mt-3 text-[10px] md:text-xs text-gray-400 font-medium">{helper}</p>
         </>
       )}
     </motion.div>

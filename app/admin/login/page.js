@@ -16,11 +16,8 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [message, setMessage] = useState("");
-
-  const allowedEmails = [
-    "thefifthagefilms@gmail.com",
-    "rahulchakradharperepogu@gmail.com",
-  ];
+  const [errorMsg, setErrorMsg] = useState("");
+  const [adminRole, setAdminRole] = useState("");
 
   const startCooldown = (seconds) => {
     setCooldown(seconds);
@@ -52,24 +49,54 @@ export default function AdminLogin() {
     setMessage("OTP sent to your admin email.");
   };
 
+  /* Step 1: Validate email → then password → then OTP */
   const handlePasswordLogin = async (e) => {
     e.preventDefault();
+    setErrorMsg("");
+    setMessage("");
 
-    if (!allowedEmails.includes(email.trim().toLowerCase())) {
-      alert("Unauthorized email.");
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanEmail) {
+      setErrorMsg("Please enter your email address.");
       return;
     }
 
     try {
       setLoading(true);
-      setMessage("");
 
-      await signInWithEmailAndPassword(auth, email, password);
+      // Pre-validate: Check if this email is an authorized admin
+      const validateRes = await fetch("/api/admin/validate-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: cleanEmail }),
+      });
+
+      const validateData = await validateRes.json();
+
+      if (!validateData.allowed) {
+        setErrorMsg(validateData.error || "Unauthorized: Only approved administrators can access this portal.");
+        return;
+      }
+
+      setAdminRole(validateData.role || "sub_admin");
+
+      // Email is authorized → proceed with password authentication
+      await signInWithEmailAndPassword(auth, cleanEmail, password);
       await sendOtp();
 
       setStep(2);
     } catch (error) {
-      alert(error.message || "Invalid credentials.");
+      const code = error.code || "";
+      if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+        setErrorMsg("Incorrect password. Please try again.");
+      } else if (code === "auth/user-not-found") {
+        setErrorMsg("No account found for this email. Please check with your administrator.");
+      } else if (code === "auth/too-many-requests") {
+        setErrorMsg("Too many failed attempts. Please try again later.");
+      } else {
+        setErrorMsg(error.message || "Authentication failed.");
+      }
     } finally {
       setLoading(false);
     }
@@ -77,10 +104,11 @@ export default function AdminLogin() {
 
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
+    setErrorMsg("");
+    setMessage("");
 
     try {
       setLoading(true);
-      setMessage("");
 
       const res = await fetch("/api/verify-otp", {
         method: "POST",
@@ -94,10 +122,10 @@ export default function AdminLogin() {
         await new Promise((resolve) => setTimeout(resolve, 150));
         window.location.replace("/admin");
       } else {
-        setMessage("Invalid or expired OTP. Please try again.");
+        setErrorMsg(data.error || "Invalid or expired OTP. Please try again.");
       }
     } catch (error) {
-      setMessage(error.message || "Verification failed.");
+      setErrorMsg(error.message || "Verification failed.");
     } finally {
       setLoading(false);
     }
@@ -105,15 +133,16 @@ export default function AdminLogin() {
 
   const handleForgotPassword = async () => {
     if (!email) {
-      alert("Enter your email first.");
+      setErrorMsg("Enter your email first.");
       return;
     }
 
     try {
       await sendPasswordResetEmail(auth, email);
-      setMessage("Password reset link sent.");
+      setMessage("Password reset link sent to your email.");
+      setErrorMsg("");
     } catch (error) {
-      alert(error.message || "Failed to send reset email.");
+      setErrorMsg(error.message || "Failed to send reset email.");
     }
   };
 
@@ -122,27 +151,29 @@ export default function AdminLogin() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(0,212,255,0.18),_transparent_38%),radial-gradient(circle_at_top_right,_rgba(255,77,141,0.12),_transparent_30%),linear-gradient(180deg,rgba(5,7,13,0.65),rgba(5,7,13,0.95))]" />
 
       <div className="relative z-10 w-full max-w-6xl grid lg:grid-cols-[1.05fr_0.95fr] gap-6 items-stretch">
-        <div className="admin-surface rounded-[2rem] p-8 md:p-10 flex flex-col justify-between min-h-[520px]">
+        {/* LEFT PANEL — Info */}
+        <div className="admin-surface rounded-[2rem] p-6 md:p-10 flex flex-col justify-between min-h-[480px] md:min-h-[520px]">
           <div className="space-y-5">
             <p className="admin-kicker">Admin Portal</p>
-            <h1 className="admin-title max-w-lg">A focused control room for publishing, live events, and support.</h1>
-            <p className="admin-lead">Sign in with an approved admin account and step through password plus OTP verification. The flow is intentionally short, secure, and designed to land you in the dashboard without a second thought.</p>
+            <h1 className="admin-title max-w-lg text-3xl md:text-4xl lg:text-5xl">A focused control room for publishing, live events, and support.</h1>
+            <p className="admin-lead text-sm md:text-base">Sign in with an approved admin account and step through password plus OTP verification. The flow is intentionally short, secure, and designed to land you in the dashboard without a second thought.</p>
           </div>
 
-          <div className="grid sm:grid-cols-3 gap-3 mt-8">
+          <div className="grid grid-cols-3 gap-2 md:gap-3 mt-6 md:mt-8">
             {[
               ["Secure", "OTP-gated access"],
               ["Fast", "Direct dashboard entry"],
               ["Clear", "No extra distractions"],
             ].map(([title, text]) => (
-              <div key={title} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="font-semibold">{title}</p>
-                <p className="text-xs text-gray-400 mt-1">{text}</p>
+              <div key={title} className="rounded-2xl border border-white/10 bg-white/5 p-3 md:p-4">
+                <p className="font-semibold text-sm md:text-base">{title}</p>
+                <p className="text-[10px] md:text-xs text-gray-400 mt-1">{text}</p>
               </div>
             ))}
           </div>
         </div>
 
+        {/* RIGHT PANEL — Form */}
         <motion.form
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -163,11 +194,24 @@ export default function AdminLogin() {
             </div>
           </div>
 
-          {message ? (
+          {/* Success message */}
+          {message && (
             <div className="mb-5 rounded-2xl border border-cyan-300/30 bg-cyan-500/10 p-4 text-sm text-cyan-100">
               {message}
             </div>
-          ) : null}
+          )}
+
+          {/* Error message */}
+          {errorMsg && (
+            <motion.div
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-5 rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-200 flex items-start gap-3"
+            >
+              <span className="text-red-400 text-base mt-0.5">⚠️</span>
+              <span>{errorMsg}</span>
+            </motion.div>
+          )}
 
           {step === 1 && (
             <div className="space-y-4">
@@ -178,7 +222,7 @@ export default function AdminLogin() {
                   placeholder="you@example.com"
                   value={email}
                   disabled={loading}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); setErrorMsg(""); }}
                   className="admin-input focus-ring"
                   required
                 />
@@ -191,7 +235,7 @@ export default function AdminLogin() {
                   placeholder="Your admin password"
                   value={password}
                   disabled={loading}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); setErrorMsg(""); }}
                   className="admin-input focus-ring"
                   required
                 />
@@ -202,7 +246,7 @@ export default function AdminLogin() {
                 <button
                   type="button"
                   onClick={handleForgotPassword}
-                  className="text-xs text-cyan-300 hover:text-cyan-200 transition"
+                  className="text-xs text-cyan-300 hover:text-cyan-200 transition whitespace-nowrap"
                 >
                   Forgot password?
                 </button>
@@ -219,7 +263,7 @@ export default function AdminLogin() {
                   placeholder="000000"
                   value={otp}
                   disabled={loading}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  onChange={(e) => { setOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); setErrorMsg(""); }}
                   className="admin-input focus-ring text-center tracking-[0.4em] text-lg"
                   required
                 />
@@ -233,14 +277,15 @@ export default function AdminLogin() {
                   onClick={async () => {
                     try {
                       setLoading(true);
+                      setErrorMsg("");
                       await sendOtp();
                     } catch (error) {
-                      setMessage(error.message || "Failed to resend OTP");
+                      setErrorMsg(error.message || "Failed to resend OTP");
                     } finally {
                       setLoading(false);
                     }
                   }}
-                  className="text-cyan-300 hover:text-cyan-200 transition disabled:opacity-50"
+                  className="text-cyan-300 hover:text-cyan-200 transition disabled:opacity-50 whitespace-nowrap"
                 >
                   {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
                 </button>
@@ -255,6 +300,16 @@ export default function AdminLogin() {
           >
             {loading ? "Processing..." : step === 1 ? "Continue" : "Verify OTP"}
           </button>
+
+          {step === 2 && (
+            <button
+              type="button"
+              onClick={() => { setStep(1); setOtp(""); setMessage(""); setErrorMsg(""); }}
+              className="w-full text-center text-sm text-gray-400 mt-4 hover:text-white transition"
+            >
+              ← Back to Sign In
+            </button>
+          )}
         </motion.form>
       </div>
 

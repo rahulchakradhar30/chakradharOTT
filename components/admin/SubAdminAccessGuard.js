@@ -67,7 +67,7 @@ export default function SubAdminAccessGuard({ moduleKey, children }) {
           href="/sub-admin"
           className="admin-button bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-xs uppercase px-6 py-3 rounded-2xl shadow-lg shadow-cyan-500/20 flex items-center gap-2"
         >
-          <span>↩</span> Return to Sub-Admin Control Center
+          <span>←</span> Return to Sub-Admin Control Center
         </Link>
       </div>
     );

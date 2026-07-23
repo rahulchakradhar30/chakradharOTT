@@ -105,34 +105,30 @@ export default function SubAdminLayoutClient({ children }) {
     checkSession();
   }, [router]);
 
-  /* ---------- REAL-TIME REVOCATION LISTENER ---------- */
+  /* ---------- PERIODIC SESSION VALIDATION & REVOCATION CHECK ---------- */
   useEffect(() => {
     if (!adminEmail) return;
 
-    const normalizedEmail = adminEmail.toLowerCase();
-    const adminDocRef = doc(db, "admins", normalizedEmail);
-
-    const unsubscribe = onSnapshot(
-      adminDocRef,
-      (snapshot) => {
-        if (!snapshot.exists()) {
-          console.warn("[SUB-ADMIN REVOKED] Account doc deleted. Force logging out...");
-          handleLogout();
-          return;
-        }
-
-        const data = snapshot.data() || {};
-        if (data.status === "disabled" || data.status === "removed") {
-          console.warn("[SUB-ADMIN REVOKED] Account status disabled. Force logging out...");
+    const validateActiveSession = async () => {
+      try {
+        const res = await fetch("/api/admin/session", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          if (!data.authenticated) {
+            console.warn("[SUB-ADMIN REVOKED] Session invalid or revoked. Logging out...");
+            handleLogout();
+          }
+        } else if (res.status === 401 || res.status === 403) {
+          console.warn("[SUB-ADMIN REVOKED] Session unauthorized. Logging out...");
           handleLogout();
         }
-      },
-      (error) => {
-        console.warn("Firestore snapshot error:", error);
+      } catch (err) {
+        console.warn("Session check warning:", err);
       }
-    );
+    };
 
-    return () => unsubscribe();
+    const interval = setInterval(validateActiveSession, 12000);
+    return () => clearInterval(interval);
   }, [adminEmail, handleLogout]);
 
   /* ---------- UNREAD MAIL POLLING ---------- */

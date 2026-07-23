@@ -983,7 +983,7 @@ export default function SuperAdminAttendanceDesk() {
                   disabled={posting}
                   className="flex-1 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black uppercase rounded-xl disabled:opacity-50"
                 >
-                  {posting ? "Posting..." : "Post Attendance 🚀"}
+                  {posting ? "Posting..." : "Post Attendance"}
                 </button>
               </div>
             </form>

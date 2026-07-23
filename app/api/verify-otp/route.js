@@ -49,11 +49,24 @@ export async function POST(req) {
 
     const allowedEmails = getAllowedAdminEmails();
     let isAllowed = allowedEmails.includes(normalizedEmail);
+    let isSubAdminInUsers = false;
     
     if (!isAllowed) {
       const adminDoc = await adminDb.collection("admins").doc(normalizedEmail).get();
       if (adminDoc.exists) {
         isAllowed = true;
+      } else {
+        const qSnap = await adminDb.collection("admins").where("email", "==", normalizedEmail).get();
+        if (!qSnap.empty) {
+          isAllowed = true;
+        } else {
+          // Check users collection for sub-admin role
+          const uSnap = await adminDb.collection("users").where("email", "==", normalizedEmail).get();
+          if (!uSnap.empty && ["sub_admin", "subadmin", "admin"].includes(uSnap.docs[0].data()?.role)) {
+            isAllowed = true;
+            isSubAdminInUsers = true;
+          }
+        }
       }
     }
 
@@ -67,7 +80,7 @@ export async function POST(req) {
     }
 
     // Check if admin account is disabled
-    if (!allowedEmails.includes(normalizedEmail)) {
+    if (!allowedEmails.includes(normalizedEmail) && !isSubAdminInUsers) {
       const adminStatusDoc = await adminDb.collection("admins").doc(normalizedEmail).get();
       if (adminStatusDoc.exists) {
         const adminData = adminStatusDoc.data();

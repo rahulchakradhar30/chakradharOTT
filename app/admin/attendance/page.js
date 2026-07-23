@@ -1,6 +1,18 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import {
+  CalendarIcon,
+  PalmtreeIcon,
+  PencilIcon,
+  TrashIcon,
+  AnalyticsIcon,
+  DotStatusGreen,
+  DotStatusRed,
+  DotStatusYellow,
+  CheckCircleIcon,
+  AlertCircleIcon,
+} from "@/components/Icon";
 
 export default function SuperAdminAttendanceDesk() {
   const [activeTab, setActiveTab] = useState("matrix"); // "matrix" | "leaves" | "regularizations"
@@ -10,7 +22,7 @@ export default function SuperAdminAttendanceDesk() {
   const [loading, setLoading] = useState(true);
 
   // Override Modal State
-  const [overrideModal, setOverrideModal] = useState(null); // { email, date, currentStatus }
+  const [overrideModal, setOverrideModal] = useState(null);
   const [newStatus, setNewStatus] = useState("present");
   const [notes, setNotes] = useState("");
   const [updating, setUpdating] = useState(false);
@@ -23,8 +35,8 @@ export default function SuperAdminAttendanceDesk() {
   const [deletingBulk, setDeletingBulk] = useState(false);
 
   // Reject Modal State
-  const [rejectModal, setRejectModal] = useState(null); // leave or reg object
-  const [rejectType, setRejectType] = useState(""); // "leave" | "reg"
+  const [rejectModal, setRejectModal] = useState(null);
+  const [rejectType, setRejectType] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
 
   // Status Alerts
@@ -153,7 +165,7 @@ export default function SuperAdminAttendanceDesk() {
         return;
       }
 
-      showAlert(`Regularization request ${action === "approve" ? "APPROVED (Dates marked PRESENT 🟢)" : "REJECTED"}!`);
+      showAlert(`Regularization request ${action === "approve" ? "APPROVED (Dates marked PRESENT)" : "REJECTED"}!`);
       setRejectModal(null);
       loadData();
     } catch (err) {
@@ -210,7 +222,6 @@ export default function SuperAdminAttendanceDesk() {
 
   const todayStr = new Date().toISOString().split("T")[0];
 
-  // 90-day past limit for bulk cleanup
   const ninetyDaysAgo = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() - 90);
@@ -224,7 +235,8 @@ export default function SuperAdminAttendanceDesk() {
         <div>
           <p className="admin-kicker text-cyan-300">Staff Operations & Duty Control</p>
           <h1 className="admin-title flex items-center gap-2">
-            <span>📅</span> Attendance & Leave Control Center
+            <CalendarIcon className="w-8 h-8 text-cyan-400" />
+            <span>Attendance & Leave Control Center</span>
           </h1>
           <p className="admin-lead">Track daily login attendance, approve 15-day regularization requests, handle leave applications, and manage 3-month attendance purges.</p>
         </div>
@@ -233,7 +245,8 @@ export default function SuperAdminAttendanceDesk() {
           onClick={() => setShowBulkDeleteModal(true)}
           className="admin-button bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2"
         >
-          <span>🗑️</span> Bulk Remove Attendance (Past 3 Months)
+          <TrashIcon className="w-4 h-4 text-rose-400" />
+          <span>Bulk Remove Attendance (Past 3 Months)</span>
         </button>
       </div>
 
@@ -246,7 +259,7 @@ export default function SuperAdminAttendanceDesk() {
               : "bg-cyan-500/10 border-cyan-500/30 text-cyan-200"
           }`}
         >
-          <span>{alertMsg.type === "error" ? "⚠️" : "✓"}</span>
+          {alertMsg.type === "error" ? <AlertCircleIcon className="w-4 h-4 text-rose-400" /> : <CheckCircleIcon className="w-4 h-4 text-cyan-400" />}
           <span>{alertMsg.text}</span>
         </div>
       )}
@@ -261,7 +274,8 @@ export default function SuperAdminAttendanceDesk() {
               : "bg-white/5 text-gray-300 hover:bg-white/10"
           }`}
         >
-          <span>📊</span> Staff Attendance Matrix
+          <AnalyticsIcon className="w-4 h-4" />
+          <span>Staff Attendance Matrix</span>
         </button>
 
         <button
@@ -272,7 +286,8 @@ export default function SuperAdminAttendanceDesk() {
               : "bg-white/5 text-gray-300 hover:bg-white/10"
           }`}
         >
-          <span>📝</span> Attendance Regularization Desk
+          <PencilIcon className="w-4 h-4" />
+          <span>Attendance Regularization Desk</span>
           {pendingRegsCount > 0 && (
             <span className="bg-amber-400 text-black px-2 py-0.5 rounded-full text-[10px] font-black">
               {pendingRegsCount}
@@ -288,7 +303,8 @@ export default function SuperAdminAttendanceDesk() {
               : "bg-white/5 text-gray-300 hover:bg-white/10"
           }`}
         >
-          <span>🌴</span> Leave Requests Desk
+          <PalmtreeIcon className="w-4 h-4" />
+          <span>Leave Requests Desk</span>
           {pendingLeavesCount > 0 && (
             <span className="bg-amber-400 text-black px-2 py-0.5 rounded-full text-[10px] font-black">
               {pendingLeavesCount}
@@ -304,7 +320,11 @@ export default function SuperAdminAttendanceDesk() {
             <h2 className="text-sm font-bold text-white uppercase tracking-wider">Sub-Admins Today&apos;s Status ({todayStr})</h2>
 
             {loading ? (
-              <div className="p-8 text-center text-xs text-gray-400">Loading attendance data...</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[1, 2, 3].map((n) => (
+                  <div key={n} className="p-4 rounded-2xl bg-white/5 border border-white/10 animate-pulse h-36" />
+                ))}
+              </div>
             ) : admins.length === 0 ? (
               <div className="admin-empty text-xs text-gray-400">No registered sub-admins.</div>
             ) : (
@@ -322,12 +342,12 @@ export default function SuperAdminAttendanceDesk() {
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-bold text-cyan-400 uppercase">{adm.role}</span>
                           {isOnLeave ? (
-                            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-300 font-bold">
-                              🔴 On Approved Leave
+                            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-300 font-bold flex items-center gap-1.5">
+                              <DotStatusRed /> On Approved Leave
                             </span>
                           ) : (
-                            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-green-500/20 border border-green-500/40 text-green-300 font-bold">
-                              🟢 Active Duty
+                            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-green-500/20 border border-green-500/40 text-green-300 font-bold flex items-center gap-1.5">
+                              <DotStatusGreen /> Active Duty
                             </span>
                           )}
                         </div>
@@ -337,7 +357,7 @@ export default function SuperAdminAttendanceDesk() {
 
                         {delegate && (
                           <div className="p-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[11px] text-amber-300">
-                            👤 Acting Delegate: <strong>{delegate}</strong>
+                            Acting Delegate: <strong>{delegate}</strong>
                           </div>
                         )}
                       </div>
@@ -350,9 +370,9 @@ export default function SuperAdminAttendanceDesk() {
                             currentStatus: isOnLeave ? "leave" : "present",
                           })
                         }
-                        className="admin-button bg-white/10 hover:bg-white/15 text-xs font-semibold py-2 px-3 rounded-xl w-full text-center"
+                        className="admin-button bg-white/10 hover:bg-white/15 text-xs font-semibold py-2 px-3 rounded-xl w-full text-center flex items-center justify-center gap-1.5"
                       >
-                        ✏️ Override Attendance Status
+                        <PencilIcon className="w-3.5 h-3.5" /> Override Attendance Status
                       </button>
                     </div>
                   );
@@ -402,7 +422,7 @@ export default function SuperAdminAttendanceDesk() {
                       {r.proofImage && (
                         <p className="pt-1">
                           <a href={r.proofImage} target="_blank" rel="noreferrer" className="text-cyan-300 hover:underline font-bold flex items-center gap-1">
-                            <span>🖼️ Click to Inspect Attached Proof Document</span>
+                            <span>Click to Inspect Attached Proof Document</span>
                           </a>
                         </p>
                       )}
@@ -413,9 +433,9 @@ export default function SuperAdminAttendanceDesk() {
                         <button
                           onClick={() => handleRegDecision(r.id, "approve")}
                           disabled={updating}
-                          className="flex-1 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-black font-black text-xs uppercase rounded-xl shadow-md shadow-green-500/20"
+                          className="flex-1 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-black font-black text-xs uppercase rounded-xl shadow-md shadow-green-500/20 flex items-center justify-center gap-1.5"
                         >
-                          ✓ Satisfied & Mark Present (Green)
+                          <CheckCircleIcon className="w-4 h-4" /> Satisfied & Mark Present
                         </button>
                         <button
                           onClick={() => {
@@ -423,9 +443,9 @@ export default function SuperAdminAttendanceDesk() {
                             setRejectType("reg");
                           }}
                           disabled={updating}
-                          className="flex-1 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 font-bold text-xs uppercase rounded-xl"
+                          className="flex-1 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 font-bold text-xs uppercase rounded-xl flex items-center justify-center gap-1.5"
                         >
-                          ✕ Reject Regularization
+                          <AlertCircleIcon className="w-4 h-4 text-rose-400" /> Reject Regularization
                         </button>
                       </div>
                     )}
@@ -485,9 +505,9 @@ export default function SuperAdminAttendanceDesk() {
                         <button
                           onClick={() => handleLeaveDecision(l.id, "approve")}
                           disabled={updating}
-                          className="flex-1 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-black font-black text-xs uppercase rounded-xl shadow-md shadow-green-500/20"
+                          className="flex-1 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-black font-black text-xs uppercase rounded-xl shadow-md shadow-green-500/20 flex items-center justify-center gap-1.5"
                         >
-                          ✓ Accept Leave
+                          <CheckCircleIcon className="w-4 h-4" /> Accept Leave
                         </button>
                         <button
                           onClick={() => {
@@ -495,9 +515,9 @@ export default function SuperAdminAttendanceDesk() {
                             setRejectType("leave");
                           }}
                           disabled={updating}
-                          className="flex-1 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 font-bold text-xs uppercase rounded-xl"
+                          className="flex-1 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 font-bold text-xs uppercase rounded-xl flex items-center justify-center gap-1.5"
                         >
-                          ✕ Reject Leave
+                          <AlertCircleIcon className="w-4 h-4 text-rose-400" /> Reject Leave
                         </button>
                       </div>
                     )}
@@ -536,9 +556,9 @@ export default function SuperAdminAttendanceDesk() {
                   onChange={(e) => setNewStatus(e.target.value)}
                   className="admin-input bg-zinc-900"
                 >
-                  <option value="present">🟢 PRESENT (Green)</option>
-                  <option value="absent">🔴 ABSENT / LEAVE (Red)</option>
-                  <option value="off_day">🟡 OFF-DAY / HOLIDAY (Yellow)</option>
+                  <option value="present">PRESENT (Green)</option>
+                  <option value="absent">ABSENT / LEAVE (Red)</option>
+                  <option value="off_day">OFF-DAY / HOLIDAY (Yellow)</option>
                 </select>
               </div>
 
@@ -557,13 +577,14 @@ export default function SuperAdminAttendanceDesk() {
           <div className="bg-[#0b1329] border border-white/15 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
             <div className="flex justify-between items-center border-b border-white/10 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <span>🗑️</span> Bulk Remove Attendance (Past 3 Months)
+                <TrashIcon className="w-5 h-5 text-rose-400" />
+                <span>Bulk Remove Attendance (Past 3 Months)</span>
               </h3>
               <button onClick={() => setShowBulkDeleteModal(false)} className="text-gray-400 hover:text-white">✕</button>
             </div>
 
             <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-300">
-              ⚠️ Select a Sub-Admin and a date range within the past 90 days to purge/reset past attendance records.
+              Select a Sub-Admin and a date range within the past 90 days to purge/reset past attendance records.
             </div>
 
             <form onSubmit={handleBulkDeleteAttendance} className="space-y-4 text-xs">

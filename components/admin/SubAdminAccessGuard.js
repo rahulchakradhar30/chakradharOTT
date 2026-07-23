@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { LockShieldIcon } from "@/components/Icon";
 
 export default function SubAdminAccessGuard({ moduleKey, children }) {
   const [loading, setLoading] = useState(true);
@@ -53,7 +54,7 @@ export default function SubAdminAccessGuard({ moduleKey, children }) {
     return (
       <div className="min-h-[500px] flex flex-col items-center justify-center p-6 text-center max-w-lg mx-auto">
         <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-500/20 to-rose-500/20 border border-amber-500/30 flex items-center justify-center text-4xl mb-6 shadow-xl shadow-amber-500/10">
-          🔒
+          <LockShieldIcon className="w-10 h-10 text-amber-400" />
         </div>
         <p className="admin-kicker text-amber-400 mb-1">Access Restricted</p>
         <h2 className="text-2xl font-black text-white mb-3">Feature Disabled by Super Administrator</h2>

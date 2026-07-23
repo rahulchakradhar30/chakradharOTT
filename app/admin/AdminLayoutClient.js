@@ -5,24 +5,39 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
-import { LockIcon } from "@/components/Icon";
+import {
+  DashboardIcon,
+  MovieIcon,
+  TicketIcon,
+  PosterIcon,
+  SearchIcon,
+  TagIcon,
+  AnalyticsIcon,
+  MailIcon,
+  UserIcon,
+  LockIcon,
+  CalendarIcon,
+  PencilIcon,
+  BellIcon,
+  SettingsIcon,
+} from "@/components/Icon";
 
 const ALL_NAV_ITEMS = [
-  { href: "/admin", label: "Dashboard", icon: "📊" },
-  { href: "/admin/movies", label: "Movies", icon: "🎬" },
-  { href: "/admin/premieres", label: "Premieres", icon: "🎪" },
-  { href: "/admin/posters", label: "Posters", icon: "🖼️" },
-  { href: "/admin/discovery", label: "Discovery", icon: "🔍" },
-  { href: "/admin/genres", label: "Genres", icon: "🏷️" },
-  { href: "/admin/search-analytics", label: "Analytics", icon: "📈" },
-  { href: "/admin/contacts", label: "Contacts", icon: "📬" },
-  { href: "/admin/users", label: "Users", icon: "👥" },
-  { href: "/admin/sub-admins", label: "Sub-Admins", icon: "🔐" },
-  { href: "/admin/attendance", label: "Attendance & Leaves", icon: "📅" },
-  { href: "/admin/drafts", label: "Drafts", icon: "📝" },
-  { href: "/admin/mail", label: "Admin Mail", icon: "✉️" },
-  { href: "/admin/notifications", label: "Notifications", icon: "🔔" },
-  { href: "/admin/settings", label: "Settings", icon: "⚙️" },
+  { href: "/admin", label: "Dashboard", Icon: DashboardIcon },
+  { href: "/admin/movies", label: "Movies", Icon: MovieIcon },
+  { href: "/admin/premieres", label: "Premieres", Icon: TicketIcon },
+  { href: "/admin/posters", label: "Posters", Icon: PosterIcon },
+  { href: "/admin/discovery", label: "Discovery", Icon: SearchIcon },
+  { href: "/admin/genres", label: "Genres", Icon: TagIcon },
+  { href: "/admin/search-analytics", label: "Analytics", Icon: AnalyticsIcon },
+  { href: "/admin/contacts", label: "Contacts", Icon: MailIcon },
+  { href: "/admin/users", label: "Users", Icon: UserIcon },
+  { href: "/admin/sub-admins", label: "Sub-Admins", Icon: LockIcon },
+  { href: "/admin/attendance", label: "Attendance & Leaves", Icon: CalendarIcon },
+  { href: "/admin/drafts", label: "Drafts", Icon: PencilIcon },
+  { href: "/admin/mail", label: "Admin Mail", Icon: MailIcon },
+  { href: "/admin/notifications", label: "Notifications", Icon: BellIcon },
+  { href: "/admin/settings", label: "Settings", Icon: SettingsIcon },
 ];
 
 export default function AdminLayoutClient({ children }) {
@@ -263,7 +278,7 @@ export default function AdminLayoutClient({ children }) {
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <span className="text-base">{item.icon}</span>
+                {item.Icon && <item.Icon className="w-4 h-4 shrink-0" />}
                 <span>{item.label}</span>
               </div>
               {item.href === "/admin/mail" && unreadMailsCount > 0 && (

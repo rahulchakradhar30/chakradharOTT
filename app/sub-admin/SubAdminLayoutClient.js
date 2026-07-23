@@ -4,23 +4,38 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { doc, onSnapshot } from "firebase/firestore";
-import { db } from "@/firebase";
+import {
+  DashboardIcon,
+  MovieIcon,
+  TicketIcon,
+  PosterIcon,
+  SearchIcon,
+  TagIcon,
+  AnalyticsIcon,
+  MailIcon,
+  CalendarIcon,
+  UserIcon,
+  PencilIcon,
+  BellIcon,
+  SettingsIcon,
+  LockShieldIcon,
+} from "@/components/Icon";
 
 const ALL_SUB_ADMIN_NAV_ITEMS = [
-  { href: "/sub-admin", moduleKey: "dashboard", label: "Dashboard", icon: "📊" },
-  { href: "/sub-admin/movies", moduleKey: "movies", label: "Movies", icon: "🎬" },
-  { href: "/sub-admin/premieres", moduleKey: "premieres", label: "Premieres", icon: "🎪" },
-  { href: "/sub-admin/posters", moduleKey: "posters", label: "Posters", icon: "🖼️" },
-  { href: "/sub-admin/discovery", moduleKey: "discovery", label: "Discovery", icon: "🔍" },
-  { href: "/sub-admin/genres", moduleKey: "genres", label: "Genres", icon: "🏷️" },
-  { href: "/sub-admin/analytics", moduleKey: "analytics", label: "Analytics", icon: "📈" },
-  { href: "/sub-admin/contacts", moduleKey: "contacts", label: "Contacts", icon: "📬" },
-  { href: "/sub-admin/attendance", moduleKey: "dashboard", label: "Attendance & Leaves", icon: "📅" },
-  { href: "/sub-admin/users", moduleKey: "users", label: "Users", icon: "👥" },
-  { href: "/sub-admin/drafts", moduleKey: "drafts", label: "Drafts", icon: "📝" },
-  { href: "/sub-admin/mail", moduleKey: "mail", label: "Admin Mail", icon: "✉️" },
-  { href: "/sub-admin/notifications", moduleKey: "notifications", label: "Notifications", icon: "🔔" },
-  { href: "/sub-admin/settings", moduleKey: "settings", label: "Settings", icon: "⚙️" },
+  { href: "/sub-admin", moduleKey: "dashboard", label: "Dashboard", Icon: DashboardIcon },
+  { href: "/sub-admin/movies", moduleKey: "movies", label: "Movies", Icon: MovieIcon },
+  { href: "/sub-admin/premieres", moduleKey: "premieres", label: "Premieres", Icon: TicketIcon },
+  { href: "/sub-admin/posters", moduleKey: "posters", label: "Posters", Icon: PosterIcon },
+  { href: "/sub-admin/discovery", moduleKey: "discovery", label: "Discovery", Icon: SearchIcon },
+  { href: "/sub-admin/genres", moduleKey: "genres", label: "Genres", Icon: TagIcon },
+  { href: "/sub-admin/analytics", moduleKey: "analytics", label: "Analytics", Icon: AnalyticsIcon },
+  { href: "/sub-admin/contacts", moduleKey: "contacts", label: "Contacts", Icon: MailIcon },
+  { href: "/sub-admin/attendance", moduleKey: "dashboard", label: "Attendance & Leaves", Icon: CalendarIcon },
+  { href: "/sub-admin/users", moduleKey: "users", label: "Users", Icon: UserIcon },
+  { href: "/sub-admin/drafts", moduleKey: "drafts", label: "Drafts", Icon: PencilIcon },
+  { href: "/sub-admin/mail", moduleKey: "mail", label: "Admin Mail", Icon: MailIcon },
+  { href: "/sub-admin/notifications", moduleKey: "notifications", label: "Notifications", Icon: BellIcon },
+  { href: "/sub-admin/settings", moduleKey: "settings", label: "Settings", Icon: SettingsIcon },
 ];
 
 export default function SubAdminLayoutClient({ children }) {
@@ -213,7 +228,7 @@ export default function SubAdminLayoutClient({ children }) {
               }`}
             >
               <div className="flex items-center gap-3">
-                <span className="text-base">{item.icon}</span>
+                {item.Icon && <item.Icon className="w-4 h-4 shrink-0" />}
                 <span>{item.label}</span>
               </div>
               {item.moduleKey === "mail" && unreadMailsCount > 0 && (

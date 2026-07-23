@@ -3,6 +3,18 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import SubAdminAccessGuard from "@/components/admin/SubAdminAccessGuard";
 import ImageUploadSelector from "@/components/ImageUploadSelector";
+import {
+  CalendarIcon,
+  PalmtreeIcon,
+  PencilIcon,
+  DotStatusGreen,
+  DotStatusRed,
+  DotStatusYellow,
+  AnalyticsIcon,
+  CheckCircleIcon,
+  AlertCircleIcon,
+  TrashIcon,
+} from "@/components/Icon";
 
 export default function SubAdminAttendancePage() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -14,7 +26,7 @@ export default function SubAdminAttendancePage() {
 
   // Leave Modal State
   const [showLeaveModal, setShowLeaveModal] = useState(false);
-  const [editingLeave, setEditingLeave] = useState(null); // null for new, leave object for edit
+  const [editingLeave, setEditingLeave] = useState(null);
   const [leaveType, setLeaveType] = useState("Casual Leave");
   const [reason, setReason] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -98,7 +110,7 @@ export default function SubAdminAttendancePage() {
     };
   }, []);
 
-  /* ── 1. Calculate Monthly Calendar Days Grid (including Future/Tomorrow Approved Leaves) ── */
+  /* ── 1. Calculate Monthly Calendar Days Grid ── */
   const calendarDays = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -114,8 +126,6 @@ export default function SubAdminAttendancePage() {
     }
 
     const recordsMap = new Map(attendanceRecords.map((r) => [r.date, r]));
-
-    // Approved leaves lookup
     const approvedLeaves = leaves.filter((l) => l.status === "approved");
 
     for (let day = 1; day <= daysInMonth; day++) {
@@ -124,9 +134,8 @@ export default function SubAdminAttendancePage() {
       const dateKey = `${year}-${monthStr}-${dayStr}`;
 
       const rec = recordsMap.get(dateKey);
-      const isWeekend = new Date(year, month, day).getDay() === 0; // Sunday off-day
+      const isWeekend = new Date(year, month, day).getDay() === 0;
 
-      // Check if date falls in approved leave
       const cellDate = new Date(year, month, day);
       const matchingLeave = approvedLeaves.find((l) => {
         const s = new Date(l.startDate.split("T")[0]);
@@ -149,7 +158,7 @@ export default function SubAdminAttendancePage() {
       days.push({
         dayNumber: day,
         dateKey,
-        status, // "present" | "leave" | "absent" | "off_day" | null
+        status,
         notes: rec?.notes || (matchingLeave ? `Approved ${matchingLeave.leaveType}` : ""),
         loginTime: rec?.loginTime,
       });
@@ -261,9 +270,9 @@ export default function SubAdminAttendancePage() {
     }
   };
 
-  /* ── 5. Clear / Cancel Leave (Pending or Approved) ── */
+  /* ── 5. Clear / Cancel Leave ── */
   const handleClearLeave = async (leaveId) => {
-    if (!confirm("Are you sure you want to clear/cancel this leave application? This will remove the leave from your calendar and restore active duty status.")) return;
+    if (!confirm("Are you sure you want to clear/cancel this leave application?")) return;
 
     try {
       const res = await fetch("/api/admin/leaves", {
@@ -327,7 +336,8 @@ export default function SubAdminAttendancePage() {
           <div>
             <p className="admin-kicker text-cyan-300">Personal Duty & Attendance</p>
             <h1 className="admin-title flex items-center gap-2">
-              <span>📅</span> Sub-Admin Attendance & Leaves
+              <CalendarIcon className="w-8 h-8 text-cyan-400" />
+              <span>Sub-Admin Attendance & Leaves</span>
             </h1>
             <p className="admin-lead">Track monthly presence, apply or clear leaves, and request 15-day attendance regularization.</p>
           </div>
@@ -337,7 +347,8 @@ export default function SubAdminAttendancePage() {
               onClick={() => setShowRegModal(true)}
               className="admin-button bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-black font-black uppercase text-xs tracking-wider px-5 py-3 rounded-2xl shadow-lg shadow-amber-500/20 flex items-center gap-2"
             >
-              <span>📝</span> Regularize Attendance
+              <PencilIcon className="w-4 h-4" />
+              <span>Regularize Attendance</span>
             </button>
 
             <button
@@ -352,7 +363,8 @@ export default function SubAdminAttendancePage() {
               }}
               className="admin-button bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black uppercase text-xs tracking-wider px-5 py-3 rounded-2xl shadow-lg shadow-cyan-500/25 flex items-center gap-2"
             >
-              <span>🌴</span> Apply For Leave
+              <PalmtreeIcon className="w-4 h-4" />
+              <span>Apply For Leave</span>
             </button>
           </div>
         </div>
@@ -361,8 +373,9 @@ export default function SubAdminAttendancePage() {
         {activeApprovedLeave && (
           <div className="p-5 rounded-3xl bg-amber-500/10 border border-amber-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
             <div className="space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-500/20 px-2.5 py-0.5 rounded-full border border-amber-500/30">
-                🔴 Currently On Approved Leave
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-500/20 px-2.5 py-0.5 rounded-full border border-amber-500/30 flex items-center gap-1.5 w-fit">
+                <DotStatusRed />
+                <span>Currently On Approved Leave</span>
               </span>
               <h3 className="text-sm font-bold text-white">
                 {activeApprovedLeave.leaveType} ({activeApprovedLeave.startDate.split("T")[0]} to {activeApprovedLeave.endDate.split("T")[0]})
@@ -375,9 +388,10 @@ export default function SubAdminAttendancePage() {
 
             <button
               onClick={() => handleClearLeave(activeApprovedLeave.id)}
-              className="admin-button bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-black font-black uppercase text-xs tracking-wider px-5 py-2.5 rounded-2xl shadow-md shrink-0"
+              className="admin-button bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-black font-black uppercase text-xs tracking-wider px-5 py-2.5 rounded-2xl shadow-md shrink-0 flex items-center gap-2"
             >
-              🟢 Clear Leave & Resume Duty
+              <DotStatusGreen />
+              <span>Clear Leave & Resume Duty</span>
             </button>
           </div>
         )}
@@ -391,7 +405,7 @@ export default function SubAdminAttendancePage() {
                 : "bg-cyan-500/10 border-cyan-500/30 text-cyan-200"
             }`}
           >
-            <span>{alertMsg.type === "error" ? "⚠️" : "✓"}</span>
+            {alertMsg.type === "error" ? <AlertCircleIcon className="w-4 h-4 text-rose-400" /> : <CheckCircleIcon className="w-4 h-4 text-cyan-400" />}
             <span>{alertMsg.text}</span>
           </div>
         )}
@@ -399,7 +413,7 @@ export default function SubAdminAttendancePage() {
         {/* STATS BAR */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="admin-surface p-4 rounded-2xl border border-white/10 flex items-center gap-3">
-            <span className="w-4 h-4 rounded-full bg-green-400 shrink-0 shadow-sm shadow-green-400/50" />
+            <DotStatusGreen className="w-4 h-4" />
             <div>
               <p className="text-[10px] text-gray-400 font-bold uppercase">Present Days</p>
               <p className="text-xl font-black text-white">{stats.present}</p>
@@ -407,7 +421,7 @@ export default function SubAdminAttendancePage() {
           </div>
 
           <div className="admin-surface p-4 rounded-2xl border border-white/10 flex items-center gap-3">
-            <span className="w-4 h-4 rounded-full bg-rose-500 shrink-0 shadow-sm shadow-rose-500/50" />
+            <DotStatusRed className="w-4 h-4" />
             <div>
               <p className="text-[10px] text-gray-400 font-bold uppercase">Leaves / Absent</p>
               <p className="text-xl font-black text-white">{stats.leave}</p>
@@ -415,7 +429,7 @@ export default function SubAdminAttendancePage() {
           </div>
 
           <div className="admin-surface p-4 rounded-2xl border border-white/10 flex items-center gap-3">
-            <span className="w-4 h-4 rounded-full bg-amber-400 shrink-0 shadow-sm shadow-amber-400/50" />
+            <DotStatusYellow className="w-4 h-4" />
             <div>
               <p className="text-[10px] text-gray-400 font-bold uppercase">Off-Days / Sunday</p>
               <p className="text-xl font-black text-white">{stats.offDay}</p>
@@ -423,7 +437,7 @@ export default function SubAdminAttendancePage() {
           </div>
 
           <div className="admin-surface p-4 rounded-2xl border border-white/10 flex items-center gap-3">
-            <span className="text-xl">📈</span>
+            <AnalyticsIcon className="w-5 h-5 text-cyan-400" />
             <div>
               <p className="text-[10px] text-gray-400 font-bold uppercase">Attendance Rate</p>
               <p className="text-xl font-black text-cyan-300">{stats.rate}%</p>
@@ -435,7 +449,8 @@ export default function SubAdminAttendancePage() {
         <div className="admin-surface p-6 rounded-3xl space-y-6 border border-white/10">
           <div className="flex items-center justify-between border-b border-white/10 pb-4">
             <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <span>🗓️</span> {currentDate.toLocaleString("default", { month: "long", year: "numeric" })}
+              <CalendarIcon className="w-5 h-5 text-cyan-400" />
+              <span>{currentDate.toLocaleString("default", { month: "long", year: "numeric" })}</span>
             </h2>
 
             <div className="flex gap-2">
@@ -483,13 +498,25 @@ export default function SubAdminAttendancePage() {
 
               if (cell.status === "present") {
                 cellStyle = "bg-emerald-950/40 border-emerald-500/50 text-emerald-200 shadow-md shadow-emerald-500/10";
-                badge = <span className="text-[10px] font-bold text-emerald-400">🟢 Present</span>;
+                badge = (
+                  <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
+                    <DotStatusGreen /> Present
+                  </span>
+                );
               } else if (cell.status === "leave" || cell.status === "absent") {
                 cellStyle = "bg-rose-950/40 border-rose-500/50 text-rose-200 shadow-md shadow-rose-500/10";
-                badge = <span className="text-[10px] font-bold text-rose-400">🔴 Leave Granted</span>;
+                badge = (
+                  <span className="text-[10px] font-bold text-rose-400 flex items-center gap-1">
+                    <DotStatusRed /> Leave Granted
+                  </span>
+                );
               } else if (cell.status === "off_day") {
                 cellStyle = "bg-amber-950/40 border-amber-500/50 text-amber-200 shadow-md shadow-amber-500/10";
-                badge = <span className="text-[10px] font-bold text-amber-400">🟡 Off-Day</span>;
+                badge = (
+                  <span className="text-[10px] font-bold text-amber-400 flex items-center gap-1">
+                    <DotStatusYellow /> Off-Day
+                  </span>
+                );
               }
 
               return (
@@ -513,7 +540,7 @@ export default function SubAdminAttendancePage() {
           </div>
         </div>
 
-        {/* APPLIED LEAVES DESK (WITH MODIFY & CLEAR LEAVE OPTIONS) */}
+        {/* APPLIED LEAVES DESK */}
         {leaves.length > 0 && (
           <div className="admin-surface p-6 rounded-3xl space-y-4 border border-white/10">
             <h2 className="text-sm font-bold text-white uppercase tracking-wider">Your Applied Leaves History ({leaves.length})</h2>
@@ -562,18 +589,18 @@ export default function SubAdminAttendancePage() {
                           setActingSubAdmin(l.actingSubAdminEmail || "");
                           setShowLeaveModal(true);
                         }}
-                        className="px-3 py-1.5 bg-white/10 hover:bg-white/15 text-gray-200 rounded-xl font-bold text-xs"
+                        className="px-3 py-1.5 bg-white/10 hover:bg-white/15 text-gray-200 rounded-xl font-bold text-xs flex items-center gap-1.5"
                       >
-                        ✏️ Modify
+                        <PencilIcon className="w-3.5 h-3.5" /> Modify
                       </button>
                     )}
 
                     {(l.status === "pending" || l.status === "approved") && (
                       <button
                         onClick={() => handleClearLeave(l.id)}
-                        className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 rounded-xl font-bold text-xs"
+                        className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 rounded-xl font-bold text-xs flex items-center gap-1.5"
                       >
-                        🗑️ Clear Leave
+                        <TrashIcon className="w-3.5 h-3.5" /> Clear Leave
                       </button>
                     )}
                   </div>
@@ -612,16 +639,16 @@ export default function SubAdminAttendancePage() {
                   <div className="flex items-center gap-2 shrink-0">
                     {r.proofImage && (
                       <a href={r.proofImage} target="_blank" rel="noreferrer" className="text-cyan-300 hover:underline text-xs flex items-center gap-1">
-                        <span>🖼️ View Proof</span>
+                        <span>View Proof Document</span>
                       </a>
                     )}
 
                     {r.status === "pending" && (
                       <button
                         onClick={() => handleCancelRegularization(r.id)}
-                        className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 rounded-xl font-bold text-xs"
+                        className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 rounded-xl font-bold text-xs flex items-center gap-1.5"
                       >
-                        🗑️ Cancel Request
+                        <TrashIcon className="w-3.5 h-3.5" /> Cancel Request
                       </button>
                     )}
                   </div>
@@ -637,13 +664,14 @@ export default function SubAdminAttendancePage() {
             <div className="bg-[#0b1329] border border-white/15 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5">
               <div className="flex justify-between items-center border-b border-white/10 pb-3">
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <span>📝</span> Request Attendance Regularization
+                  <PencilIcon className="w-5 h-5 text-amber-400" />
+                  <span>Request Attendance Regularization</span>
                 </h3>
                 <button onClick={() => setShowRegModal(false)} className="text-gray-400 hover:text-white">✕</button>
               </div>
 
               <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-300">
-                ⚠️ Regularization is strictly allowed within the <strong>past 15 days</strong> ({minRegDate} to {maxRegDate}).
+                Regularization is strictly allowed within the <strong>past 15 days</strong> ({minRegDate} to {maxRegDate}).
               </div>
 
               <form onSubmit={handleSubmitRegularization} className="space-y-4 text-xs">
@@ -706,7 +734,7 @@ export default function SubAdminAttendancePage() {
                     disabled={submitting}
                     className="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 text-black font-black rounded-xl uppercase disabled:opacity-50"
                   >
-                    {submitting ? "Submitting..." : "Submit Regularization 🚀"}
+                    {submitting ? "Submitting..." : "Submit Regularization"}
                   </button>
                 </div>
               </form>
@@ -720,7 +748,8 @@ export default function SubAdminAttendancePage() {
             <div className="bg-[#0b1329] border border-white/15 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5">
               <div className="flex justify-between items-center border-b border-white/10 pb-3">
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <span>🌴</span> {editingLeave ? "Modify Leave Application" : "Submit Leave Application"}
+                  <PalmtreeIcon className="w-5 h-5 text-cyan-400" />
+                  <span>{editingLeave ? "Modify Leave Application" : "Submit Leave Application"}</span>
                 </h3>
                 <button onClick={() => setShowLeaveModal(false)} className="text-gray-400 hover:text-white">✕</button>
               </div>
@@ -808,7 +837,7 @@ export default function SubAdminAttendancePage() {
                     disabled={submitting}
                     className="flex-1 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-bold uppercase disabled:opacity-50"
                   >
-                    {submitting ? "Saving..." : editingLeave ? "Update Leave Application" : "Send Leave Request 🚀"}
+                    {submitting ? "Saving..." : editingLeave ? "Update Leave Application" : "Send Leave Request"}
                   </button>
                 </div>
               </form>

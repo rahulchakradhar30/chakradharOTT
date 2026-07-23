@@ -8,6 +8,7 @@ import { useToast } from "@/components/Toast";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/firebase";
 import { doc, getDoc } from "firebase/firestore";
+import { MailIcon, ClockIcon, CheckCircleIcon, AlertCircleIcon } from "@/components/Icon";
 
 export default function ContactClient() {
   const { addToast } = useToast();
@@ -243,8 +244,9 @@ export default function ContactClient() {
 
           {/* Ticket Search Results Output */}
           {trackingError && (
-            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-300 rounded-xl p-4 text-xs font-medium">
-              ⚠ {trackingError}
+            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-300 rounded-xl p-4 text-xs font-medium flex items-center gap-2">
+              <AlertCircleIcon className="w-4 h-4 text-rose-400" />
+              <span>{trackingError}</span>
             </div>
           )}
 
@@ -278,13 +280,13 @@ export default function ContactClient() {
                   {trackedTicket.imageUrl && (
                     <div className="mt-3">
                       <a href={trackedTicket.imageUrl} target="_blank" rel="noreferrer" className="text-cyan-400 underline hover:text-cyan-300">
-                        View Attached Image 📎
+                        View Attached Image Document
                       </a>
                     </div>
                   )}
                 </div>
 
-                {/* Admin Support replies (excluding internal notes!) */}
+                {/* Admin Support replies */}
                 {trackedTicket.replies && trackedTicket.replies.length > 0 ? (
                   <div className="space-y-3">
                     <p className="text-[10px] uppercase tracking-wider font-black text-gray-500">Official Responses</p>
@@ -306,7 +308,7 @@ export default function ContactClient() {
                                 rel="noreferrer"
                                 className="text-[11px] text-cyan-400 hover:text-cyan-300 font-semibold bg-white/5 px-2 py-0.5 rounded border border-white/10"
                               >
-                                📎 {att.name}
+                                {att.name}
                               </a>
                             ))}
                           </div>
@@ -343,7 +345,6 @@ export default function ContactClient() {
               placeholder="Enter your name"
               error={errors.name}
               required
-              icon="👤"
             />
 
             <FormInput
@@ -355,7 +356,6 @@ export default function ContactClient() {
               placeholder="your@email.com"
               error={errors.email}
               required
-              icon="📧"
             />
 
             <div className="space-y-1.5">
@@ -405,7 +405,7 @@ export default function ContactClient() {
                     disabled={uploading}
                     className="hidden"
                   />
-                  {uploading ? "Uploading Image..." : "📎 Choose Image File"}
+                  <span>{uploading ? "Uploading Image..." : "Choose Image File"}</span>
                 </label>
 
                 {imageUrl && (
@@ -436,12 +436,12 @@ export default function ContactClient() {
         </div>
 
         <div className="glass-card rounded-2xl p-5 text-sm text-gray-300 space-y-3 relative z-10">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">📧</span>
+          <div className="flex items-center gap-3">
+            <MailIcon className="w-5 h-5 text-cyan-400 shrink-0" />
             <p>thefifthagefilms@gmail.com</p>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-lg">⏱️</span>
+          <div className="flex items-center gap-3">
+            <ClockIcon className="w-5 h-5 text-cyan-400 shrink-0" />
             <p>Response within 24 hours</p>
           </div>
           <div className="h-px bg-white/10 my-3" />
@@ -462,7 +462,9 @@ export default function ContactClient() {
               exit={{ scale: 0.95, opacity: 0 }}
               className="glass-card w-full max-w-md p-6 border border-white/10 space-y-6 text-center"
             >
-              <span className="text-5xl">🎉</span>
+              <div className="w-16 h-16 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 mx-auto flex items-center justify-center">
+                <CheckCircleIcon className="w-8 h-8" />
+              </div>
               <h3 className="text-2xl font-black text-white">Complaint Registered!</h3>
               
               <div className="space-y-2">
@@ -473,7 +475,7 @@ export default function ContactClient() {
               </div>
 
               <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-3.5 text-xs text-amber-200/90 leading-relaxed">
-                ⚠ **Please take a screenshot of this ID now!** You can use this ID to track ticket updates anonymously or view it later in your profile.
+                <strong>Please take a screenshot of this ID now!</strong> You can use this ID to track ticket updates anonymously or view it later in your profile.
               </div>
 
               <button

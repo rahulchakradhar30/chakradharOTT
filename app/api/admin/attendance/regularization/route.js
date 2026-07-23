@@ -189,8 +189,18 @@ export async function PATCH(req) {
       }
     }
 
-    // Email notification to applicant
+    // Targeted in-app notification doc ONLY to applicant
     try {
+      await adminDb.collection("notifications").add({
+        title: `Regularization Request ${newStatus.toUpperCase()}`,
+        message: `Your attendance regularization request for ${regData.startDate} to ${regData.endDate} was ${newStatus} by Super Admin.`,
+        targetEmail: regData.applicantEmail.toLowerCase(),
+        type: "regularization_decision",
+        link: "/sub-admin/attendance",
+        createdAt: new Date(),
+        read: false,
+      });
+
       await sendMail({
         to: regData.applicantEmail,
         subject: `Attendance Regularization Request ${newStatus.toUpperCase()} — Chakradhar Stream`,
@@ -215,3 +225,47 @@ export async function PATCH(req) {
     return NextResponse.json({ error: error.message || "Failed to process regularization decision" }, { status: 500 });
   }
 }
+
+/* ── DELETE: Sub-Admin Modify or Cancel Regularization ── */
+export async function DELETE(req) {
+  try {
+    const token = req.cookies.get("admin-session")?.value || "";
+    const callerEmail = verifyAdminSession(token);
+
+    if (!callerEmail) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const cleanCaller = callerEmail.toLowerCase().trim();
+    const isSuper = isSuperAdminEmail(cleanCaller);
+    const { regId } = await req.json();
+
+    if (!regId) {
+      return NextResponse.json({ error: "Regularization Request ID required." }, { status: 400 });
+    }
+
+    const regRef = adminDb.collection("attendanceRegularizations").doc(regId);
+    const regSnap = await regRef.get();
+
+    if (!regSnap.exists) {
+      return NextResponse.json({ error: "Request not found." }, { status: 404 });
+    }
+
+    const regData = regSnap.data();
+
+    if (regData.applicantEmail.toLowerCase() !== cleanCaller && !isSuper) {
+      return NextResponse.json({ error: "Unauthorized to cancel this request." }, { status: 403 });
+    }
+
+    await regRef.delete();
+
+    return NextResponse.json({
+      success: true,
+      message: "Regularization request cancelled successfully.",
+    });
+  } catch (error) {
+    console.error("Delete regularization error:", error);
+    return NextResponse.json({ error: error.message || "Failed to cancel regularization" }, { status: 500 });
+  }
+}
+

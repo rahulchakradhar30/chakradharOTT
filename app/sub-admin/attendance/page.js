@@ -14,6 +14,7 @@ export default function SubAdminAttendancePage() {
 
   // Leave Modal State
   const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [editingLeave, setEditingLeave] = useState(null); // null for new, leave object for edit
   const [leaveType, setLeaveType] = useState("Casual Leave");
   const [reason, setReason] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -97,7 +98,7 @@ export default function SubAdminAttendancePage() {
     };
   }, []);
 
-  /* ── 1. Calculate Monthly Calendar Days Grid ── */
+  /* ── 1. Calculate Monthly Calendar Days Grid (including Future/Tomorrow Approved Leaves) ── */
   const calendarDays = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -114,6 +115,9 @@ export default function SubAdminAttendancePage() {
 
     const recordsMap = new Map(attendanceRecords.map((r) => [r.date, r]));
 
+    // Approved leaves lookup
+    const approvedLeaves = leaves.filter((l) => l.status === "approved");
+
     for (let day = 1; day <= daysInMonth; day++) {
       const dayStr = String(day).padStart(2, "0");
       const monthStr = String(month + 1).padStart(2, "0");
@@ -122,19 +126,37 @@ export default function SubAdminAttendancePage() {
       const rec = recordsMap.get(dateKey);
       const isWeekend = new Date(year, month, day).getDay() === 0; // Sunday off-day
 
-      let status = rec?.status || (isWeekend ? "off_day" : null);
+      // Check if date falls in approved leave
+      const cellDate = new Date(year, month, day);
+      const matchingLeave = approvedLeaves.find((l) => {
+        const s = new Date(l.startDate.split("T")[0]);
+        const e = new Date(l.endDate.split("T")[0]);
+        s.setHours(0, 0, 0, 0);
+        e.setHours(23, 59, 59, 999);
+        return cellDate >= s && cellDate <= e;
+      });
+
+      let status = rec?.status;
+
+      if (!status) {
+        if (matchingLeave) {
+          status = "leave";
+        } else if (isWeekend) {
+          status = "off_day";
+        }
+      }
 
       days.push({
         dayNumber: day,
         dateKey,
         status, // "present" | "leave" | "absent" | "off_day" | null
-        notes: rec?.notes || "",
+        notes: rec?.notes || (matchingLeave ? `Approved ${matchingLeave.leaveType}` : ""),
         loginTime: rec?.loginTime,
       });
     }
 
     return days;
-  }, [currentDate, attendanceRecords]);
+  }, [currentDate, attendanceRecords, leaves]);
 
   /* ── 2. Statistics Bar ── */
   const stats = useMemo(() => {
@@ -147,7 +169,7 @@ export default function SubAdminAttendancePage() {
     return { present, leave, offDay, rate };
   }, [calendarDays]);
 
-  /* ── 3. Submit Leave Request ── */
+  /* ── 3. Submit / Modify Leave Application ── */
   const handleSubmitLeave = async (e) => {
     e.preventDefault();
     if (!startDate || !endDate || !reason.trim()) {
@@ -157,32 +179,42 @@ export default function SubAdminAttendancePage() {
 
     try {
       setSubmitting(true);
+      const isEditing = Boolean(editingLeave);
+      const method = isEditing ? "PATCH" : "POST";
+      const payload = {
+        leaveType,
+        reason: reason.trim(),
+        startDate,
+        endDate,
+        actingSubAdminEmail: actingSubAdmin,
+      };
+
+      if (isEditing) {
+        payload.leaveId = editingLeave.id;
+        payload.action = "modify";
+      }
+
       const res = await fetch("/api/admin/leaves", {
-        method: "POST",
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          leaveType,
-          reason: reason.trim(),
-          startDate,
-          endDate,
-          actingSubAdminEmail: actingSubAdmin,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        showAlert(data.error || "Failed to submit leave application.", "error");
+        showAlert(data.error || "Failed to save leave application.", "error");
         return;
       }
 
-      showAlert("Leave application submitted! Pending Super Admin approval.");
+      showAlert(isEditing ? "Leave application updated successfully!" : "Leave application submitted! Pending Super Admin approval.");
       setShowLeaveModal(false);
+      setEditingLeave(null);
       setReason("");
       setStartDate("");
       setEndDate("");
       loadData();
     } catch (err) {
-      showAlert("Error submitting leave: " + err.message, "error");
+      showAlert("Error saving leave: " + err.message, "error");
     } finally {
       setSubmitting(false);
     }
@@ -229,27 +261,51 @@ export default function SubAdminAttendancePage() {
     }
   };
 
-  /* ── 5. Cancel Leave & Resume Duty Mid-Way ── */
-  const handleCancelLeaveResume = async (leaveId) => {
-    if (!confirm("Are you sure you want to cancel your leave and resume active duty immediately?")) return;
+  /* ── 5. Clear / Cancel Leave (Pending or Approved) ── */
+  const handleClearLeave = async (leaveId) => {
+    if (!confirm("Are you sure you want to clear/cancel this leave application? This will remove the leave from your calendar and restore active duty status.")) return;
 
     try {
       const res = await fetch("/api/admin/leaves", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leaveId, action: "cancel_resume" }),
+        body: JSON.stringify({ leaveId, action: "clear_leave" }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        showAlert(data.error || "Failed to resume duty.", "error");
+        showAlert(data.error || "Failed to clear leave.", "error");
         return;
       }
 
-      showAlert("Leave cancelled. You are now back on ACTIVE DUTY!");
+      showAlert("Leave cleared successfully! Active duty restored.");
       loadData();
     } catch (err) {
-      showAlert("Error resuming duty: " + err.message, "error");
+      showAlert("Error clearing leave: " + err.message, "error");
+    }
+  };
+
+  /* ── 6. Cancel Attendance Regularization ── */
+  const handleCancelRegularization = async (regId) => {
+    if (!confirm("Cancel this attendance regularization request?")) return;
+
+    try {
+      const res = await fetch("/api/admin/attendance/regularization", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ regId }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        showAlert(data.error || "Failed to cancel request.", "error");
+        return;
+      }
+
+      showAlert("Regularization request cancelled.");
+      loadData();
+    } catch (err) {
+      showAlert("Error cancelling request: " + err.message, "error");
     }
   };
 
@@ -271,9 +327,9 @@ export default function SubAdminAttendancePage() {
           <div>
             <p className="admin-kicker text-cyan-300">Personal Duty & Attendance</p>
             <h1 className="admin-title flex items-center gap-2">
-              <span>📅</span> Sub-Admin Attendance & Regularization
+              <span>📅</span> Sub-Admin Attendance & Leaves
             </h1>
-            <p className="admin-lead">Track your monthly presence, request 15-day attendance regularization, and apply for leaves.</p>
+            <p className="admin-lead">Track monthly presence, apply or clear leaves, and request 15-day attendance regularization.</p>
           </div>
 
           <div className="flex flex-wrap gap-3">
@@ -281,11 +337,19 @@ export default function SubAdminAttendancePage() {
               onClick={() => setShowRegModal(true)}
               className="admin-button bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-black font-black uppercase text-xs tracking-wider px-5 py-3 rounded-2xl shadow-lg shadow-amber-500/20 flex items-center gap-2"
             >
-              <span>📝</span> Attendance Regularization
+              <span>📝</span> Regularize Attendance
             </button>
 
             <button
-              onClick={() => setShowLeaveModal(true)}
+              onClick={() => {
+                setEditingLeave(null);
+                setLeaveType("Casual Leave");
+                setReason("");
+                setStartDate("");
+                setEndDate("");
+                setActingSubAdmin("");
+                setShowLeaveModal(true);
+              }}
               className="admin-button bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black uppercase text-xs tracking-wider px-5 py-3 rounded-2xl shadow-lg shadow-cyan-500/25 flex items-center gap-2"
             >
               <span>🌴</span> Apply For Leave
@@ -293,7 +357,7 @@ export default function SubAdminAttendancePage() {
           </div>
         </div>
 
-        {/* ACTIVE LEAVE WARNING BANNER */}
+        {/* ACTIVE LEAVE WARNING BANNER WITH CLEAR LEAVE ACTION */}
         {activeApprovedLeave && (
           <div className="p-5 rounded-3xl bg-amber-500/10 border border-amber-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
             <div className="space-y-1">
@@ -310,10 +374,10 @@ export default function SubAdminAttendancePage() {
             </div>
 
             <button
-              onClick={() => handleCancelLeaveResume(activeApprovedLeave.id)}
+              onClick={() => handleClearLeave(activeApprovedLeave.id)}
               className="admin-button bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-black font-black uppercase text-xs tracking-wider px-5 py-2.5 rounded-2xl shadow-md shrink-0"
             >
-              🟢 Cancel Leave & Resume Duty
+              🟢 Clear Leave & Resume Duty
             </button>
           </div>
         )}
@@ -422,7 +486,7 @@ export default function SubAdminAttendancePage() {
                 badge = <span className="text-[10px] font-bold text-emerald-400">🟢 Present</span>;
               } else if (cell.status === "leave" || cell.status === "absent") {
                 cellStyle = "bg-rose-950/40 border-rose-500/50 text-rose-200 shadow-md shadow-rose-500/10";
-                badge = <span className="text-[10px] font-bold text-rose-400">🔴 Leave</span>;
+                badge = <span className="text-[10px] font-bold text-rose-400">🔴 Leave Granted</span>;
               } else if (cell.status === "off_day") {
                 cellStyle = "bg-amber-950/40 border-amber-500/50 text-amber-200 shadow-md shadow-amber-500/10";
                 badge = <span className="text-[10px] font-bold text-amber-400">🟡 Off-Day</span>;
@@ -449,10 +513,80 @@ export default function SubAdminAttendancePage() {
           </div>
         </div>
 
+        {/* APPLIED LEAVES DESK (WITH MODIFY & CLEAR LEAVE OPTIONS) */}
+        {leaves.length > 0 && (
+          <div className="admin-surface p-6 rounded-3xl space-y-4 border border-white/10">
+            <h2 className="text-sm font-bold text-white uppercase tracking-wider">Your Applied Leaves History ({leaves.length})</h2>
+            <div className="space-y-3">
+              {leaves.map((l) => (
+                <div key={l.id} className="p-5 rounded-2xl bg-black/20 border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase text-cyan-400">{l.leaveType}</span>
+                      <span
+                        className={`text-[10px] px-2.5 py-0.5 rounded-full font-black uppercase ${
+                          l.status === "approved"
+                            ? "bg-green-500/20 text-green-300 border border-green-500/30"
+                            : l.status === "rejected"
+                            ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                            : l.status === "cancelled_resumed"
+                            ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                            : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                        }`}
+                      >
+                        {l.status}
+                      </span>
+                    </div>
+
+                    <h3 className="text-sm font-bold text-white">
+                      {l.startDate?.split("T")[0]} to {l.endDate?.split("T")[0]}
+                    </h3>
+                    <p className="text-gray-300">Reason: {l.reason}</p>
+                    {l.actingSubAdminEmail && (
+                      <p className="text-cyan-300 font-bold">Acting Delegate: {l.actingSubAdminEmail}</p>
+                    )}
+                    {l.rejectionReason && (
+                      <p className="text-rose-300 text-[11px]">Rejection Feedback: {l.rejectionReason}</p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 shrink-0">
+                    {l.status === "pending" && (
+                      <button
+                        onClick={() => {
+                          setEditingLeave(l);
+                          setLeaveType(l.leaveType || "Casual Leave");
+                          setReason(l.reason || "");
+                          setStartDate(l.startDate || "");
+                          setEndDate(l.endDate || "");
+                          setActingSubAdmin(l.actingSubAdminEmail || "");
+                          setShowLeaveModal(true);
+                        }}
+                        className="px-3 py-1.5 bg-white/10 hover:bg-white/15 text-gray-200 rounded-xl font-bold text-xs"
+                      >
+                        ✏️ Modify
+                      </button>
+                    )}
+
+                    {(l.status === "pending" || l.status === "approved") && (
+                      <button
+                        onClick={() => handleClearLeave(l.id)}
+                        className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 rounded-xl font-bold text-xs"
+                      >
+                        🗑️ Clear Leave
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* REGULARIZATION REQUESTS HISTORY CARD */}
         {regularizations.length > 0 && (
           <div className="admin-surface p-6 rounded-3xl space-y-4 border border-white/10">
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider">Attendance Regularization Requests</h2>
+            <h2 className="text-sm font-bold text-white uppercase tracking-wider">Attendance Regularization Requests ({regularizations.length})</h2>
             <div className="space-y-3">
               {regularizations.map((r) => (
                 <div key={r.id} className="p-4 rounded-2xl bg-black/20 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
@@ -475,11 +609,22 @@ export default function SubAdminAttendancePage() {
                     {r.rejectionReason && <p className="text-rose-300 text-[11px] mt-0.5">Rejection Note: {r.rejectionReason}</p>}
                   </div>
 
-                  {r.proofImage && (
-                    <a href={r.proofImage} target="_blank" rel="noreferrer" className="text-cyan-300 hover:underline text-xs flex items-center gap-1 shrink-0">
-                      <span>🖼️ View Attached Proof</span>
-                    </a>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {r.proofImage && (
+                      <a href={r.proofImage} target="_blank" rel="noreferrer" className="text-cyan-300 hover:underline text-xs flex items-center gap-1">
+                        <span>🖼️ View Proof</span>
+                      </a>
+                    )}
+
+                    {r.status === "pending" && (
+                      <button
+                        onClick={() => handleCancelRegularization(r.id)}
+                        className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 rounded-xl font-bold text-xs"
+                      >
+                        🗑️ Cancel Request
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -569,13 +714,13 @@ export default function SubAdminAttendancePage() {
           </div>
         )}
 
-        {/* APPLY FOR LEAVE MODAL */}
+        {/* APPLY / MODIFY LEAVE MODAL */}
         {showLeaveModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
             <div className="bg-[#0b1329] border border-white/15 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5">
               <div className="flex justify-between items-center border-b border-white/10 pb-3">
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <span>🌴</span> Submit Leave Application
+                  <span>🌴</span> {editingLeave ? "Modify Leave Application" : "Submit Leave Application"}
                 </h3>
                 <button onClick={() => setShowLeaveModal(false)} className="text-gray-400 hover:text-white">✕</button>
               </div>
@@ -663,7 +808,7 @@ export default function SubAdminAttendancePage() {
                     disabled={submitting}
                     className="flex-1 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-bold uppercase disabled:opacity-50"
                   >
-                    {submitting ? "Submitting..." : "Send Leave Request 🚀"}
+                    {submitting ? "Saving..." : editingLeave ? "Update Leave Application" : "Send Leave Request 🚀"}
                   </button>
                 </div>
               </form>

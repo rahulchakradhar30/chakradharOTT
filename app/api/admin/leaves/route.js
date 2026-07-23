@@ -205,8 +205,18 @@ export async function PATCH(req) {
         }
       }
 
-      // Send email alert to Applicant
+      // Send targeted in-app notification doc ONLY to Applicant
       try {
+        await adminDb.collection("notifications").add({
+          title: `Leave Request ${newStatus.toUpperCase()}`,
+          message: `Your leave request (${leaveData.leaveType}: ${leaveData.startDate.split("T")[0]} to ${leaveData.endDate.split("T")[0]}) was ${newStatus} by Super Admin.`,
+          targetEmail: leaveData.applicantEmail.toLowerCase(),
+          type: "leave_decision",
+          link: "/sub-admin/attendance",
+          createdAt: new Date(),
+          read: false,
+        });
+
         await sendMail({
           to: leaveData.applicantEmail,
           subject: `Leave Request ${newStatus.toUpperCase()} — Chakradhar Stream`,
@@ -222,10 +232,37 @@ export async function PATCH(req) {
       });
     }
 
-    /* ── Case 2: Sub-Admin Cancel Leave & Resume Duty mid-way ── */
-    if (action === "cancel_resume") {
+    /* ── Case 2: Sub-Admin Modify Pending Leave ── */
+    if (action === "modify") {
       if (leaveData.applicantEmail.toLowerCase() !== cleanCaller && !isSuper) {
-        return NextResponse.json({ error: "Unauthorized to cancel this leave." }, { status: 403 });
+        return NextResponse.json({ error: "Unauthorized to modify this leave." }, { status: 403 });
+      }
+
+      if (leaveData.status !== "pending") {
+        return NextResponse.json({ error: "Only pending leave requests can be modified." }, { status: 400 });
+      }
+
+      const { leaveType, startDate, endDate, reason, actingSubAdminEmail } = await req.json();
+
+      await leaveRef.update({
+        leaveType: leaveType || leaveData.leaveType,
+        startDate: startDate || leaveData.startDate,
+        endDate: endDate || leaveData.endDate,
+        reason: (reason || leaveData.reason).trim(),
+        actingSubAdminEmail: actingSubAdminEmail !== undefined ? (actingSubAdminEmail || "").toLowerCase().trim() : leaveData.actingSubAdminEmail,
+        updatedAt: new Date(),
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: "Leave application updated successfully.",
+      });
+    }
+
+    /* ── Case 3: Sub-Admin Clear / Cancel Leave (Pending or Approved) ── */
+    if (action === "cancel_resume" || action === "clear_leave") {
+      if (leaveData.applicantEmail.toLowerCase() !== cleanCaller && !isSuper) {
+        return NextResponse.json({ error: "Unauthorized to clear this leave." }, { status: 403 });
       }
 
       await leaveRef.update({
@@ -233,21 +270,35 @@ export async function PATCH(req) {
         cancelledAt: new Date(),
       });
 
-      // Mark today's attendance as present (Green)
+      // Clear attendance documents for dates in range if marked leave
+      const start = new Date(leaveData.startDate);
+      const end = new Date(leaveData.endDate);
+
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split("T")[0];
+        const attId = `${leaveData.applicantEmail}_${dateStr}`;
+        const attRef = adminDb.collection("attendance").doc(attId);
+        const attSnap = await attRef.get();
+        if (attSnap.exists && attSnap.data().status === "leave") {
+          await attRef.delete();
+        }
+      }
+
+      // If today is in range, log present
       const todayStr = new Date().toISOString().split("T")[0];
-      const attId = `${leaveData.applicantEmail}_${todayStr}`;
-      await adminDb.collection("attendance").doc(attId).set(
+      const todayAttId = `${leaveData.applicantEmail}_${todayStr}`;
+      await adminDb.collection("attendance").doc(todayAttId).set(
         {
           email: leaveData.applicantEmail,
           date: todayStr,
           status: "present",
-          notes: "Resumed duty from leave",
+          notes: "Resumed duty / Leave cleared",
           loginTime: new Date(),
         },
         { merge: true }
       );
 
-      // Clear acting delegate
+      // Clear active delegate in sub-admin doc
       await adminDb.collection("admins").doc(leaveData.applicantEmail).set(
         {
           activeDelegate: null,
@@ -259,16 +310,16 @@ export async function PATCH(req) {
 
       // Notify Super Admin
       await notifyAdmins({
-        title: `🟢 Leave Cancelled & Duty Resumed by ${leaveData.applicantEmail}`,
-        message: `Sub-Admin ${leaveData.applicantEmail} has cancelled their leave and resumed active duty.`,
-        type: "leave_cancelled",
+        title: `🟢 Leave Cleared by ${leaveData.applicantEmail}`,
+        message: `Sub-Admin ${leaveData.applicantEmail} has cleared/cancelled their leave and resumed active duty.`,
+        type: "leave_cleared",
         link: "/admin/attendance",
         sendEmail: true,
       });
 
       return NextResponse.json({
         success: true,
-        message: "Leave cancelled. Active duty resumed successfully!",
+        message: "Leave cleared successfully. Active duty restored!",
       });
     }
 
@@ -278,3 +329,4 @@ export async function PATCH(req) {
     return NextResponse.json({ error: error.message || "Failed to update leave request" }, { status: 500 });
   }
 }
+

@@ -265,7 +265,7 @@ export default function SubAdminLayoutClient({ children }) {
       {/* MOBILE HEADER */}
       <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#040814]/95 sticky top-0 z-40 backdrop-blur-xl">
         <div className="flex items-center gap-2">
-          <span className="text-xl">🔐</span>
+          <LockShieldIcon className="w-5 h-5 text-cyan-400 shrink-0" />
           <div>
             <p className="text-[10px] text-cyan-300 font-bold uppercase tracking-wider">Sub-Admin Desk</p>
             <p className="text-xs font-bold text-white truncate max-w-[180px]">{adminName || adminEmail}</p>
@@ -278,7 +278,7 @@ export default function SubAdminLayoutClient({ children }) {
               href="/sub-admin/mail"
               className="bg-cyan-500/20 border border-cyan-400/40 px-2.5 py-1 rounded-full text-[10px] font-black text-cyan-300 flex items-center gap-1"
             >
-              <span>✉️</span>
+              <MailIcon className="w-3.5 h-3.5 text-cyan-400" />
               <span>{unreadMailsCount}</span>
             </Link>
           )}

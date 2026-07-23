@@ -126,27 +126,50 @@ export async function GET(req) {
       role = "super_admin";
       adminName = isRootSuperAdmin(normalizedEmail) ? "Permanent Super Admin" : "Super Administrator";
     } else {
-      const adminDoc = await adminDb.collection("admins").doc(normalizedEmail).get();
+      let adminDoc = await adminDb.collection("admins").doc(normalizedEmail).get();
 
       if (!adminDoc.exists) {
-        return NextResponse.json(
-          { authenticated: false, reason: "not_authorized" },
-          { status: 401, headers }
-        );
+        const qSnap = await adminDb.collection("admins").where("email", "==", normalizedEmail).get();
+        if (!qSnap.empty) {
+          adminDoc = qSnap.docs[0];
+        }
       }
 
-      const adminData = adminDoc.data();
+      if (adminDoc && adminDoc.exists) {
+        const adminData = adminDoc.data();
 
-      if (adminData.status === "disabled" || adminData.status === "removed") {
-        return NextResponse.json(
-          { authenticated: false, reason: "account_disabled" },
-          { status: 401, headers }
-        );
+        if (adminData.status === "disabled" || adminData.status === "removed") {
+          return NextResponse.json(
+            { authenticated: false, reason: "account_disabled" },
+            { status: 401, headers }
+          );
+        }
+
+        role = adminData.role || "sub_admin";
+        adminName = adminData.name || "";
+        customPermissions = adminData.permissions || null;
+      } else {
+        // Fallback: check users collection
+        let userDoc = await adminDb.collection("users").doc(normalizedEmail).get();
+        if (!userDoc.exists) {
+          const uSnap = await adminDb.collection("users").where("email", "==", normalizedEmail).get();
+          if (!uSnap.empty) {
+            userDoc = uSnap.docs[0];
+          }
+        }
+
+        if (userDoc && userDoc.exists && ["sub_admin", "subadmin", "admin"].includes(userDoc.data()?.role)) {
+          const userData = userDoc.data() || {};
+          role = "sub_admin";
+          adminName = userData.displayName || userData.name || "";
+          customPermissions = userData.permissions || null;
+        } else {
+          return NextResponse.json(
+            { authenticated: false, reason: "not_authorized" },
+            { status: 401, headers }
+          );
+        }
       }
-
-      role = adminData.role || "sub_admin";
-      adminName = adminData.name || "";
-      customPermissions = adminData.permissions || null;
     }
 
     const permissions = resolvePermissions(role, customPermissions);

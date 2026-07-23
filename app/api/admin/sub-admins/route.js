@@ -91,6 +91,9 @@ export async function POST(req) {
     });
 
     // Send invitation email with password setup link
+    let mailSuccess = false;
+    let mailErrorMsg = "";
+
     try {
       await sendMail({
         to: cleanEmail,
@@ -128,9 +131,10 @@ export async function POST(req) {
           </div>
         `,
       });
+      mailSuccess = true;
     } catch (mailErr) {
       console.error("Failed to send invitation email:", mailErr);
-      // Don't fail the whole operation if email fails — admin is still created
+      mailErrorMsg = mailErr.message || "Failed to send email";
     }
 
     await logServerEvent("sub_admin_created", {
@@ -139,10 +143,18 @@ export async function POST(req) {
       createdBy: callerEmail,
     });
 
-    return NextResponse.json({
-      success: true,
-      message: `Admin ${cleanEmail} added. Invitation email sent with password setup link.`,
-    });
+    if (mailSuccess) {
+      return NextResponse.json({
+        success: true,
+        message: `Admin ${cleanEmail} added. Invitation email sent to ${cleanEmail}.`,
+      });
+    } else {
+      return NextResponse.json({
+        success: true,
+        warning: true,
+        message: `Admin ${cleanEmail} was added, but the invitation email could not be delivered: ${mailErrorMsg}`,
+      });
+    }
   } catch (error) {
     console.error("Create sub-admin error:", error);
     return NextResponse.json({ error: error.message || "Failed to create admin" }, { status: 500 });

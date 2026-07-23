@@ -296,13 +296,30 @@ export default function CreatePremierePage() {
           </div>
         )}
 
-        <button
-          onClick={handleCreate}
-          disabled={loading}
-          className="admin-button admin-button-primary w-full disabled:opacity-60"
-        >
-          {loading ? "Creating..." : "Create Premiere"}
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={handleCreate}
+            disabled={loading}
+            className="admin-button admin-button-primary flex-1 disabled:opacity-60"
+          >
+            {loading ? "Creating..." : "Create Premiere"}
+          </button>
+          <button
+            type="button"
+            disabled={loading || autoSaving}
+            onClick={async () => {
+              const savedId = await saveDraftManually();
+              if (savedId) {
+                alert("Draft saved successfully! You can resume it anytime from the Drafts tab.");
+              } else {
+                alert("Please fill in at least the premiere title to save a draft.");
+              }
+            }}
+            className="admin-button admin-button-secondary text-sm flex-none"
+          >
+            {autoSaving ? "Saving..." : "💾 Save as Draft"}
+          </button>
+        </div>
 
       </div>
 

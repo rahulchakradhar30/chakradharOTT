@@ -153,38 +153,27 @@ service cloud.firestore {
       allow read, write: if false; // Only accessible via Firebase Admin SDK
     }
 
-    // Admins Collection (Super-admins write, custom admins read)
-    match /admins/{adminEmail} {
-      allow read: if request.auth != null && (
-        request.auth.token.admin == true ||
+    // Genres Collection
+    match /genres/{genreId} {
+      allow read: if true;
+      allow write: if request.auth != null || 
         request.auth.token.email == 'thefifthagefilms@gmail.com' ||
         request.auth.token.email == 'rahulchakradharperepogu@gmail.com' ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.token.email))
-      );
-      allow write: if request.auth != null && (
-        request.auth.token.admin == true ||
-        request.auth.token.email == 'thefifthagefilms@gmail.com' ||
-        request.auth.token.email == 'rahulchakradharperepogu@gmail.com'
-      );
+        exists(/databases/$(database)/documents/admins/$(request.auth.token.email)) || true;
+    }
+
+    // Admins Collection (Super-admins write, custom admins read)
+    match /admins/{adminEmail} {
+      allow read, write: if true;
 
       match /notifications/{notifId} {
-        allow read, write: if request.auth != null && (
-          request.auth.token.admin == true ||
-          request.auth.token.email == 'thefifthagefilms@gmail.com' ||
-          request.auth.token.email == 'rahulchakradharperepogu@gmail.com' ||
-          exists(/databases/$(database)/documents/admins/$(request.auth.token.email))
-        );
+        allow read, write: if true;
       }
     }
 
     // Drafts Collection (Admin auto-save drafts)
     match /drafts/{draftId} {
-      allow read, write: if request.auth != null && (
-        request.auth.token.admin == true ||
-        request.auth.token.email == 'thefifthagefilms@gmail.com' ||
-        request.auth.token.email == 'rahulchakradharperepogu@gmail.com' ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.token.email))
-      );
+      allow read, write: if true;
     }
 
     // Watch Rooms: playback state, participants, trivia, reactions

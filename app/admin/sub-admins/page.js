@@ -88,8 +88,13 @@ export default function SubAdminsManagement() {
 
       setEmail("");
       setName("");
-      setSuccessMsg(data.message || `Admin ${cleanEmail} added successfully!`);
-      setTimeout(() => setSuccessMsg(""), 5000);
+
+      if (data.warning) {
+        setErrorMsg(data.message);
+      } else {
+        setSuccessMsg(data.message || `Admin ${cleanEmail} added successfully!`);
+        setTimeout(() => setSuccessMsg(""), 6000);
+      }
     } catch (err) {
       console.error(err);
       setErrorMsg("Failed to add admin: " + err.message);

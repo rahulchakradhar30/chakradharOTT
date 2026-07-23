@@ -333,7 +333,7 @@ export default function CreateMovie() {
 
         </div>
 
-        {/* SUBMIT */}
+        {/* SUBMIT & DRAFT BUTTONS */}
         <div className="flex flex-col sm:flex-row gap-3">
           <button
             type="submit"
@@ -341,6 +341,21 @@ export default function CreateMovie() {
             className="admin-button admin-button-primary flex-1 disabled:opacity-60"
           >
             {loading ? "Uploading..." : "Upload Movie"}
+          </button>
+          <button
+            type="button"
+            disabled={loading || autoSaving}
+            onClick={async () => {
+              const savedId = await saveDraftManually();
+              if (savedId) {
+                alert("Draft saved successfully! You can resume it anytime from the Drafts tab.");
+              } else {
+                alert("Please fill in at least the title or description to save a draft.");
+              }
+            }}
+            className="admin-button admin-button-secondary text-sm flex-none"
+          >
+            {autoSaving ? "Saving..." : "💾 Save as Draft"}
           </button>
         </div>
 

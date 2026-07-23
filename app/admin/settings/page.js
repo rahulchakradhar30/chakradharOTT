@@ -1,249 +1,332 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { db } from "@/firebase";
-import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
-import Link from "next/link";
-import { motion } from "framer-motion";
+import { useEffect, useState, useCallback } from "react";
+import {
+  FingerprintIcon,
+  AuthenticatorIcon,
+  ShieldCheckIcon,
+  QrCodeIcon,
+  PlusIcon,
+  CheckCircleIcon,
+  AlertCircleIcon,
+} from "@/components/Icon";
 
 export default function AdminSettings() {
-  const [settings, setSettings] = useState({
-    maintenanceMode: false,
-    maxMoviesPerPage: 12,
-    enableNewReleases: true,
-    enablePremières: true,
-    enableReviews: true,
-    enableWishlist: true,
-    enableNotifications: true,
-    premiumRequired: false,
-  });
-
+  const [session, setSession] = useState(null);
+  const [securityData, setSecurityData] = useState({ totpEnabled: false, passkeysCount: 0, passkeys: [] });
   const [loading, setLoading] = useState(true);
-  const [saved, setSaved] = useState(false);
-  const [adminRole, setAdminRole] = useState("sub_admin");
 
-  useEffect(() => {
-    const checkRole = async () => {
-      try {
-        const res = await fetch("/api/admin/session");
-        if (res.ok) {
-          const data = await res.json();
-          setAdminRole(data.role || "sub_admin");
-        }
-      } catch (err) {
-        console.warn(err);
-      }
-    };
-    checkRole();
-  }, []);
+  // Setup Authenticator Modal State
+  const [showTotpModal, setShowTotpModal] = useState(false);
+  const [totpSetupData, setTotpSetupData] = useState(null);
+  const [verifyCode, setVerifyCode] = useState("");
+  const [enablingTotp, setEnablingTotp] = useState(false);
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const settingsSnap = await getDocs(collection(db, "settings"));
-        if (!settingsSnap.empty) {
-          setSettings(settingsSnap.docs[0].data());
-        }
-      } catch (error) {
-        console.error("Fetch settings error:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchSettings();
-  }, []);
+  // Passkey Registration State
+  const [registeringPasskey, setRegisteringPasskey] = useState(false);
 
-  const handleToggle = (key) => {
-    setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
-    setSaved(false);
+  // Alert Message State
+  const [alertMsg, setAlertMsg] = useState({ text: "", type: "" });
+
+  const showAlert = (text, type = "success") => {
+    setAlertMsg({ text, type });
+    setTimeout(() => setAlertMsg({ text: "", type: "" }), 5000);
   };
 
-  const handleChange = (key, value) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
-    setSaved(false);
-  };
-
-  const handleSave = async () => {
+  const loadSecurityDetails = useCallback(async (email) => {
     try {
-      const settingsSnap = await getDocs(collection(db, "settings"));
-      if (!settingsSnap.empty) {
-        await updateDoc(settingsSnap.docs[0].ref, settings);
-      } else {
-        await updateDoc(doc(db, "settings", "global"), settings);
+      const res = await fetch("/api/admin/2fa/methods", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setSecurityData(d);
       }
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch (error) {
-      console.error("Save error:", error);
-      alert("Failed to save settings");
+    } catch (err) {
+      console.warn("Error loading security details:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/admin/session")
+      .then((r) => r.json())
+      .then((data) => {
+        setSession(data);
+        if (data.email) loadSecurityDetails(data.email);
+      })
+      .catch((e) => console.warn(e))
+      .finally(() => setLoading(false));
+  }, [loadSecurityDetails]);
+
+  /* ── 1. Setup Google Authenticator App ── */
+  const handleStartTotpSetup = async () => {
+    try {
+      setEnablingTotp(true);
+      const res = await fetch("/api/admin/2fa/totp/setup", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        showAlert(data.error || "Failed to generate Authenticator secret.", "error");
+        return;
+      }
+
+      setTotpSetupData(data);
+      setShowTotpModal(true);
+    } catch (err) {
+      showAlert("Error initializing Authenticator setup: " + err.message, "error");
+    } finally {
+      setEnablingTotp(false);
+    }
+  };
+
+  const handleVerifyAndEnableTotp = async (e) => {
+    e.preventDefault();
+    if (!verifyCode || verifyCode.trim().length !== 6) {
+      showAlert("Please enter the 6-digit code from Google Authenticator.", "error");
+      return;
+    }
+
+    try {
+      setEnablingTotp(true);
+      const res = await fetch("/api/admin/2fa/totp/setup", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          secret: totpSetupData.secret,
+          code: verifyCode.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        showAlert(data.error || "Verification failed.", "error");
+        return;
+      }
+
+      showAlert("Google Authenticator 2FA enabled successfully!");
+      setShowTotpModal(false);
+      setVerifyCode("");
+      if (session?.email) loadSecurityDetails(session.email);
+    } catch (err) {
+      showAlert("Error verifying code: " + err.message, "error");
+    } finally {
+      setEnablingTotp(false);
+    }
+  };
+
+  /* ── 2. Register WebAuthn Biometric Passkey ── */
+  const handleRegisterPasskey = async () => {
+    if (typeof window === "undefined" || !navigator.credentials || !window.PublicKeyCredential) {
+      showAlert("Passkeys / WebAuthn are not supported on this browser.", "error");
+      return;
+    }
+
+    try {
+      setRegisteringPasskey(true);
+      const challengeRes = await fetch("/api/admin/2fa/passkey/register", { method: "POST" });
+      const challengeData = await challengeRes.json();
+
+      if (!challengeRes.ok) {
+        showAlert(challengeData.error || "Failed to initialize Passkey creation.", "error");
+        return;
+      }
+
+      const options = challengeData.options;
+      options.challenge = Buffer.from(options.challenge, "base64");
+      options.user.id = Buffer.from(options.user.id, "base64");
+
+      const credential = await navigator.credentials.create({ publicKey: options });
+      if (!credential) {
+        showAlert("Passkey creation cancelled by user.", "error");
+        return;
+      }
+
+      const credentialPayload = {
+        id: credential.id,
+        rawId: Buffer.from(credential.rawId).toString("base64"),
+        type: credential.type,
+        response: {
+          clientDataJSON: Buffer.from(credential.response.clientDataJSON).toString("base64"),
+          attestationObject: Buffer.from(credential.response.attestationObject).toString("base64"),
+        },
+      };
+
+      const verifyRes = await fetch("/api/admin/2fa/passkey/register", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentialPayload),
+      });
+
+      const verifyData = await verifyRes.json();
+      if (!verifyRes.ok) {
+        showAlert(verifyData.error || "Passkey registration failed.", "error");
+        return;
+      }
+
+      showAlert("Passkey / Biometric device registered successfully!");
+      if (session?.email) loadSecurityDetails(session.email);
+    } catch (err) {
+      showAlert("Passkey registration failed or cancelled: " + err.message, "error");
+    } finally {
+      setRegisteringPasskey(false);
     }
   };
 
   return (
-    <div className="space-y-10 pb-28 md:pb-16">
+    <div className="space-y-6 max-w-5xl mx-auto pb-12">
       {/* HEADER */}
-      <motion.div initial={{ opacity: 0, y: 25 }} animate={{ opacity: 1, y: 0 }} className="admin-toolbar items-end">
-        <div className="admin-section max-w-2xl">
-          <p className="admin-kicker text-cyan-300 text-sm tracking-widest">✦ Platform Settings</p>
-          <h1 className="admin-title text-4xl font-black">Admin Settings</h1>
-          <p className="admin-lead text-gray-300">Configure platform features, maintenance mode, and global preferences.</p>
-        </div>
+      <div>
+        <p className="admin-kicker text-cyan-300">Root & Super Admin Security Control</p>
+        <h1 className="admin-title flex items-center gap-2">
+          <ShieldCheckIcon className="w-8 h-8 text-cyan-400" />
+          <span>Super Admin Security & Passkeys Desk (Version 3.1)</span>
+        </h1>
+        <p className="admin-lead">Configure Google Authenticator and Mobile / Laptop Biometric Passkeys for 1-click admin authentication.</p>
+      </div>
 
-        <Link href="/admin" className="admin-button admin-button-secondary text-sm">
-          ← Back to Dashboard
-        </Link>
-      </motion.div>
-
-      {/* SETTINGS SECTIONS */}
-      {loading ? (
-        <div className="text-center py-12 text-gray-400">Loading settings...</div>
-      ) : (
-        <div className="space-y-8">
-          {/* MAINTENANCE MODE */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="glass-card rounded-2xl md:rounded-3xl p-6 md:p-8 border border-red-400/20 bg-gradient-to-r from-red-500/10 to-rose-500/5"
-          >
-            <div className="flex items-start justify-between gap-6">
-              <div>
-                <h2 className="text-xl font-bold mb-2">🔧 Maintenance Mode</h2>
-                <p className="text-sm text-gray-400">
-                  When enabled, the platform will show a maintenance message to all users. Admin access remains active.
-                </p>
-              </div>
-              <button
-                onClick={() => handleToggle("maintenanceMode")}
-                className={`px-6 py-3 rounded-lg font-semibold transition min-w-fit ${
-                  settings.maintenanceMode
-                    ? "bg-red-500/30 border border-red-300/50 text-red-300"
-                    : "bg-white/5 border border-white/15 hover:bg-white/10"
-                }`}
-              >
-                {settings.maintenanceMode ? "🔴 ON" : "⚪ OFF"}
-              </button>
-            </div>
-          </motion.div>
-
-          {/* FEATURE FLAGS */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="glass-card rounded-2xl md:rounded-3xl p-6 md:p-8 border border-cyan-400/20"
-          >
-            <h2 className="text-xl font-bold mb-6">✨ Feature Flags</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[
-                ["🎬 Enable New Releases", "enableNewReleases"],
-                ["🎪 Enable Premieres", "enablePremières"],
-                ["⭐ Enable Reviews", "enableReviews"],
-                ["❤️ Enable Wishlist", "enableWishlist"],
-                ["🔔 Enable Notifications", "enableNotifications"],
-                ["💎 Premium Required", "premiumRequired"],
-              ].map(([label, key]) => (
-                <button
-                  key={key}
-                  onClick={() => handleToggle(key)}
-                  className={`p-4 rounded-lg border transition text-left font-semibold ${
-                    settings[key]
-                      ? "bg-green-500/20 border-green-300/50 text-green-300"
-                      : "bg-white/5 border-white/15 hover:bg-white/10"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span>{label}</span>
-                    <span className="text-lg">{settings[key] ? "✓" : "✕"}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* PAGINATION */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="glass-card rounded-2xl md:rounded-3xl p-6 md:p-8 border border-blue-400/20 bg-gradient-to-r from-blue-500/10 to-cyan-500/5"
-          >
-            <h2 className="text-xl font-bold mb-6">📄 Pagination Settings</h2>
-
-            <div>
-              <label className="block text-sm font-semibold mb-3">Movies per Page</label>
-              <div className="flex items-center gap-4">
-                <input
-                  type="number"
-                  value={settings.maxMoviesPerPage}
-                  onChange={(e) => handleChange("maxMoviesPerPage", parseInt(e.target.value) || 12)}
-                  min="6"
-                  max="50"
-                  className="admin-input focus-ring w-32"
-                />
-                <span className="text-sm text-gray-400">
-                  Currently showing {settings.maxMoviesPerPage} movies per page
-                </span>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* QUICK ACTIONS */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="glass-card rounded-2xl md:rounded-3xl p-6 md:p-8 border border-amber-400/20 bg-gradient-to-r from-amber-500/10 to-orange-500/5"
-          >
-            <h2 className="text-xl font-bold mb-6">🚀 Quick Links</h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[
-                ["📽️ Manage Movies", "/admin/movies"],
-                ["🎪 Manage Premieres", "/admin/premieres"],
-                ["🏷️ Manage Genres", "/admin/genres"],
-                ["🔍 Discovery Settings", "/admin/discovery"],
-                ["📊 Search Analytics", "/admin/search-analytics"],
-                ["💬 Comments", "/admin/comments"],
-              ].map(([label, href]) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="p-4 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 hover:border-amber-300/40 transition text-sm font-semibold text-center"
-                >
-                  {label}
-                </Link>
-              ))}
-            </div>
-          </motion.div>
+      {/* NOTIFICATION ALERT */}
+      {alertMsg.text && (
+        <div
+          className={`p-4 rounded-2xl border text-xs flex items-center gap-3 ${
+            alertMsg.type === "error"
+              ? "bg-rose-500/10 border-rose-500/30 text-rose-200"
+              : "bg-cyan-500/10 border-cyan-500/30 text-cyan-200"
+          }`}
+        >
+          {alertMsg.type === "error" ? <AlertCircleIcon className="w-4 h-4 text-rose-400" /> : <CheckCircleIcon className="w-4 h-4 text-cyan-400" />}
+          <span>{alertMsg.text}</span>
         </div>
       )}
 
-      {/* SAVE BUTTON */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="fixed bottom-0 left-0 right-0 bg-[#04070f]/95 backdrop-blur-xl border-t border-white/10 p-4 md:p-6 flex items-center justify-between gap-4 md:relative md:bg-transparent md:border-0"
-      >
-        <button
-          onClick={handleSave}
-          className="admin-button admin-button-primary flex-1 md:flex-none"
-        >
-          {saved ? "✓ Settings Saved" : "💾 Save Settings"}
-        </button>
+      {/* SECURITY CONTROL DESK GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* METHOD 1: PASSKEYS / BIOMETRICS */}
+        <div className="p-6 rounded-3xl bg-black/40 border border-white/10 hover:border-cyan-500/30 transition space-y-4 flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                <FingerprintIcon className="w-4 h-4 text-cyan-400" /> Passkey & Biometric 1-Click Login
+              </span>
+              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">
+                {securityData.passkeysCount} Registered
+              </span>
+            </div>
 
-        {saved && (
-          <motion.span
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-green-300 font-semibold text-sm"
+            <h2 className="text-lg font-bold text-white">Mobile Fingerprint / Laptop TouchID</h2>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Log in instantly with 1-click using your device biometrics (Fingerprint, Touch ID, Face ID, Windows Hello, or Hardware Security Key).
+            </p>
+
+            {securityData.passkeys && securityData.passkeys.length > 0 && (
+              <div className="p-3 bg-white/5 rounded-2xl border border-white/10 text-xs space-y-2">
+                <p className="font-bold text-gray-300 uppercase text-[10px]">Registered Credentials</p>
+                {securityData.passkeys.map((p, i) => (
+                  <div key={p.id} className="flex items-center justify-between text-gray-400 text-[11px] font-mono">
+                    <span>Key #{i + 1} ({p.id.slice(0, 12)}...)</span>
+                    <span className="text-emerald-400 font-bold">Active</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={handleRegisterPasskey}
+            disabled={registeringPasskey}
+            className="admin-button bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-bold uppercase py-3 px-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 disabled:opacity-50"
           >
-            Changes saved successfully
-          </motion.span>
-        )}
-      </motion.div>
+            <PlusIcon className="w-4 h-4" />
+            <span>{registeringPasskey ? "Registering Passkey..." : "Register Mobile / Laptop Passkey"}</span>
+          </button>
+        </div>
+
+        {/* METHOD 2: GOOGLE AUTHENTICATOR (TOTP) */}
+        <div className="p-6 rounded-3xl bg-black/40 border border-white/10 hover:border-cyan-500/30 transition space-y-4 flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                <AuthenticatorIcon className="w-4 h-4 text-amber-400" /> Google Authenticator 2FA
+              </span>
+              {securityData.totpEnabled ? (
+                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-green-500/20 text-green-300 font-bold border border-green-500/30">
+                  Active & Enabled
+                </span>
+              ) : (
+                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                  Not Configured
+                </span>
+              )}
+            </div>
+
+            <h2 className="text-lg font-bold text-white">Time-based One-Time Password (TOTP)</h2>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Generate rolling 6-digit verification codes using Google Authenticator, Authy, or Microsoft Authenticator apps.
+            </p>
+          </div>
+
+          <button
+            onClick={handleStartTotpSetup}
+            disabled={enablingTotp}
+            className="admin-button bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold uppercase py-3 px-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            <QrCodeIcon className="w-4 h-4 text-amber-400" />
+            <span>{securityData.totpEnabled ? "Reconfigure Authenticator App" : "Set Up Google Authenticator"}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* SETUP GOOGLE AUTHENTICATOR MODAL */}
+      {showTotpModal && totpSetupData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <div className="bg-[#0b1329] border border-white/15 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5">
+            <div className="flex justify-between items-center border-b border-white/10 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <QrCodeIcon className="w-5 h-5 text-amber-400" />
+                <span>Set Up Google Authenticator</span>
+              </h3>
+              <button onClick={() => setShowTotpModal(false)} className="text-gray-400 hover:text-white">✕</button>
+            </div>
+
+            <div className="space-y-3 text-xs text-gray-300">
+              <p>1. Open <strong>Google Authenticator</strong> or <strong>Authy</strong> app on your mobile device.</p>
+              <p>2. Tap <strong>+</strong> and scan the secret or enter the Secret Key manually:</p>
+
+              <div className="p-3 bg-black/60 rounded-2xl border border-white/10 font-mono text-center text-cyan-300 text-sm font-bold tracking-wider select-all">
+                {totpSetupData.secret}
+              </div>
+
+              <p className="pt-2">3. Enter the 6-digit code shown in your Authenticator app to complete setup:</p>
+
+              <form onSubmit={handleVerifyAndEnableTotp} className="space-y-4">
+                <input
+                  type="text"
+                  maxLength={6}
+                  required
+                  value={verifyCode}
+                  onChange={(e) => setVerifyCode(e.target.value)}
+                  placeholder="000000"
+                  className="admin-input text-center text-xl font-mono tracking-widest text-cyan-300 bg-black/50"
+                />
+
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setShowTotpModal(false)} className="flex-1 py-2.5 bg-white/10 text-gray-300 rounded-xl font-bold">
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={enablingTotp}
+                    className="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 text-black font-black uppercase rounded-xl disabled:opacity-50"
+                  >
+                    {enablingTotp ? "Verifying..." : "Confirm & Enable 2FA"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

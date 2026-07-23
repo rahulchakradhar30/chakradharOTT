@@ -392,3 +392,57 @@ export function FolderIcon({ className = "w-5 h-5", ...props }) {
     </svg>
   );
 }
+
+export function FingerprintIcon({ className = "w-5 h-5", ...props }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M2 12C2 6.5 6.5 2 12 2s10 4.5 10 10c0 4-2.5 7.5-6 9" />
+      <path d="M5 15.5C5.8 12.8 8.6 11 12 11s6.2 1.8 7 4.5" />
+      <path d="M8 19c1.2-1.8 3-3 4-3s2.8 1.2 4 3" />
+      <path d="M12 6c-3.3 0-6 2.7-6 6v3" />
+      <path d="M18 12c0-3.3-2.7-6-6-6" />
+    </svg>
+  );
+}
+
+export function AuthenticatorIcon({ className = "w-5 h-5", ...props }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <rect x="5" y="2" width="14" height="20" rx="3" />
+      <path d="M12 18h.01" />
+      <circle cx="12" cy="10" r="3" />
+      <path d="M12 7v3l2 2" />
+    </svg>
+  );
+}
+
+export function ShieldCheckIcon({ className = "w-5 h-5", ...props }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+export function QrCodeIcon({ className = "w-5 h-5", ...props }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <path d="M14 14h3v3h-3z" />
+      <path d="M17 17h4v4h-4z" />
+    </svg>
+  );
+}
+
+export function KeyRingIcon({ className = "w-5 h-5", ...props }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <circle cx="7.5" cy="15.5" r="4.5" />
+      <path d="m10.7 12.3 8.3-8.3" />
+      <path d="M16 7h3v3" />
+    </svg>
+  );
+}

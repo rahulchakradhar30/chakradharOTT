@@ -67,7 +67,7 @@ export async function GET(req) {
   }
 }
 
-/* ── POST: Auto-log daily login presence ── */
+/* ── POST: Auto-log daily login presence OR Super Admin post attendance ── */
 export async function POST(req) {
   try {
     const token = req.cookies.get("admin-session")?.value || "";
@@ -77,13 +77,43 @@ export async function POST(req) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const isSuper = isSuperAdminEmail(callerEmail);
+    const body = await req.json().catch(() => ({}));
+
+    // If Super Admin provides targetEmail & date -> Retroactive post
+    if (isSuper && body.targetEmail && body.date) {
+      const targetEmail = body.targetEmail.toLowerCase().trim();
+      const targetDate = body.date.trim();
+      const status = ["present", "absent", "off_day", "leave"].includes(body.status) ? body.status : "present";
+      const docId = `${targetEmail}_${targetDate}`;
+      const attRef = adminDb.collection("attendance").doc(docId);
+
+      const loginDate = body.loginTime ? new Date(body.loginTime) : new Date();
+
+      await attRef.set({
+        email: targetEmail,
+        date: targetDate,
+        status,
+        loginTime: loginDate,
+        lastActiveTime: new Date(),
+        notes: body.notes || "Posted by Super Admin",
+        postedBy: callerEmail,
+        createdAt: new Date(),
+      }, { merge: true });
+
+      return NextResponse.json({
+        success: true,
+        message: `Attendance posted for ${targetEmail} on ${targetDate}.`,
+      });
+    }
+
+    // Default: Self daily login record
     const cleanEmail = callerEmail.toLowerCase().trim();
     const todayStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
     const docId = `${cleanEmail}_${todayStr}`;
 
     const attRef = adminDb.collection("attendance").doc(docId);
     const docSnap = await attRef.get();
-
     const now = new Date();
 
     if (!docSnap.exists) {
@@ -100,7 +130,7 @@ export async function POST(req) {
 
       await logServerEvent("attendance_logged", { email: cleanEmail, date: todayStr });
     } else {
-      // Update last active timestamp if not manually overridden to absent/off_day
+      // Update last active timestamp if not manually overridden
       const currentData = docSnap.data();
       if (currentData.status === "present") {
         await attRef.update({
@@ -116,7 +146,7 @@ export async function POST(req) {
   }
 }
 
-/* ── PATCH: Super Admin manual attendance status override ── */
+/* ── PATCH: Super Admin manual attendance status override / edit ── */
 export async function PATCH(req) {
   try {
     const token = req.cookies.get("admin-session")?.value || "";
@@ -126,7 +156,7 @@ export async function PATCH(req) {
       return NextResponse.json({ error: "Unauthorized — Super Admin access required." }, { status: 403 });
     }
 
-    const { email, date, status, notes } = await req.json();
+    const { email, date, status, notes, loginTime } = await req.json();
     const cleanEmail = (email || "").toLowerCase().trim();
     const cleanDate = (date || "").trim(); // YYYY-MM-DD
     const validStatus = ["present", "absent", "off_day", "leave"].includes(status) ? status : "present";
@@ -138,17 +168,20 @@ export async function PATCH(req) {
     const docId = `${cleanEmail}_${cleanDate}`;
     const attRef = adminDb.collection("attendance").doc(docId);
 
-    await attRef.set(
-      {
-        email: cleanEmail,
-        date: cleanDate,
-        status: validStatus,
-        notes: notes || "",
-        overrideBy: callerEmail,
-        overrideAt: new Date(),
-      },
-      { merge: true }
-    );
+    const updatePayload = {
+      email: cleanEmail,
+      date: cleanDate,
+      status: validStatus,
+      notes: notes || "",
+      overrideBy: callerEmail,
+      overrideAt: new Date(),
+    };
+
+    if (loginTime) {
+      updatePayload.loginTime = new Date(loginTime);
+    }
+
+    await attRef.set(updatePayload, { merge: true });
 
     await logServerEvent("attendance_override", {
       targetEmail: cleanEmail,
@@ -167,7 +200,7 @@ export async function PATCH(req) {
   }
 }
 
-/* ── DELETE: Super Admin Bulk Past 3 Months Attendance Cleanup ── */
+/* ── DELETE: Super Admin Delete Attendance Record (Single Day or Range Purge) ── */
 export async function DELETE(req) {
   try {
     const token = req.cookies.get("admin-session")?.value || "";
@@ -177,11 +210,28 @@ export async function DELETE(req) {
       return NextResponse.json({ error: "Unauthorized — Super Admin access required." }, { status: 403 });
     }
 
-    const { email, startDate, endDate } = await req.json();
+    const { email, date, startDate, endDate } = await req.json();
     const cleanEmail = (email || "").toLowerCase().trim();
 
-    if (!cleanEmail || !startDate || !endDate) {
-      return NextResponse.json({ error: "Email, Start Date, and End Date are required." }, { status: 400 });
+    if (!cleanEmail) {
+      return NextResponse.json({ error: "Sub-Admin Email required." }, { status: 400 });
+    }
+
+    // Single day deletion
+    if (date) {
+      const docId = `${cleanEmail}_${date.trim()}`;
+      await adminDb.collection("attendance").doc(docId).delete();
+
+      return NextResponse.json({
+        success: true,
+        message: `Attendance record for ${cleanEmail} on ${date} deleted.`,
+        deletedCount: 1,
+      });
+    }
+
+    // Range deletion
+    if (!startDate || !endDate) {
+      return NextResponse.json({ error: "Date or Date Range required." }, { status: 400 });
     }
 
     const attSnap = await adminDb
@@ -218,8 +268,9 @@ export async function DELETE(req) {
       deletedCount,
     });
   } catch (error) {
-    console.error("Bulk delete attendance error:", error);
-    return NextResponse.json({ error: error.message || "Failed to delete attendance records" }, { status: 500 });
+    console.error("Delete attendance error:", error);
+    return NextResponse.json({ error: error.message || "Failed to delete attendance record" }, { status: 500 });
   }
 }
+
 

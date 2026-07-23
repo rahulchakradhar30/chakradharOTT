@@ -305,3 +305,67 @@ export async function DELETE(req) {
   }
 }
 
+/* ── GET: Fetch all Sub-Admins & Admins ── */
+export async function GET(req) {
+  try {
+    const token = req.cookies.get("admin-session")?.value || "";
+    const callerEmail = verifyAdminSession(token);
+
+    if (!callerEmail) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const adminsMap = new Map();
+
+    // 1. Fetch from 'admins' collection
+    const adminsSnap = await adminDb.collection("admins").get();
+    adminsSnap.docs.forEach((docSnap) => {
+      const data = docSnap.data();
+      const email = (data.email || docSnap.id).toLowerCase().trim();
+      adminsMap.set(email, {
+        id: docSnap.id,
+        email,
+        name: data.name || email.split("@")[0],
+        role: data.role || (isSuperAdminEmail(email) ? "super_admin" : "sub_admin"),
+        permissions: data.permissions || DEFAULT_MODULE_PERMISSIONS,
+        status: data.status || "active",
+        createdAt: data.createdAt ? data.createdAt.toDate?.() || data.createdAt : null,
+        onLeave: Boolean(data.onLeave),
+        activeDelegate: data.activeDelegate || null,
+      });
+    });
+
+    // 2. Fetch from 'users' collection where role is sub_admin
+    const usersSubAdminSnap = await adminDb.collection("users").where("role", "in", ["sub_admin", "subadmin"]).get();
+    usersSubAdminSnap.docs.forEach((docSnap) => {
+      const data = docSnap.data();
+      const email = (data.email || "").toLowerCase().trim();
+      if (email && !adminsMap.has(email)) {
+        adminsMap.set(email, {
+          id: docSnap.id,
+          email,
+          name: data.displayName || data.name || email.split("@")[0],
+          role: "sub_admin",
+          permissions: DEFAULT_MODULE_PERMISSIONS,
+          status: "active",
+          createdAt: data.createdAt ? data.createdAt.toDate?.() || data.createdAt : null,
+          onLeave: false,
+          activeDelegate: null,
+        });
+      }
+    });
+
+    // Convert map to array
+    const admins = Array.from(adminsMap.values());
+
+    return NextResponse.json({
+      success: true,
+      admins,
+    });
+  } catch (error) {
+    console.error("Fetch admins error:", error);
+    return NextResponse.json({ error: error.message || "Failed to fetch admins" }, { status: 500 });
+  }
+}
+
+

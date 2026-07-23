@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { db } from "@/firebase";
 import { collection, getDocs } from "firebase/firestore";
@@ -34,6 +35,7 @@ function NavLinkIcon({ itemKey, className = "w-4 h-4" }) {
 }
 
 export default function Navbar() {
+  const pathname = usePathname();
   const { user, logout } = useAuth();
 
   const [scrolled, setScrolled] = useState(false);
@@ -122,6 +124,11 @@ export default function Navbar() {
       return parts[0].slice(0, 2).toUpperCase();
     return (parts[0][0] + parts[1][0]).toUpperCase();
   };
+
+  // Hide Navbar on all /admin and /sub-admin routes (after all hook declarations)
+  if (pathname?.startsWith("/admin") || pathname?.startsWith("/sub-admin")) {
+    return null;
+  }
 
   return (
     <>

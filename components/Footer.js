@@ -2,8 +2,15 @@
 
 import Link from "next/link";
 import Script from "next/script";
+import { usePathname } from "next/navigation";
 
 export default function Footer() {
+  const pathname = usePathname();
+
+  // Hide Footer on all /admin and /sub-admin routes
+  if (pathname?.startsWith("/admin") || pathname?.startsWith("/sub-admin")) {
+    return null;
+  }
   return (
     <footer className="mt-16 border-t border-white/10 bg-[#050915]/70 backdrop-blur-xl text-sm relative z-10">
       <div className="max-w-7xl mx-auto px-4 md:px-10 py-12 space-y-10">

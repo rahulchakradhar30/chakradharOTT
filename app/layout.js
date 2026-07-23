@@ -49,6 +49,8 @@ const organizationJsonLd = {
   sameAs: [],
 };
 
+import MainContentContainer from "@/components/MainContentContainer";
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
@@ -64,9 +66,9 @@ export default function RootLayout({ children }) {
             <ThemeProvider>
               <Navbar />
               <NotificationListener />
-              <main className="flex-grow pt-20 md:pt-24">
+              <MainContentContainer>
                 {children}
-              </main>
+              </MainContentContainer>
               <Footer />
 
               {/* Cookie Banner */}

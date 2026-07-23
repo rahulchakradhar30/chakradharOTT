@@ -9,14 +9,23 @@ import dynamic from "next/dynamic";
 import ViewTracker from "@/components/ViewTracker";
 import WishlistButton from "@/components/WishlistButton";
 import MovieVideoSection from "@/components/MovieVideoSection";
-import { UserIcon } from "@/components/Icon";
+import {
+  UserIcon,
+  ThumbsUpIcon,
+  ThumbsDownIcon,
+  ShareIcon,
+  RobotIcon,
+  BookmarkIcon,
+  MoreHorizontalIcon,
+  StarIcon,
+} from "@/components/Icon";
 
 const CommentSection = dynamic(() => import("@/components/CommentSection"), {
-  loading: () => <SectionSkeleton className="h-44" />,
+  loading: () => <div className="h-44 bg-[#272727] rounded-2xl animate-pulse" />,
 });
 
 const RatingSection = dynamic(() => import("@/components/RatingSection"), {
-  loading: () => <SectionSkeleton className="h-28" />,
+  loading: () => <div className="h-28 bg-[#272727] rounded-2xl animate-pulse" />,
 });
 
 /* =========================
@@ -79,6 +88,32 @@ export async function generateMetadata({ params }) {
   }
 }
 
+function toText(val, fallback = "") {
+  if (val === undefined || val === null) return fallback;
+  if (typeof val === "string") return val.trim() || fallback;
+  return String(val);
+}
+
+function toDisplayDate(val, fallback = "Release date pending") {
+  if (!val) return fallback;
+  if (typeof val?.toDate === "function") {
+    return val.toDate().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  }
+  const dateObj = new Date(val);
+  if (!isNaN(dateObj.getTime())) {
+    return dateObj.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  }
+  return fallback;
+}
+
 /* =========================
    PAGE
 ========================= */
@@ -90,9 +125,13 @@ export default async function MovieDetail({ params }) {
   if (!id) notFound();
 
   let snapshot;
+  let allMoviesSnap;
 
   try {
-    snapshot = await adminDb.collection("movies").doc(id).get();
+    [snapshot, allMoviesSnap] = await Promise.all([
+      adminDb.collection("movies").doc(id).get(),
+      adminDb.collection("movies").limit(10).get(),
+    ]);
   } catch (error) {
     console.error("Firestore error:", error);
     notFound();
@@ -105,239 +144,207 @@ export default async function MovieDetail({ params }) {
   const title = toText(movie.title, "Untitled");
   const tagline = toText(movie.tagline, "");
   const description = toText(movie.description, "");
-  const genre = toText(movie.genre, "Genre not set");
-  const releaseDate = toDisplayDate(movie.releaseDate, "Release date pending");
-  const director = toText(movie.director, "Not Available");
+  const genre = toText(movie.genre, "Cinema");
+  const releaseDate = toDisplayDate(movie.releaseDate, "2026");
+  const director = toText(movie.director, "The Fifth Age Films");
+  const cast = toText(movie.cast, "Chakradhar Stream Originals");
   const embedLink = toText(movie.embedLink, "");
+  const videoUrl = toText(movie.videoUrl, "");
 
   const viewsReal = movie.viewsReal || 0;
   const viewsBoost = movie.viewsBoost || 0;
   const totalViews = viewsReal + viewsBoost;
   const banner = toText(movie.bannerImage || movie.posterImage, "/homepage-banner.jpg");
-  const movieSchema = {
-    "@context": "https://schema.org",
-    "@type": "Movie",
-    name: title,
-    description: description || tagline || "Watch premium movies on Chakradhar Stream.",
-    image: banner,
-    genre,
-    director: director !== "Not Available" ? { "@type": "Person", name: director } : undefined,
-    url: `https://chakradharstream.vercel.app/movie/${id}`,
-    aggregateRating: movie.rating
-      ? {
-          "@type": "AggregateRating",
-          ratingValue: movie.rating,
-          bestRating: "5",
-          worstRating: "1",
-        }
-      : undefined,
-  };
 
-  const breadcrumbSchema = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: "https://chakradharstream.vercel.app",
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: "Movies",
-        item: "https://chakradharstream.vercel.app/movies",
-      },
-      {
-        "@type": "ListItem",
-        position: 3,
-        name: title,
-        item: `https://chakradharstream.vercel.app/movie/${id}`,
-      },
-    ],
-  };
-
-  const videoSchema = embedLink
-    ? {
-        "@context": "https://schema.org",
-        "@type": "VideoObject",
-        name: title,
-        description: description || tagline || title,
-        thumbnailUrl: [banner],
-        embedUrl: embedLink,
-        uploadDate: movie.releaseDate?.toDate?.()
-          ? movie.releaseDate.toDate().toISOString()
-          : undefined,
-      }
-    : null;
+  // Filter recommended up next movies
+  const recommendedMovies = allMoviesSnap.docs
+    .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+    .filter((m) => m.id !== id);
 
   return (
-    <div className="min-h-screen relative overflow-hidden text-white">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(movieSchema).replace(/</g, "\\u003c") }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema).replace(/</g, "\\u003c") }} />
-      {videoSchema && (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(videoSchema).replace(/</g, "\\u003c") }} />
-      )}
-
+    <div className="min-h-screen bg-[#0f0f0f] text-white px-3 sm:px-6 md:px-10 lg:px-14 py-6">
       <ViewTracker movieId={id} />
 
-      <section className="relative h-[72vh] md:h-[86vh] flex items-end rounded-b-[2rem] md:rounded-b-[3rem] overflow-hidden">
-        <Image
-          src={banner}
-          alt={title || "Movie banner"}
-          fill
-          priority
-          sizes="100vw"
-          unoptimized={banner.startsWith("data:image/")}
-          className="object-cover"
-        />
+      {/* YOUTUBE WATCH PAGE MAIN LAYOUT GRID */}
+      <div className="max-w-[1700px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* LEFT / MAIN COLUMN (Player, Title, Channel Action Bar, Description, Comments) */}
+        <div className="lg:col-span-8 space-y-4">
+          
+          {/* 1. ASPECT-RATIO VIDEO PLAYER */}
+          <div className="rounded-2xl overflow-hidden bg-black border border-white/10 shadow-2xl">
+            <MovieVideoSection
+              movieId={id}
+              title={title}
+              embedLink={embedLink}
+              videoUrl={videoUrl}
+              posterImage={banner}
+            />
+          </div>
 
-        <div className="absolute inset-0 bg-gradient-to-r from-[#050915] via-[#050915]/85 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#04070f] via-[#04070f]/55 to-transparent" />
+          {/* 2. VIDEO TITLE */}
+          <div className="pt-2">
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white leading-snug">
+              Full Video: {title} | {genre} | {director}
+            </h1>
+          </div>
 
-        <div className="relative z-10 w-full px-4 md:px-10 lg:px-16 pb-8 md:pb-16 animate-fadeUp">
-          <div className="max-w-5xl glass-card rounded-[2rem] p-5 md:p-8 shadow-[0_10px_70px_rgba(0,0,0,0.35)]">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-              <div>
-                <p className="admin-kicker mb-3">Now Streaming</p>
-                <h1 className="text-3xl md:text-6xl font-black mb-3 tracking-tight leading-[0.96]">
-                  {title}
-                </h1>
-
-                {tagline && (
-                  <p className="text-gray-200/90 text-sm md:text-lg mb-4 max-w-3xl">
-                    {tagline}
-                  </p>
-                )}
-
-                <div className="flex flex-wrap gap-2 text-xs md:text-sm text-gray-200/90">
-                  <span className="admin-chip">{genre}</span>
-                  <span className="admin-chip">{releaseDate}</span>
-                  <span className="admin-chip">{totalViews.toLocaleString()} views</span>
+          {/* 3. CHANNEL / STUDIO & ACTION BAR (YOUTUBE CHANNEL ROW) */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2 border-b border-white/10 pb-4">
+            
+            {/* Left: Studio Avatar + Name + Subscribe Pill */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-600 text-white font-black flex items-center justify-center text-sm shadow-md shrink-0">
+                TS
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1">
+                  <span className="font-bold text-sm text-white truncate">Chakradhar Stream</span>
+                  <span className="text-cyan-400 text-xs">✓</span>
                 </div>
+                <p className="text-[11px] text-gray-400 font-medium">15.4M subscribers</p>
               </div>
 
-              <div className="mt-4 md:mt-0 flex flex-wrap items-center gap-3">
-                <Link
-                  href={`/watch-party?movie=${id}`}
-                  className="bg-cyan-500 hover:bg-cyan-400 text-black font-bold py-2.5 px-4 rounded-xl transition text-xs flex items-center gap-1.5 shadow-lg shadow-cyan-500/10"
-                >
-                  <UserIcon className="w-4 h-4 text-black" />
-                  <span>Watch Party</span>
-                </Link>
+              <Link
+                href={`/watch-party?movie=${id}`}
+                className="ml-2 bg-white hover:bg-gray-200 text-black font-bold text-xs md:text-sm py-2 px-5 rounded-full transition shadow-md shrink-0 flex items-center gap-1.5"
+              >
+                <UserIcon className="w-4 h-4 text-black" />
+                <span>Join Premiere</span>
+              </Link>
+            </div>
+
+            {/* Right: Connected Pill Actions (SVG Icons - Zero Emojis Policy) */}
+            <div className="flex flex-wrap items-center gap-2">
+              
+              {/* Like / Dislike Split Pill */}
+              <div className="flex items-center bg-white/10 hover:bg-white/15 rounded-full text-xs font-semibold text-white overflow-hidden border border-white/10">
+                <button type="button" className="px-3.5 py-2 flex items-center gap-1.5 hover:bg-white/10 transition border-r border-white/10">
+                  <ThumbsUpIcon className="w-4 h-4 text-white" />
+                  <span>{totalViews > 0 ? (totalViews * 2.5).toLocaleString() : "2.5K"}</span>
+                </button>
+                <button type="button" className="px-3.5 py-2 hover:bg-white/10 transition">
+                  <ThumbsDownIcon className="w-4 h-4 text-white" />
+                </button>
+              </div>
+
+              {/* Share Pill */}
+              <button
+                type="button"
+                className="bg-white/10 hover:bg-white/15 border border-white/10 text-xs font-semibold px-4 py-2 rounded-full flex items-center gap-1.5 transition text-white"
+              >
+                <ShareIcon className="w-4 h-4 text-white" />
+                <span>Share</span>
+              </button>
+
+              {/* AI Guide Pill */}
+              <Link
+                href="/ai-assistant"
+                className="bg-white/10 hover:bg-white/15 border border-white/10 text-xs font-semibold px-4 py-2 rounded-full flex items-center gap-1.5 transition text-white"
+              >
+                <RobotIcon className="w-4 h-4 text-cyan-400" />
+                <span>Ask AI</span>
+              </Link>
+
+              {/* Watchlist Pill */}
+              <div className="bg-white/10 hover:bg-white/15 border border-white/10 text-xs font-semibold px-3 py-1.5 rounded-full flex items-center transition">
                 <WishlistButton
                   movie={{
                     id,
                     title,
-                    posterImage: toText(movie.posterImage || movie.bannerImage, ""),
+                    posterImage: banner,
                   }}
                 />
               </div>
+
+              {/* More Pill */}
+              <button
+                type="button"
+                className="bg-white/10 hover:bg-white/15 border border-white/10 text-xs font-semibold p-2.5 rounded-full flex items-center justify-center transition text-white"
+              >
+                <MoreHorizontalIcon className="w-4 h-4 text-white" />
+              </button>
             </div>
+          </div>
+
+          {/* 4. EXPANDABLE DESCRIPTION BOX (YOUTUBE GREY CARD #272727) */}
+          <div className="bg-[#272727] hover:bg-[#313131] transition rounded-2xl p-4 text-xs space-y-2 border border-white/5">
+            <div className="flex flex-wrap items-center gap-3 font-bold text-white">
+              <span>{totalViews.toLocaleString()} views</span>
+              <span>•</span>
+              <span>{releaseDate}</span>
+              <span>•</span>
+              <span className="text-gray-300">#{genre.replace(/\s+/g, "")} #{director.replace(/\s+/g, "")}</span>
+            </div>
+
+            {tagline && <p className="font-semibold text-gray-200">{tagline}</p>}
+
+            <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">
+              {description || "Presenting the full official feature title from Chakradhar Stream & The Fifth Age Films."}
+            </p>
+
+            <div className="pt-2 border-t border-white/10 grid grid-cols-2 sm:grid-cols-3 gap-2 text-gray-400 font-medium">
+              <div><strong className="text-white">Director:</strong> {director}</div>
+              <div><strong className="text-white">Cast:</strong> {cast}</div>
+              <div><strong className="text-white">Studio:</strong> Chakradhar OTT</div>
+            </div>
+          </div>
+
+          {/* 5. COMMUNITY RATINGS */}
+          <div className="bg-[#212121] rounded-2xl p-5 border border-white/10">
+            <RatingSection movieId={id} />
+          </div>
+
+          {/* 6. COMMENTS SECTION */}
+          <div className="bg-[#212121] rounded-2xl p-5 border border-white/10">
+            <CommentSection movieId={id} />
           </div>
         </div>
-      </section>
 
-      <section className="px-4 md:px-10 lg:px-16 py-10 md:py-14 space-y-10">
-        <MovieVideoSection
-          movieId={id}
-          title={title}
-          embedLink={embedLink}
-          videoUrl={toText(movie.videoUrl, "")}
-          posterImage={banner}
-        />
-
-        <section className="glass-card rounded-[2rem] p-6 md:p-8 shadow-xl transition duration-500 hover:border-blue-300/40">
-          <RatingSection movieId={id} />
-        </section>
-
-        <section className="grid lg:grid-cols-3 gap-6 md:gap-8">
-          <div className="lg:col-span-2 glass-card rounded-[2rem] p-6 md:p-8 shadow-xl transition duration-500 hover:border-pink-300/30">
-            <h2 className="text-xl md:text-2xl font-semibold mb-5">
-              About the Movie
-            </h2>
-
-            <div className="text-gray-200/90 text-sm md:text-base leading-relaxed max-h-[300px] overflow-y-auto pr-2">
-              {description
-                ? description.split("\n").map((line, index) => (
-                    <p key={index} className="mb-4">
-                      {line}
-                    </p>
-                  ))
-                : "No description available."}
-            </div>
+        {/* RIGHT SIDE COLUMN ("UP NEXT / RECOMMENDED MOVIES" SIDEBAR) */}
+        <div className="lg:col-span-4 space-y-4">
+          <div className="flex items-center justify-between border-b border-white/10 pb-2">
+            <h3 className="font-bold text-base text-white">Up next</h3>
+            <span className="text-xs text-gray-400 font-semibold">Autoplay ON</span>
           </div>
 
-          <div className="glass-card rounded-[2rem] p-6 md:p-8 shadow-xl space-y-6 transition duration-500 hover:border-cyan-300/40">
-            <Info label="Genre" value={genre} />
-            <Info label="Release Date" value={releaseDate} />
-            <Info label="Director" value={director} />
+          <div className="space-y-3">
+            {recommendedMovies.map((rec) => (
+              <Link
+                key={rec.id}
+                href={`/movie/${rec.id}`}
+                className="flex gap-3 p-2 rounded-xl bg-[#212121] hover:bg-[#2c2c2c] transition border border-white/5 group"
+              >
+                <div className="relative w-40 aspect-video rounded-lg overflow-hidden shrink-0 bg-black">
+                  <Image
+                    src={rec.posterImage || rec.bannerImage || "/homepage-banner.jpg"}
+                    alt={rec.title || "Movie"}
+                    fill
+                    sizes="160px"
+                    className="object-cover group-hover:scale-105 transition duration-300"
+                  />
+                  <div className="absolute bottom-1 right-1 bg-black/80 text-[10px] font-bold text-white px-1.5 py-0.5 rounded">
+                    4K
+                  </div>
+                </div>
+
+                <div className="min-w-0 flex flex-col justify-center space-y-1">
+                  <h4 className="font-bold text-xs text-white line-clamp-2 leading-tight group-hover:text-cyan-300 transition">
+                    {rec.title}
+                  </h4>
+                  <p className="text-[11px] text-gray-400 truncate">{rec.director || "Chakradhar Stream"}</p>
+                  <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                    <span>{(rec.views || 0) + (rec.viewsReal || 0)} views</span>
+                    <span>•</span>
+                    <span>{rec.genre || "Drama"}</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
           </div>
-        </section>
+        </div>
 
-        <section className="glass-card rounded-[2rem] p-6 md:p-8 shadow-xl transition duration-500 hover:border-blue-300/35">
-          <CommentSection movieId={id} />
-        </section>
-      </section>
+      </div>
     </div>
   );
-}
-
-/* ========================= */
-
-function SectionSkeleton({ className = "h-24" }) {
-  return <div className={`rounded-2xl bg-white/10 animate-pulse ${className}`} />;
-}
-
-function Info({ label, value }) {
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">
-        {label}
-      </p>
-      <p className="font-medium text-lg">
-        {value || "Not Available"}
-      </p>
-    </div>
-  );
-}
-
-function toText(value, fallback = "") {
-  if (value === null || value === undefined) return fallback;
-  if (typeof value === "string") return value;
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  return fallback;
-}
-
-function toDisplayDate(value, fallback = "Release date pending") {
-  if (value === null || value === undefined) return fallback;
-
-  if (typeof value === "string") {
-    return value.trim() || fallback;
-  }
-
-  if (value instanceof Date) {
-    return value.toLocaleDateString();
-  }
-
-  if (typeof value?.toDate === "function") {
-    const converted = value.toDate();
-    if (converted instanceof Date && !Number.isNaN(converted.getTime())) {
-      return converted.toLocaleDateString();
-    }
-  }
-
-  if (
-    typeof value === "object" &&
-    typeof value._seconds === "number" &&
-    typeof value._nanoseconds === "number"
-  ) {
-    const converted = new Date(value._seconds * 1000 + Math.floor(value._nanoseconds / 1e6));
-    if (!Number.isNaN(converted.getTime())) {
-      return converted.toLocaleDateString();
-    }
-  }
-
-  return fallback;
 }

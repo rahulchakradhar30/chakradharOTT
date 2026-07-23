@@ -417,7 +417,7 @@ export default function PremiereRoomClient() {
   }
 
   return (
-    <div className="min-h-screen text-white relative overflow-hidden px-4 md:px-6 py-4 md:py-6">
+    <div className="min-h-screen bg-[#0f0f0f] text-white relative overflow-hidden px-4 md:px-6 py-4 md:py-6">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(0,212,255,0.14),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(255,77,141,0.1),_transparent_24%)]" />
 
       {/* HERO */}

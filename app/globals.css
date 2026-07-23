@@ -1,16 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --bg-primary: #05070d;
-  --bg-secondary: #0a1020;
-  --bg-tertiary: #101b35;
-  --surface-glass: rgba(255, 255, 255, 0.07);
-  --surface-soft: rgba(255, 255, 255, 0.04);
-  --border-soft: rgba(255, 255, 255, 0.14);
-  --text-primary: #f7f9ff;
-  --text-muted: #b9c4e2;
-  --brand-cyan: #00d4ff;
-  --brand-blue: #2f5dff;
+  --bg-primary: #0f0f0f;
+  --bg-secondary: #0f0f0f;
+  --bg-tertiary: #181818;
+  --surface-glass: rgba(255, 255, 255, 0.08);
+  --surface-soft: rgba(255, 255, 255, 0.05);
+  --border-soft: rgba(255, 255, 255, 0.12);
+  --text-primary: #ffffff;
+  --text-muted: #aaaaaa;
+  --brand-cyan: #ff0000;
+  --brand-blue: #cc0000;
   --brand-pink: #ff4d8d;
   --brand-amber: #ffae33;
 }
@@ -23,11 +23,7 @@ html,
 body {
   min-height: 100%;
   color: var(--text-primary);
-  background:
-    radial-gradient(circle at 12% 15%, rgba(0, 212, 255, 0.2), transparent 34%),
-    radial-gradient(circle at 88% 8%, rgba(255, 77, 141, 0.17), transparent 28%),
-    radial-gradient(circle at 68% 62%, rgba(47, 93, 255, 0.18), transparent 38%),
-    linear-gradient(180deg, var(--bg-secondary), var(--bg-primary) 54%);
+  background-color: #0f0f0f;
   background-attachment: fixed;
   font-feature-settings: "ss01", "cv10";
 }
@@ -43,7 +39,7 @@ a {
 }
 
 ::selection {
-  background: rgba(0, 212, 255, 0.35);
+  background: rgba(255, 0, 0, 0.4);
   color: #ffffff;
 }
 
@@ -78,9 +74,9 @@ a {
 }
 
 .glass-card {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
-  border: 1px solid var(--border-soft);
-  backdrop-filter: blur(16px);
+  background: #212121;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
 }
 
 .admin-page {

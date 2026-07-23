@@ -19,6 +19,7 @@ const ALL_NAV_ITEMS = [
   { href: "/admin/users", label: "Users", icon: "👥" },
   { href: "/admin/sub-admins", label: "Sub-Admins", icon: "🔐" },
   { href: "/admin/drafts", label: "Drafts", icon: "📝" },
+  { href: "/admin/mail", label: "Admin Mail", icon: "✉️" },
   { href: "/admin/notifications", label: "Notifications", icon: "🔔" },
   { href: "/admin/settings", label: "Settings", icon: "⚙️" },
 ];
@@ -33,6 +34,7 @@ export default function AdminLayoutClient({ children }) {
   const [adminName, setAdminName] = useState("");
   const [adminRole, setAdminRole] = useState("");
   const [permissions, setPermissions] = useState(null);
+  const [unreadMailsCount, setUnreadMailsCount] = useState(0);
   const touchStartX = useRef(null);
 
   const isLoginPage = pathname === "/admin/login";
@@ -141,6 +143,27 @@ export default function AdminLayoutClient({ children }) {
     return () => unsubscribe();
   }, [adminEmail, adminRole, isLoginPage, handleLogout]);
 
+  /* ---------- UNREAD MAIL POLLING ---------- */
+  useEffect(() => {
+    if (isLoginPage || !adminEmail) return;
+
+    const fetchUnread = async () => {
+      try {
+        const res = await fetch("/api/admin/mail");
+        if (res.ok) {
+          const data = await res.json();
+          setUnreadMailsCount(data.unreadCount || 0);
+        }
+      } catch (e) {
+        // silent fallback
+      }
+    };
+
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 15000);
+    return () => clearInterval(interval);
+  }, [adminEmail, isLoginPage]);
+
   /* ---------- NAV FILTERING ---------- */
   const filteredNavItems = ALL_NAV_ITEMS.filter((item) => {
     if (!permissions) return false;
@@ -227,14 +250,21 @@ export default function AdminLayoutClient({ children }) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition ${
+              className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition ${
                 isActive(item.href)
                   ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20"
                   : "text-gray-300 hover:bg-white/10"
               }`}
             >
-              <span className="text-base">{item.icon}</span>
-              {item.label}
+              <div className="flex items-center gap-2.5">
+                <span className="text-base">{item.icon}</span>
+                <span>{item.label}</span>
+              </div>
+              {item.href === "/admin/mail" && unreadMailsCount > 0 && (
+                <span className="bg-cyan-400 text-black text-[10px] font-black px-2 py-0.5 rounded-full">
+                  {unreadMailsCount}
+                </span>
+              )}
             </Link>
           ))}
         </nav>

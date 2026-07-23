@@ -1,29 +1,28 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { verifyAdminSession } from "@/lib/adminAuth";
+import { verifyAdminSession, isSuperAdminEmail, isRootSuperAdmin } from "@/lib/adminAuth";
 import { sendMail } from "@/lib/mail";
 import { getAuth } from "firebase-admin/auth";
 import { logServerEvent } from "@/lib/auditLog";
 
 export const runtime = "nodejs";
 
-function getAllowedAdminEmails() {
-  const fromEnv = String(process.env.ADMIN_ALLOWED_EMAILS || "")
-    .split(",")
-    .map((v) => v.trim().toLowerCase())
-    .filter(Boolean);
-
-  if (fromEnv.length > 0) return fromEnv;
-
-  return [
-    "thefifthagefilms@gmail.com",
-    "rahulchakradharperepogu@gmail.com",
-  ];
-}
-
-function isSuperAdmin(email) {
-  return getAllowedAdminEmails().includes(email.toLowerCase());
-}
+const DEFAULT_MODULE_PERMISSIONS = {
+  dashboard: true,
+  movies: true,
+  contacts: true,
+  drafts: true,
+  mail: true,
+  notifications: true,
+  premieres: false,
+  posters: false,
+  discovery: false,
+  genres: false,
+  analytics: false,
+  users: false,
+  subAdmins: false,
+  settings: false,
+};
 
 /* ── POST: Create a new sub-admin ── */
 export async function POST(req) {
@@ -31,11 +30,11 @@ export async function POST(req) {
     const token = req.cookies.get("admin-session")?.value || "";
     const callerEmail = verifyAdminSession(token);
 
-    if (!callerEmail || !isSuperAdmin(callerEmail)) {
+    if (!callerEmail || !isSuperAdminEmail(callerEmail)) {
       return NextResponse.json({ error: "Unauthorized — only super-admins can manage administrators." }, { status: 403 });
     }
 
-    const { email, role, name } = await req.json();
+    const { email, role, name, permissions } = await req.json();
     const cleanEmail = (email || "").trim().toLowerCase();
 
     if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
@@ -44,6 +43,11 @@ export async function POST(req) {
 
     const validRole = role === "super_admin" ? "super_admin" : "sub_admin";
 
+    // Set clean permissions map
+    const customPerms = validRole === "sub_admin"
+      ? { ...DEFAULT_MODULE_PERMISSIONS, ...(permissions || {}) }
+      : Object.keys(DEFAULT_MODULE_PERMISSIONS).reduce((acc, k) => ({ ...acc, [k]: true }), {});
+
     // Check if already exists in admins collection
     const existingDoc = await adminDb.collection("admins").doc(cleanEmail).get();
     if (existingDoc.exists) {
@@ -51,7 +55,6 @@ export async function POST(req) {
       if (existingData.status === "active") {
         return NextResponse.json({ error: "This email is already registered as an administrator." }, { status: 409 });
       }
-      // If disabled, reactivate
     }
 
     // Try to get or create Firebase Auth user
@@ -62,7 +65,6 @@ export async function POST(req) {
       firebaseUser = await adminAuth.getUserByEmail(cleanEmail);
     } catch (err) {
       if (err.code === "auth/user-not-found") {
-        // Create a new Firebase Auth user with a random temporary password
         const tempPassword = `TempPwd_${Math.random().toString(36).slice(2, 10)}!${Math.floor(Math.random() * 99)}`;
         firebaseUser = await adminAuth.createUser({
           email: cleanEmail,
@@ -74,7 +76,7 @@ export async function POST(req) {
       }
     }
 
-    // Generate password reset link for the sub-admin to set their own password
+    // Generate password reset link for the sub-admin
     const passwordResetLink = await adminAuth.generatePasswordResetLink(cleanEmail, {
       url: `${process.env.NEXT_PUBLIC_APP_URL || "https://chakradharstream.vercel.app"}/admin/login`,
     });
@@ -88,6 +90,7 @@ export async function POST(req) {
       createdAt: new Date(),
       createdBy: callerEmail,
       uid: firebaseUser.uid,
+      permissions: customPerms,
     });
 
     // Send invitation email with password setup link
@@ -120,7 +123,7 @@ export async function POST(req) {
                   </a>
                 </div>
                 <p style="font-size: 13px; color: #9ca3af; margin-top: 20px;">
-                  After setting your password, login at the admin portal. You will receive an OTP on your email for secure verification.
+                  After setting your password, login at the admin portal using OTP verification.
                 </p>
               </div>
               <div style="background-color: #030712; padding: 20px; text-align: center; font-size: 11px; color: #6b7280;">
@@ -143,44 +146,37 @@ export async function POST(req) {
       createdBy: callerEmail,
     });
 
-    if (mailSuccess) {
-      return NextResponse.json({
-        success: true,
-        message: `Admin ${cleanEmail} added. Invitation email sent to ${cleanEmail}.`,
-      });
-    } else {
-      return NextResponse.json({
-        success: true,
-        warning: true,
-        message: `Admin ${cleanEmail} was added, but the invitation email could not be delivered: ${mailErrorMsg}`,
-      });
-    }
+    return NextResponse.json({
+      success: true,
+      message: mailSuccess
+        ? `Admin ${cleanEmail} added. Invitation email sent.`
+        : `Admin ${cleanEmail} added, but email delivery failed: ${mailErrorMsg}`,
+    });
   } catch (error) {
     console.error("Create sub-admin error:", error);
     return NextResponse.json({ error: error.message || "Failed to create admin" }, { status: 500 });
   }
 }
 
-/* ── DELETE: Remove/disable a sub-admin ── */
-export async function DELETE(req) {
+/* ── PATCH: Update sub-admin permissions or role ── */
+export async function PATCH(req) {
   try {
     const token = req.cookies.get("admin-session")?.value || "";
     const callerEmail = verifyAdminSession(token);
 
-    if (!callerEmail || !isSuperAdmin(callerEmail)) {
+    if (!callerEmail || !isSuperAdminEmail(callerEmail)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    const { email } = await req.json();
+    const { email, permissions, role, name } = await req.json();
     const cleanEmail = (email || "").trim().toLowerCase();
 
     if (!cleanEmail) {
-      return NextResponse.json({ error: "Email required" }, { status: 400 });
+      return NextResponse.json({ error: "Target email required." }, { status: 400 });
     }
 
-    // Prevent removing self or other super-admins from env
-    if (isSuperAdmin(cleanEmail)) {
-      return NextResponse.json({ error: "Cannot remove a super administrator configured in environment." }, { status: 400 });
+    if (isRootSuperAdmin(cleanEmail)) {
+      return NextResponse.json({ error: "The Root Super Admin (thefifthagefilms@gmail.com) permissions cannot be altered." }, { status: 400 });
     }
 
     const adminDocRef = adminDb.collection("admins").doc(cleanEmail);
@@ -190,10 +186,103 @@ export async function DELETE(req) {
       return NextResponse.json({ error: "Admin not found." }, { status: 404 });
     }
 
-    // Step 1: Set status to "disabled" → triggers real-time logout on the client
+    const updates = { updatedAt: new Date(), updatedBy: callerEmail };
+    if (permissions && typeof permissions === "object") {
+      updates.permissions = { ...DEFAULT_MODULE_PERMISSIONS, ...permissions };
+    }
+    if (role === "super_admin" || role === "sub_admin") {
+      updates.role = role;
+    }
+    if (name) {
+      updates.name = name;
+    }
+
+    await adminDocRef.update(updates);
+
+    await logServerEvent("sub_admin_permissions_updated", {
+      email: cleanEmail,
+      updatedBy: callerEmail,
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Permissions updated successfully for ${cleanEmail}.`,
+    });
+  } catch (error) {
+    console.error("Update sub-admin error:", error);
+    return NextResponse.json({ error: error.message || "Failed to update admin" }, { status: 500 });
+  }
+}
+
+/* ── DELETE: Remove/disable a sub-admin and send notification email ── */
+export async function DELETE(req) {
+  try {
+    const token = req.cookies.get("admin-session")?.value || "";
+    const callerEmail = verifyAdminSession(token);
+
+    if (!callerEmail || !isSuperAdminEmail(callerEmail)) {
+      return NextResponse.json({ error: "Unauthorized — only super-admins can remove administrators." }, { status: 403 });
+    }
+
+    const { email } = await req.json();
+    const cleanEmail = (email || "").trim().toLowerCase();
+
+    if (!cleanEmail) {
+      return NextResponse.json({ error: "Email required" }, { status: 400 });
+    }
+
+    if (isRootSuperAdmin(cleanEmail)) {
+      return NextResponse.json({ error: "The Root Super Admin (thefifthagefilms@gmail.com) cannot be deleted or removed under any circumstances." }, { status: 400 });
+    }
+
+    const adminDocRef = adminDb.collection("admins").doc(cleanEmail);
+    const adminDoc = await adminDocRef.get();
+
+    if (!adminDoc.exists) {
+      return NextResponse.json({ error: "Admin account not found." }, { status: 404 });
+    }
+
+    const targetData = adminDoc.data() || {};
+    const adminName = targetData.name || cleanEmail.split("@")[0];
+
+    // Step 1: Set status to "disabled" → triggers real-time force-logout on client
     await adminDocRef.update({ status: "disabled", disabledAt: new Date(), disabledBy: callerEmail });
 
-    // Step 2: After 3 seconds (enough for real-time listener), delete the doc
+    // Step 2: Send removal notification email to the sub-admin
+    try {
+      await sendMail({
+        to: cleanEmail,
+        subject: "Administrator Access Revoked — Chakradhar Stream",
+        text: `Hello ${adminName},\n\nYour administrator access to the Chakradhar Stream Admin Portal has been revoked by Super Admin (${callerEmail}).\n\nIf you believe this is an error, please contact the Super Admin.\n\n— Chakradhar Stream Team`,
+        html: `
+          <div style="background-color: #0c1328; padding: 40px 10px; font-family: sans-serif; color: #f3f4f6;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #060b19; border: 1px solid rgba(239,68,68,0.3); border-radius: 20px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.5);">
+              <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 30px 20px; text-align: center;">
+                <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 900;">Chakradhar Stream</h1>
+                <p style="margin: 5px 0 0 0; color: rgba(255,255,255,0.85); font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">Access Revoked</p>
+              </div>
+              <div style="padding: 30px;">
+                <p style="font-size: 16px; font-weight: bold; margin-bottom: 15px; color: #ffffff;">Hello ${adminName},</p>
+                <p style="font-size: 14px; color: #d1d5db; line-height: 1.6; margin-bottom: 15px;">
+                  This email is to notify you that your administrator access to the <strong>Chakradhar Stream Admin Portal</strong> has been revoked by Super Admin (<span style="color: #06b6d4;">${callerEmail}</span>).
+                </p>
+                <p style="font-size: 14px; color: #9ca3af; line-height: 1.6;">
+                  Your current session has been terminated immediately. If you have any questions regarding this action, please contact the Super Admin directly.
+                </p>
+              </div>
+              <div style="background-color: #030712; padding: 20px; text-align: center; font-size: 11px; color: #6b7280;">
+                <p style="margin: 0 0 4px 0;">Action taken by Super Admin: ${callerEmail}</p>
+                <p style="margin: 0;">© ${new Date().getFullYear()} Chakradhar Stream. All rights reserved.</p>
+              </div>
+            </div>
+          </div>
+        `,
+      });
+    } catch (mailErr) {
+      console.error("Failed to send sub-admin removal email:", mailErr);
+    }
+
+    // Step 3: Delete the document from Firestore after 3s grace period for client logout event
     setTimeout(async () => {
       try {
         await adminDocRef.delete();
@@ -209,10 +298,11 @@ export async function DELETE(req) {
 
     return NextResponse.json({
       success: true,
-      message: `Admin ${cleanEmail} has been removed. If they were logged in, they will be logged out immediately.`,
+      message: `Admin ${cleanEmail} has been removed. Access revocation email sent and active session terminated.`,
     });
   } catch (error) {
     console.error("Delete sub-admin error:", error);
     return NextResponse.json({ error: error.message || "Failed to remove admin" }, { status: 500 });
   }
 }
+

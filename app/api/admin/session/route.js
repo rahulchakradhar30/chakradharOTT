@@ -1,43 +1,81 @@
 import { NextResponse } from "next/server";
-import { verifyAdminSession } from "@/lib/adminAuth";
+import { verifyAdminSession, isSuperAdminEmail, isRootSuperAdmin } from "@/lib/adminAuth";
 import { adminDb } from "@/lib/firebaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function getAllowedAdminEmails() {
-  const fromEnv = String(process.env.ADMIN_ALLOWED_EMAILS || "")
-    .split(",")
-    .map((v) => v.trim().toLowerCase())
-    .filter(Boolean);
+const MODULE_TO_ROUTE = {
+  dashboard: "/admin",
+  movies: "/admin/movies",
+  premieres: "/admin/premieres",
+  posters: "/admin/posters",
+  discovery: "/admin/discovery",
+  genres: "/admin/genres",
+  analytics: "/admin/search-analytics",
+  contacts: "/admin/contacts",
+  users: "/admin/users",
+  subAdmins: "/admin/sub-admins",
+  drafts: "/admin/drafts",
+  notifications: "/admin/notifications",
+  settings: "/admin/settings",
+  mail: "/admin/mail",
+};
 
-  if (fromEnv.length > 0) return fromEnv;
+const DEFAULT_SUB_ADMIN_PERMISSIONS = {
+  dashboard: true,
+  movies: true,
+  contacts: true,
+  drafts: true,
+  mail: true,
+  notifications: true,
+  premieres: false,
+  posters: false,
+  discovery: false,
+  genres: false,
+  analytics: false,
+  users: false,
+  subAdmins: false,
+  settings: false,
+};
 
-  return [
-    "thefifthagefilms@gmail.com",
-    "rahulchakradharperepogu@gmail.com",
-  ];
-}
+function resolvePermissions(role, customPermissions) {
+  if (role === "super_admin") {
+    return {
+      navItems: ["*"],
+      canCreate: true,
+      canDelete: true,
+      canManageAdmins: true,
+      canManageSettings: true,
+      canBroadcast: true,
+      modules: Object.keys(MODULE_TO_ROUTE).reduce((acc, key) => {
+        acc[key] = true;
+        return acc;
+      }, {}),
+    };
+  }
 
-/* Granular permissions per role */
-const ROLE_PERMISSIONS = {
-  super_admin: {
-    navItems: ["*"],
-    canCreate: true,
-    canDelete: true,
-    canManageAdmins: true,
-    canManageSettings: true,
-    canBroadcast: true,
-  },
-  sub_admin: {
-    navItems: ["/admin", "/admin/movies", "/admin/contacts", "/admin/drafts"],
-    canCreate: false,
+  const permsMap = customPermissions && typeof customPermissions === "object"
+    ? { ...DEFAULT_SUB_ADMIN_PERMISSIONS, ...customPermissions }
+    : DEFAULT_SUB_ADMIN_PERMISSIONS;
+
+  // Always keep dashboard allowed
+  permsMap.dashboard = true;
+
+  const navItems = Object.keys(permsMap)
+    .filter((mod) => permsMap[mod] && MODULE_TO_ROUTE[mod])
+    .map((mod) => MODULE_TO_ROUTE[mod]);
+
+  return {
+    navItems,
+    canCreate: Boolean(permsMap.movies || permsMap.premieres || permsMap.posters),
     canDelete: false,
     canManageAdmins: false,
-    canManageSettings: false,
-    canBroadcast: false,
-  },
-};
+    canManageSettings: Boolean(permsMap.settings),
+    canBroadcast: Boolean(permsMap.mail),
+    modules: permsMap,
+  };
+}
 
 export async function GET(req) {
   try {
@@ -56,20 +94,17 @@ export async function GET(req) {
     }
 
     const normalizedEmail = email.toLowerCase();
-    const allowedEmails = getAllowedAdminEmails();
-
     let role = "sub_admin";
     let adminName = "";
+    let customPermissions = null;
 
-    if (allowedEmails.includes(normalizedEmail)) {
+    if (isSuperAdminEmail(normalizedEmail)) {
       role = "super_admin";
-      adminName = "Super Administrator";
+      adminName = isRootSuperAdmin(normalizedEmail) ? "Permanent Super Admin" : "Super Administrator";
     } else {
-      // Check admins collection — also verify status
       const adminDoc = await adminDb.collection("admins").doc(normalizedEmail).get();
 
       if (!adminDoc.exists) {
-        // Not a super-admin and not in admins collection → unauthorized
         return NextResponse.json(
           { authenticated: false, reason: "not_authorized" },
           { status: 401, headers }
@@ -78,7 +113,6 @@ export async function GET(req) {
 
       const adminData = adminDoc.data();
 
-      // If sub-admin has been disabled/removed → force logout
       if (adminData.status === "disabled" || adminData.status === "removed") {
         return NextResponse.json(
           { authenticated: false, reason: "account_disabled" },
@@ -88,9 +122,10 @@ export async function GET(req) {
 
       role = adminData.role || "sub_admin";
       adminName = adminData.name || "";
+      customPermissions = adminData.permissions || null;
     }
 
-    const permissions = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.sub_admin;
+    const permissions = resolvePermissions(role, customPermissions);
 
     return NextResponse.json(
       {
@@ -99,6 +134,7 @@ export async function GET(req) {
         role,
         name: adminName,
         permissions,
+        isRootSuperAdmin: isRootSuperAdmin(normalizedEmail),
       },
       { headers }
     );

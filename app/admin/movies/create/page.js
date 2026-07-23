@@ -35,7 +35,7 @@ export default function CreateMovie() {
   });
 
   // Auto-save hook
-  const { lastSaved, saving: autoSaving, clearDraft } = useAutoSave(
+  const { lastSaved, saving: autoSaving, clearDraft, saveDraftManually } = useAutoSave(
     form,
     "movie",
     adminEmail,
@@ -80,21 +80,28 @@ export default function CreateMovie() {
 
   useEffect(() => {
     const fetchGenres = async () => {
+      const DEFAULT_GENRES = [
+        "Action", "Comedy", "Drama", "Horror", "Thriller",
+        "Romance", "Science Fiction", "Fantasy", "Animation",
+        "Documentary", "Adventure", "Crime", "Mystery", "Family"
+      ];
       try {
         const snap = await getDocs(collection(db, "genres"));
-        const names = snap.docs.map((doc) => doc.data().name);
-        const unique = Array.from(new Set(names)).filter(Boolean).sort();
-        setDbGenres(unique);
+        const names = snap.docs.map((doc) => doc.data().name || doc.data().genre || doc.data().title || doc.id);
+        const combined = Array.from(new Set([...DEFAULT_GENRES, ...names])).filter(Boolean).sort();
+        setDbGenres(combined);
       } catch (err) {
         console.warn("Failed to load genres, falling back to defaults:", err);
-        setDbGenres([
-          "Action", "Comedy", "Drama", "Horror", "Thriller",
-          "Romance", "Science Fiction", "Fantasy", "Animation"
-        ]);
+        setDbGenres(DEFAULT_GENRES);
       }
     };
     fetchGenres();
   }, []);
+
+  // Ensure current selected form.genre is always visible in dbGenres option list
+  const availableGenres = Array.from(
+    new Set([...dbGenres, ...(form.genre ? [form.genre] : [])])
+  ).filter(Boolean).sort();
 
   const handleChange = (field, value) => {
     setForm((prev) => ({
@@ -271,7 +278,7 @@ export default function CreateMovie() {
             className="admin-input focus-ring text-gray-200 bg-zinc-900 border-white/10"
           >
             <option value="">Select Genre *</option>
-            {dbGenres.map((g) => (
+            {availableGenres.map((g) => (
               <option key={g} value={g}>{g}</option>
             ))}
           </select>
@@ -346,11 +353,15 @@ export default function CreateMovie() {
             type="button"
             disabled={loading || autoSaving}
             onClick={async () => {
-              const savedId = await saveDraftManually();
-              if (savedId) {
-                alert("Draft saved successfully! You can resume it anytime from the Drafts tab.");
-              } else {
-                alert("Please fill in at least the title or description to save a draft.");
+              try {
+                const savedId = await saveDraftManually();
+                if (savedId) {
+                  alert("Draft saved successfully! You can resume it anytime from the Drafts tab.");
+                } else {
+                  alert("Please fill in at least the title or description to save a draft.");
+                }
+              } catch (err) {
+                alert("Failed to save draft: " + (err.message || err));
               }
             }}
             className="admin-button admin-button-secondary text-sm flex-none"

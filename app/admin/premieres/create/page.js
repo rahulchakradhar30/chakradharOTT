@@ -32,7 +32,7 @@ export default function CreatePremierePage() {
   });
 
   // Auto-save hook
-  const { lastSaved, saving: autoSaving, clearDraft } = useAutoSave(
+  const { lastSaved, saving: autoSaving, clearDraft, saveDraftManually } = useAutoSave(
     form,
     "premiere",
     adminEmail,
@@ -308,11 +308,15 @@ export default function CreatePremierePage() {
             type="button"
             disabled={loading || autoSaving}
             onClick={async () => {
-              const savedId = await saveDraftManually();
-              if (savedId) {
-                alert("Draft saved successfully! You can resume it anytime from the Drafts tab.");
-              } else {
-                alert("Please fill in at least the premiere title to save a draft.");
+              try {
+                const savedId = await saveDraftManually();
+                if (savedId) {
+                  alert("Draft saved successfully! You can resume it anytime from the Drafts tab.");
+                } else {
+                  alert("Please fill in at least the premiere title to save a draft.");
+                }
+              } catch (err) {
+                alert("Failed to save draft: " + (err.message || err));
               }
             }}
             className="admin-button admin-button-secondary text-sm flex-none"

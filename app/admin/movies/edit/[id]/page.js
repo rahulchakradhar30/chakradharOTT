@@ -23,21 +23,27 @@ export default function EditMovie() {
 
   useEffect(() => {
     const fetchGenres = async () => {
+      const DEFAULT_GENRES = [
+        "Action", "Comedy", "Drama", "Horror", "Thriller",
+        "Romance", "Science Fiction", "Fantasy", "Animation",
+        "Documentary", "Adventure", "Crime", "Mystery", "Family"
+      ];
       try {
         const snap = await getDocs(collection(db, "genres"));
-        const names = snap.docs.map((doc) => doc.data().name);
-        const unique = Array.from(new Set(names)).filter(Boolean).sort();
-        setDbGenres(unique);
+        const names = snap.docs.map((doc) => doc.data().name || doc.data().genre || doc.data().title || doc.id);
+        const combined = Array.from(new Set([...DEFAULT_GENRES, ...names])).filter(Boolean).sort();
+        setDbGenres(combined);
       } catch (err) {
         console.warn("Failed to load genres, falling back to defaults:", err);
-        setDbGenres([
-          "Action", "Comedy", "Drama", "Horror", "Thriller",
-          "Romance", "Science Fiction", "Fantasy", "Animation"
-        ]);
+        setDbGenres(DEFAULT_GENRES);
       }
     };
     fetchGenres();
   }, []);
+
+  const availableGenres = Array.from(
+    new Set([...dbGenres, ...(movie?.genre ? [movie.genre] : [])])
+  ).filter(Boolean).sort();
 
   /* ---------- Fetch Movie ---------- */
   useEffect(() => {
@@ -175,7 +181,7 @@ export default function EditMovie() {
             className="admin-input focus-ring text-gray-200 bg-zinc-900 border-white/10"
           >
             <option value="">Select Genre *</option>
-            {dbGenres.map((g) => (
+            {availableGenres.map((g) => (
               <option key={g} value={g}>{g}</option>
             ))}
           </select>

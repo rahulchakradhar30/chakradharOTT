@@ -120,7 +120,7 @@ export default function MovieHoverCard({ movie }) {
               />
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-[#04070f] via-transparent to-transparent" />
-            
+
             {/* Base Title overlay */}
             <div className="absolute bottom-4 left-4 right-4 z-10">
               <h3 className="text-sm md:text-base font-bold text-gray-200 line-clamp-1">
@@ -194,11 +194,10 @@ export default function MovieHoverCard({ movie }) {
                     </Link>
                     <button
                       onClick={toggleWishlist}
-                      className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${
-                        saved
+                      className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${saved
                           ? "bg-red-500 border-red-500 text-white"
                           : "border-white/20 hover:border-white/40 text-gray-300 hover:text-white"
-                      }`}
+                        }`}
                     >
                       {saved ? (
                         <WishlistIcon className="w-3.5 h-3.5 text-white fill-current" />
@@ -237,7 +236,7 @@ export default function MovieHoverCard({ movie }) {
                     {movie.title}
                   </h4>
                   <p className="text-[11px] text-gray-400 line-clamp-2 mt-1 font-medium leading-normal">
-                    {movie.tagline || movie.description || "Stream this cinematic highlight on Chakradhar OTT."}
+                    {movie.tagline || movie.description || "Stream this cinematic highlight on Chakradhar STREAM."}
                   </p>
                 </div>
               </div>

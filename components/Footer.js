@@ -67,7 +67,7 @@ export default function Footer() {
                   Share Your Experience
                 </h3>
               </div>
-              
+
               <p className="text-xs text-gray-400 mb-4 leading-relaxed">
                 Help us improve Chakradhar Stream with your feedback.
               </p>
@@ -87,7 +87,8 @@ export default function Footer() {
         </div>
 
         {/* Global style overrides for the FormFacade injected elements inside footer */}
-        <style dangerouslySetInnerHTML={{ __html: `
+        <style dangerouslySetInnerHTML={{
+          __html: `
           #ff-compose {
             width: 100%;
           }
@@ -180,9 +181,9 @@ export default function Footer() {
         />
 
         <div className="border-t border-white/10 pt-5 text-center text-xs text-gray-500">
-          © {new Date().getFullYear()} Chakradhar OTT Platform • Created by Rahul Chakradhar & The Fifth Age Films Productions • Version 3.0
+          © {new Date().getFullYear()} Chakradhar STREAM Platform • Created by Rahul Chakradhar & The Fifth Age Films Productions • Version 3.0
         </div>
       </div>
     </footer>
   );
-}
+}

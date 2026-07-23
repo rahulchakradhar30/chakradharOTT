@@ -19,7 +19,7 @@ export default function PrivacyClient() {
           </h1>
 
           <p className="text-gray-300 text-sm mt-2">
-            Chakradhar OTT Platform
+            Chakradhar STREAM Platform
           </p>
 
           <p className="text-gray-400 text-xs mt-1">
@@ -31,7 +31,7 @@ export default function PrivacyClient() {
             <section>
               <h2 className="font-semibold text-white">1. Introduction</h2>
               <p>
-                Chakradhar OTT Platform (“Platform”, “we”, “our”, “us”) respects your privacy.
+                Chakradhar STREAM Platform (“Platform”, “we”, “our”, “us”) respects your privacy.
                 This Privacy Policy explains how we collect, use, and protect your information.
               </p>
             </section>
@@ -117,7 +117,7 @@ export default function PrivacyClient() {
             <section>
               <h2 className="font-semibold text-white">11. Contact</h2>
               <p>Email: thefifthagefilms@gmail.com</p>
-              <p>Platform: Chakradhar OTT</p>
+              <p>Platform: Chakradhar STREAM</p>
             </section>
 
             <div className="mt-10 text-xs text-gray-400 border-t border-white/10 pt-6">

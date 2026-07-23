@@ -195,7 +195,7 @@ export default function PremiereTicketsClient() {
         amount: order.amount,
         currency: "INR",
         order_id: order.id,
-        name: "Chakradhar OTT",
+        name: "Chakradhar STREAM",
         description: `Ticket for ${premiere.title}`,
 
         handler: async function (response) {
@@ -342,37 +342,37 @@ export default function PremiereTicketsClient() {
             </form>
           </div>
 
-        {userTickets.length > 0 && (
-          <div className="mt-10">
-            <h2 className="text-2xl font-bold mb-4">Your Tickets</h2>
-            <div className="space-y-3">
-              {userTickets.map((ticket) => (
-                <div
-                  key={ticket.id}
-                  className="bg-green-900/20 border border-green-600/30 rounded-[1.5rem] p-4 flex justify-between items-center gap-4"
-                >
-                  <div>
-                    <p className="font-semibold text-lg">{ticket.ticketCode}</p>
-                    <p className="text-sm text-gray-400">
-                      Purchased {ticket.purchasedAt?.toDate?.().toLocaleDateString?.()}
-                    </p>
-                  </div>
-                  <Link
-                    href={`/premiere/${id}/join`}
-                    className="admin-button admin-button-primary px-4 py-2 text-sm"
+          {userTickets.length > 0 && (
+            <div className="mt-10">
+              <h2 className="text-2xl font-bold mb-4">Your Tickets</h2>
+              <div className="space-y-3">
+                {userTickets.map((ticket) => (
+                  <div
+                    key={ticket.id}
+                    className="bg-green-900/20 border border-green-600/30 rounded-[1.5rem] p-4 flex justify-between items-center gap-4"
                   >
-                    Join Stream
-                  </Link>
-                </div>
-              ))}
+                    <div>
+                      <p className="font-semibold text-lg">{ticket.ticketCode}</p>
+                      <p className="text-sm text-gray-400">
+                        Purchased {ticket.purchasedAt?.toDate?.().toLocaleDateString?.()}
+                      </p>
+                    </div>
+                    <Link
+                      href={`/premiere/${id}/join`}
+                      className="admin-button admin-button-primary px-4 py-2 text-sm"
+                    >
+                      Join Stream
+                    </Link>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
           <div className="mt-10 bg-black/20 border border-white/10 rounded-[1.5rem] p-4">
             <p className="text-xs text-gray-300">
               Your payment information is secure and handled by Razorpay, a PCI-DSS compliant payment gateway.
-            No card details are stored on our servers.
+              No card details are stored on our servers.
             </p>
           </div>
 

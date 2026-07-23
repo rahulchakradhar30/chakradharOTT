@@ -166,3 +166,60 @@ export async function PATCH(req) {
     return NextResponse.json({ error: error.message || "Failed to override attendance" }, { status: 500 });
   }
 }
+
+/* ── DELETE: Super Admin Bulk Past 3 Months Attendance Cleanup ── */
+export async function DELETE(req) {
+  try {
+    const token = req.cookies.get("admin-session")?.value || "";
+    const callerEmail = verifyAdminSession(token);
+
+    if (!callerEmail || !isSuperAdminEmail(callerEmail)) {
+      return NextResponse.json({ error: "Unauthorized — Super Admin access required." }, { status: 403 });
+    }
+
+    const { email, startDate, endDate } = await req.json();
+    const cleanEmail = (email || "").toLowerCase().trim();
+
+    if (!cleanEmail || !startDate || !endDate) {
+      return NextResponse.json({ error: "Email, Start Date, and End Date are required." }, { status: 400 });
+    }
+
+    const attSnap = await adminDb
+      .collection("attendance")
+      .where("email", "==", cleanEmail)
+      .get();
+
+    const batch = adminDb.batch();
+    let deletedCount = 0;
+
+    attSnap.forEach((docSnap) => {
+      const d = docSnap.data();
+      if (d.date && d.date >= startDate && d.date <= endDate) {
+        batch.delete(docSnap.ref);
+        deletedCount++;
+      }
+    });
+
+    if (deletedCount > 0) {
+      await batch.commit();
+    }
+
+    await logServerEvent("attendance_bulk_deleted", {
+      targetEmail: cleanEmail,
+      startDate,
+      endDate,
+      deletedCount,
+      deletedBy: callerEmail,
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Successfully removed ${deletedCount} attendance records for ${cleanEmail} between ${startDate} and ${endDate}.`,
+      deletedCount,
+    });
+  } catch (error) {
+    console.error("Bulk delete attendance error:", error);
+    return NextResponse.json({ error: error.message || "Failed to delete attendance records" }, { status: 500 });
+  }
+}
+

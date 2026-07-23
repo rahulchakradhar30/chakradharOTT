@@ -76,10 +76,24 @@ export async function POST(req) {
       }
     }
 
-    // Generate password reset link for the sub-admin
-    const passwordResetLink = await adminAuth.generatePasswordResetLink(cleanEmail, {
-      url: `${process.env.NEXT_PUBLIC_APP_URL || "https://chakradharstream.vercel.app"}/admin/login`,
-    });
+    // Generate password reset link for the sub-admin with robust fallback for non-allowlisted domains
+    let passwordResetLink = "";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://chakradharstream.vercel.app";
+
+    try {
+      passwordResetLink = await adminAuth.generatePasswordResetLink(cleanEmail, {
+        url: `${appUrl}/admin/login`,
+      });
+    } catch (linkErr) {
+      console.warn("generatePasswordResetLink with custom URL failed:", linkErr.message || linkErr);
+      try {
+        // Fallback: Try generating link without custom redirect URL
+        passwordResetLink = await adminAuth.generatePasswordResetLink(cleanEmail);
+      } catch (fallbackErr) {
+        console.warn("Fallback generatePasswordResetLink failed:", fallbackErr.message || fallbackErr);
+        passwordResetLink = `${appUrl}/admin/login`;
+      }
+    }
 
     // Store/update admin document in Firestore
     await adminDb.collection("admins").doc(cleanEmail).set({

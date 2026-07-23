@@ -7,7 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import ViewTracker from "@/components/ViewTracker";
-import WishlistButton from "@/components/WishlistButton";
+import MovieActionBar from "@/components/MovieActionBar";
 import MovieVideoSection from "@/components/MovieVideoSection";
 import {
   UserIcon,
@@ -189,83 +189,13 @@ export default async function MovieDetail({ params }) {
             </h1>
           </div>
 
-          {/* 3. CHANNEL / STUDIO & ACTION BAR (YOUTUBE CHANNEL ROW) */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2 border-b border-white/10 pb-4">
-            
-            {/* Left: Studio Avatar + Name + Subscribe Pill */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-600 text-white font-black flex items-center justify-center text-sm shadow-md shrink-0">
-                CS
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1">
-                  <span className="font-bold text-sm text-white truncate">Chakradhar Stream</span>
-                  <span className="text-cyan-400 text-xs">✓</span>
-                </div>
-                <p className="text-[11px] text-gray-400 font-medium">Official Channel</p>
-              </div>
-
-              <Link
-                href={`/watch-party?movie=${id}`}
-                className="ml-2 bg-white hover:bg-gray-200 text-black font-bold text-xs md:text-sm py-2 px-5 rounded-full transition shadow-md shrink-0 flex items-center gap-1.5"
-              >
-                <UserIcon className="w-4 h-4 text-black" />
-                <span>Join Premiere</span>
-              </Link>
-            </div>
-
-            {/* Right: Connected Pill Actions (SVG Icons - Zero Emojis Policy) */}
-            <div className="flex flex-wrap items-center gap-2">
-              
-              {/* Like / Dislike Split Pill */}
-              <div className="flex items-center bg-white/10 hover:bg-white/15 rounded-full text-xs font-semibold text-white overflow-hidden border border-white/10">
-                <button type="button" className="px-3.5 py-2 flex items-center gap-1.5 hover:bg-white/10 transition border-r border-white/10">
-                  <ThumbsUpIcon className="w-4 h-4 text-white" />
-                  <span>{movie.likesCount || totalViews || 0}</span>
-                </button>
-                <button type="button" className="px-3.5 py-2 hover:bg-white/10 transition">
-                  <ThumbsDownIcon className="w-4 h-4 text-white" />
-                </button>
-              </div>
-
-              {/* Share Pill */}
-              <button
-                type="button"
-                className="bg-white/10 hover:bg-white/15 border border-white/10 text-xs font-semibold px-4 py-2 rounded-full flex items-center gap-1.5 transition text-white"
-              >
-                <ShareIcon className="w-4 h-4 text-white" />
-                <span>Share</span>
-              </button>
-
-              {/* AI Guide Pill */}
-              <Link
-                href="/ai-assistant"
-                className="bg-white/10 hover:bg-white/15 border border-white/10 text-xs font-semibold px-4 py-2 rounded-full flex items-center gap-1.5 transition text-white"
-              >
-                <RobotIcon className="w-4 h-4 text-cyan-400" />
-                <span>Ask AI</span>
-              </Link>
-
-              {/* Watchlist Pill */}
-              <div className="bg-white/10 hover:bg-white/15 border border-white/10 text-xs font-semibold px-3 py-1.5 rounded-full flex items-center transition">
-                <WishlistButton
-                  movie={{
-                    id,
-                    title,
-                    posterImage: banner,
-                  }}
-                />
-              </div>
-
-              {/* More Pill */}
-              <button
-                type="button"
-                className="bg-white/10 hover:bg-white/15 border border-white/10 text-xs font-semibold p-2.5 rounded-full flex items-center justify-center transition text-white"
-              >
-                <MoreHorizontalIcon className="w-4 h-4 text-white" />
-              </button>
-            </div>
-          </div>
+          {/* 3. INTERACTIVE MOVIE ACTION BAR */}
+          <MovieActionBar
+            movieId={id}
+            title={title}
+            initialLikes={movie.likesCount || totalViews || 0}
+            posterImage={banner}
+          />
 
           {/* 4. EXPANDABLE DESCRIPTION BOX (YOUTUBE GREY CARD #272727) */}
           <div className="bg-[#272727] hover:bg-[#313131] transition rounded-2xl p-4 text-xs space-y-2 border border-white/5">

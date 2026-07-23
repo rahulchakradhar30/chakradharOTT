@@ -57,26 +57,8 @@ export default function TriviaClient() {
         }))
         .filter((u) => u.xp > 0);
 
-      // Seed mock users to make it feel alive and highly competitive
-      const mockUsers = [
-        { id: "mock1", name: "CinephileSupreme", xp: 5200, photo: "https://images.unsplash.com/photo-1534528741775-53994a69daeb" },
-        { id: "mock2", name: "KubrickScorsese", xp: 4800, photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d" },
-        { id: "mock3", name: "MarvelGeek", xp: 3900, photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e" },
-        { id: "mock4", name: "NolanFanboy", xp: 2600, photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80" },
-      ];
-
-      const combined = [...realUsers];
-
-      // Merge mock users
-      mockUsers.forEach((mock) => {
-        if (!combined.some((u) => u.name === mock.name)) {
-          combined.push(mock);
-        }
-      });
-
-      // Sort descending
-      combined.sort((a, b) => b.xp - a.xp);
-      setLeaderboard(combined);
+      realUsers.sort((a, b) => b.xp - a.xp);
+      setLeaderboard(realUsers);
       setLoading(false);
     }, (err) => {
       console.error("Leaderboard subscription error:", err);

@@ -1,23 +1,32 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { db, auth } from "@/firebase";
 import {
   collection,
   getDocs,
-  query,
-  orderBy,
-  limit,
   updateDoc,
   doc,
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { motion } from "framer-motion";
+import {
+  AnalyticsIcon,
+  MovieIcon,
+  TicketIcon,
+  PosterIcon,
+  MailIcon,
+  UserIcon,
+  SettingsIcon,
+  PlusIcon,
+  PencilIcon,
+  CheckCircleIcon,
+  RobotIcon,
+  SearchIcon,
+} from "@/components/Icon";
 
 export default function AdminDashboard() {
-  const router = useRouter();
   const numberFormatter = new Intl.NumberFormat("en-IN");
   const currencyFormatter = new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -32,10 +41,16 @@ export default function AdminDashboard() {
     views: 0,
   });
 
-  // ✅ NEW REVENUE STATE
   const [revenueStats, setRevenueStats] = useState({
     tickets: 0,
     revenue: 0,
+  });
+
+  const [advancedStats, setAdvancedStats] = useState({
+    aiQueries: 0,
+    quizzesSolved: 0,
+    storyPaths: 0,
+    totalXP: 0,
   });
 
   const [recentComments, setRecentComments] = useState([]);
@@ -62,13 +77,11 @@ export default function AdminDashboard() {
 
   const handleSetHero = async (movieId) => {
     try {
-      // Clear hero status on all movies first
       const clears = moviesList.map((m) =>
         updateDoc(doc(db, "movies", m.id), { isHero: false })
       );
       await Promise.all(clears);
 
-      // Set target movie hero status
       await updateDoc(doc(db, "movies", movieId), {
         isHero: true,
       });
@@ -79,7 +92,7 @@ export default function AdminDashboard() {
           isHero: m.id === movieId,
         }))
       );
-      alert("🎯 Hero banner updated successfully!");
+      alert("Hero banner updated successfully!");
     } catch (err) {
       console.error("Error setting hero:", err);
       alert("Failed to set hero: " + err.message);
@@ -96,39 +109,59 @@ export default function AdminDashboard() {
     return () => unsubscribe();
   }, []);
 
-  /* ---------------- FETCH DATA ---------------- */
+  /* ---------------- FETCH 100% GENUINE FIRESTORE DATA ---------------- */
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const moviesSnapshot = await getDocs(collection(db, "movies"));
-        const ratingsSnapshot = await getDocs(collection(db, "ratings"));
-        const commentsSnapshot = await getDocs(collection(db, "comments"));
+        const [
+          moviesSnap,
+          ratingsSnap,
+          commentsSnap,
+          usersSnap,
+          premiereSnap,
+          aiLogsSnap,
+          quizResultsSnap,
+          storyHistorySnap,
+        ] = await Promise.allSettled([
+          getDocs(collection(db, "movies")),
+          getDocs(collection(db, "ratings")),
+          getDocs(collection(db, "comments")),
+          getDocs(collection(db, "users")),
+          getDocs(collection(db, "premieres")),
+          getDocs(collection(db, "ai_logs")),
+          getDocs(collection(db, "quiz_results")),
+          getDocs(collection(db, "story_history")),
+        ]);
+
+        const moviesDocs = moviesSnap.status === "fulfilled" ? moviesSnap.value.docs : [];
+        const ratingsDocs = ratingsSnap.status === "fulfilled" ? ratingsSnap.value.docs : [];
+        const commentsDocs = commentsSnap.status === "fulfilled" ? commentsSnap.value.docs : [];
+        const usersDocs = usersSnap.status === "fulfilled" ? usersSnap.value.docs : [];
+        const premiereDocs = premiereSnap.status === "fulfilled" ? premiereSnap.value.docs : [];
 
         let totalViews = 0;
-        moviesSnapshot.forEach((doc) => {
-          totalViews += doc.data().views || 0;
+        moviesDocs.forEach((doc) => {
+          const d = doc.data();
+          totalViews += (d.views || 0) + (d.viewsReal || 0);
         });
 
         setStats({
-          movies: moviesSnapshot.size,
-          ratings: ratingsSnapshot.size,
-          comments: commentsSnapshot.size,
+          movies: moviesDocs.length,
+          ratings: ratingsDocs.length,
+          comments: commentsDocs.length,
           views: totalViews,
         });
 
-        const list = moviesSnapshot.docs.map((doc) => ({
+        const list = moviesDocs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
         setMoviesList(list);
 
-        // 🎬 PREMIERE REVENUE DATA
-        const premiereSnap = await getDocs(collection(db, "premieres"));
-
         let totalRevenue = 0;
         let totalTickets = 0;
 
-        premiereSnap.forEach((doc) => {
+        premiereDocs.forEach((doc) => {
           const data = doc.data();
           const sold = data.ticketsSold || 0;
           const price = data.ticketPrice || 0;
@@ -142,6 +175,19 @@ export default function AdminDashboard() {
           revenue: totalRevenue,
         });
 
+        // Genuine Advanced Feature Stats from Firestore
+        let calculatedTotalXP = 0;
+        usersDocs.forEach((doc) => {
+          calculatedTotalXP += doc.data().totalXP || 0;
+        });
+
+        setAdvancedStats({
+          aiQueries: aiLogsSnap.status === "fulfilled" ? aiLogsSnap.value.size : 0,
+          quizzesSolved: quizResultsSnap.status === "fulfilled" ? quizResultsSnap.value.size : 0,
+          storyPaths: storyHistorySnap.status === "fulfilled" ? storyHistorySnap.value.size : 0,
+          totalXP: calculatedTotalXP,
+        });
+
         // Latest movie
         const sortedMovies = [...list].sort((a, b) => {
           const timeA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
@@ -153,14 +199,13 @@ export default function AdminDashboard() {
         }
 
         // Recent comments
-        const commentsList = commentsSnapshot.docs.map((doc) => doc.data());
+        const commentsList = commentsDocs.map((doc) => doc.data());
         const sortedComments = commentsList.sort((a, b) => {
           const timeA = a.timestamp?.toDate?.() || new Date(a.timestamp || 0);
           const timeB = b.timestamp?.toDate?.() || new Date(b.timestamp || 0);
           return timeB - timeA;
         });
         setRecentComments(sortedComments.slice(0, 5));
-
       } catch (error) {
         console.error("Dashboard fetch error:", error);
       } finally {
@@ -187,12 +232,11 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="space-y-8 md:space-y-12 animate-fadeUp pb-24 md:pb-16">
-
-      {/* HEADER - Premium Style */}
+    <div className="space-y-8 md:space-y-12 animate-fadeUp pb-24 md:pb-16 max-w-7xl mx-auto">
+      {/* HEADER */}
       <motion.div initial={{ opacity: 0, y: 25 }} animate={{ opacity: 1, y: 0 }} className="admin-toolbar items-end">
         <div className="admin-section max-w-3xl">
-          <p className="admin-kicker text-cyan-300 text-sm tracking-widest">✦ Admin Dashboard</p>
+          <p className="admin-kicker text-cyan-300 text-sm tracking-widest uppercase">Platform Control Center</p>
           <h1 className="admin-title text-4xl md:text-5xl bg-gradient-to-r from-cyan-300 to-blue-300 bg-clip-text text-transparent">
             Platform Intelligence & Operations
           </h1>
@@ -202,19 +246,22 @@ export default function AdminDashboard() {
         </div>
 
         <div className="flex flex-wrap gap-2 md:gap-3 w-full sm:w-auto">
-          <Link href="/admin/settings" className="admin-button admin-button-secondary text-xs md:text-sm flex-1 sm:flex-none">
-            ⚙️ Settings
+          <Link href="/admin/settings" className="admin-button bg-white/10 hover:bg-white/15 text-white border border-white/20 text-xs md:text-sm font-bold py-2.5 px-4 rounded-2xl flex items-center justify-center gap-2">
+            <SettingsIcon className="w-4 h-4 text-cyan-300" />
+            <span>Settings</span>
           </Link>
-          <Link href="/admin/movies/create" className="admin-button admin-button-secondary text-xs md:text-sm flex-1 sm:flex-none">
-            + New Movie
+          <Link href="/admin/movies/create" className="admin-button bg-white/10 hover:bg-white/15 text-white border border-white/20 text-xs md:text-sm font-bold py-2.5 px-4 rounded-2xl flex items-center justify-center gap-2">
+            <PlusIcon className="w-4 h-4 text-cyan-300" />
+            <span>New Movie</span>
           </Link>
-          <Link href="/admin/premieres/create" className="admin-button admin-button-primary text-xs md:text-sm flex-1 sm:flex-none">
-            + New Premiere
+          <Link href="/admin/premieres/create" className="admin-button bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs md:text-sm font-bold py-2.5 px-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20">
+            <PlusIcon className="w-4 h-4 text-white" />
+            <span>New Premiere</span>
           </Link>
         </div>
       </motion.div>
 
-      {/* SESSION CARD - Enhanced */}
+      {/* SESSION CARD */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -224,109 +271,118 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <p className="text-xs text-cyan-300 uppercase tracking-widest font-semibold">Logged In As</p>
-            <p className="text-lg md:text-xl font-bold mt-2">{adminEmail || "Admin"}</p>
+            <p className="text-lg md:text-xl font-bold mt-2 truncate">{adminEmail || "Super Admin"}</p>
           </div>
           <div>
             <p className="text-xs text-cyan-300 uppercase tracking-widest font-semibold">Session Expires In</p>
-            <p className="text-lg md:text-xl font-bold mt-2 text-cyan-300">
+            <p className="text-lg md:text-xl font-bold mt-2 text-cyan-300 font-mono">
               {formatTime(sessionTimeLeft)}
             </p>
           </div>
           <div className="flex items-end">
-            <div className="text-xs text-green-300 uppercase tracking-widest font-semibold animate-pulse">
-              ✓ Secure Session Active
+            <div className="text-xs text-green-300 uppercase tracking-widest font-semibold flex items-center gap-2">
+              <CheckCircleIcon className="w-4 h-4 text-green-400 animate-pulse" />
+              <span>Secure Session Active</span>
             </div>
           </div>
         </div>
       </motion.div>
 
-      {/* MAIN STATS - Grid */}
+      {/* MAIN STATS GRID */}
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
-        <StatCard title="📊 Movies" value={numberFormatter.format(stats.movies)} loading={loading} helper="Live catalog size" tone="cyan" />
-        <StatCard title="⭐ Ratings" value={numberFormatter.format(stats.ratings)} loading={loading} helper="Community feedback" tone="blue" />
-        <StatCard title="💬 Comments" value={numberFormatter.format(stats.comments)} loading={loading} helper="Conversation volume" tone="pink" />
-        <StatCard title="👁️ Views" value={numberFormatter.format(stats.views)} loading={loading} helper="Watch activity" tone="amber" />
+        <StatCard title="Movies Catalog" value={numberFormatter.format(stats.movies)} loading={loading} helper="Live catalog size" tone="cyan" IconComponent={MovieIcon} />
+        <StatCard title="Community Ratings" value={numberFormatter.format(stats.ratings)} loading={loading} helper="Community feedback" tone="blue" IconComponent={PosterIcon} />
+        <StatCard title="User Comments" value={numberFormatter.format(stats.comments)} loading={loading} helper="Conversation volume" tone="pink" IconComponent={MailIcon} />
+        <StatCard title="Total Title Views" value={numberFormatter.format(stats.views)} loading={loading} helper="Watch activity" tone="amber" IconComponent={AnalyticsIcon} />
       </div>
 
-      {/* GAMIFICATION & ENGAGEMENT STATS */}
+      {/* GAMIFICATION & ENGAGEMENT STATS (100% GENUINE FIRESTORE RECURSION) */}
       <div>
         <motion.h2
           initial={{ opacity: 0, x: -20 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
-          className="text-2xl font-black mb-6 text-transparent bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 bg-clip-text"
+          className="text-xl md:text-2xl font-black mb-6 text-transparent bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 bg-clip-text flex items-center gap-2"
         >
-          🎮 Advanced Features Engagement
+          <AnalyticsIcon className="w-6 h-6 text-cyan-400" />
+          <span>Advanced Features Engagement</span>
         </motion.h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           <StatCard
-            title="🤖 AI Guide Queries"
-            value="2,480"
+            title="AI Guide Queries"
+            value={numberFormatter.format(advancedStats.aiQueries)}
             loading={loading}
-            helper="Conversational prompts"
+            helper="Real conversational prompts"
             tone="cyan"
+            IconComponent={RobotIcon}
           />
           <StatCard
-            title="🏆 Trivia Quizzes Solved"
-            value="1,842"
+            title="Trivia Quizzes Solved"
+            value={numberFormatter.format(advancedStats.quizzesSolved)}
             loading={loading}
-            helper="Gamified test completions"
+            helper="Real quiz completions"
             tone="blue"
+            IconComponent={TicketIcon}
           />
           <StatCard
-            title="⚡ Story Paths Explored"
-            value="924"
+            title="Story Paths Explored"
+            value={numberFormatter.format(advancedStats.storyPaths)}
             loading={loading}
             helper="Branching narrative runs"
             tone="pink"
+            IconComponent={MovieIcon}
           />
           <StatCard
-            title="👑 Total Standings XP"
-            value="16,500"
+            title="Total Standings XP"
+            value={numberFormatter.format(advancedStats.totalXP)}
             loading={loading}
-            helper="Accumulated global score"
+            helper="Real total global score"
             tone="amber"
+            IconComponent={UserIcon}
           />
         </div>
       </div>
 
-      {/* REVENUE SECTION */}
+      {/* REVENUE & TICKETS SECTION */}
       <div>
         <motion.h2
           initial={{ opacity: 0, x: -20 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
-          className="text-2xl font-black mb-6 text-transparent bg-gradient-to-r from-amber-300 to-orange-300 bg-clip-text"
+          className="text-xl md:text-2xl font-black mb-6 text-transparent bg-gradient-to-r from-amber-300 to-orange-300 bg-clip-text flex items-center gap-2"
         >
-          💰 Revenue & Attendance
+          <TicketIcon className="w-6 h-6 text-amber-400" />
+          <span>Revenue & Premiere Attendance</span>
         </motion.h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <StatCard
-            title="🎫 Tickets Sold"
+            title="Tickets Sold"
             value={numberFormatter.format(revenueStats.tickets)}
             loading={loading}
-            helper="Premiere attendance"
+            helper="Live premiere attendance"
             tone="cyan"
+            IconComponent={TicketIcon}
           />
           <StatCard
-            title="💵 Total Revenue"
+            title="Total Revenue"
             value={currencyFormatter.format(revenueStats.revenue)}
             loading={loading}
             helper="Gross ticket sales"
             tone="amber"
+            IconComponent={AnalyticsIcon}
           />
         </div>
       </div>
 
-      {/* HOMEPAGE LAYOUT MANAGER PANEL */}
+      {/* HOMEPAGE LAYOUT CONTROLS */}
       <div>
         <motion.h2
           initial={{ opacity: 0, x: -20 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
-          className="text-2xl font-black mb-6 text-transparent bg-gradient-to-r from-cyan-300 via-blue-300 to-indigo-300 bg-clip-text"
+          className="text-xl md:text-2xl font-black mb-6 text-transparent bg-gradient-to-r from-cyan-300 via-blue-300 to-indigo-300 bg-clip-text"
         >
-          🏠 Homepage Content Controls
+          Homepage Content Controls
         </motion.h2>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -355,7 +411,7 @@ export default function AdminDashboard() {
               <thead>
                 <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-gray-400 font-extrabold">
                   <th className="pb-3 font-semibold">Title</th>
-                  <th className="pb-3 text-center font-semibold">Hero Banner (Single)</th>
+                  <th className="pb-3 text-center font-semibold">Hero Banner</th>
                   <th className="pb-3 text-center font-semibold">Editors Choice</th>
                   <th className="pb-3 text-center font-semibold">Trending Now</th>
                   <th className="pb-3 text-right font-semibold">Manage</th>
@@ -413,18 +469,18 @@ export default function AdminDashboard() {
         </motion.div>
       </div>
 
-      {/* ACTIVITY SECTION */}
+      {/* RECENT ACTIVITY */}
       <div>
         <motion.h2
           initial={{ opacity: 0, x: -20 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
-          className="text-2xl font-black mb-6 text-transparent bg-gradient-to-r from-pink-300 to-rose-300 bg-clip-text"
+          className="text-xl md:text-2xl font-black mb-6 text-transparent bg-gradient-to-r from-pink-300 to-rose-300 bg-clip-text flex items-center gap-2"
         >
-          📈 Recent Activity
+          <AnalyticsIcon className="w-6 h-6 text-pink-400" />
+          <span>Recent Activity</span>
         </motion.h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
           {/* Latest Movie */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -433,22 +489,25 @@ export default function AdminDashboard() {
             className="glass-card rounded-2xl md:rounded-3xl p-6 md:p-8 border border-cyan-400/20"
           >
             <div className="flex items-center justify-between gap-4 mb-6">
-              <h2 className="text-lg md:text-xl font-bold">🎬 Latest Uploaded</h2>
+              <h2 className="text-lg md:text-xl font-bold flex items-center gap-2">
+                <MovieIcon className="w-5 h-5 text-cyan-400" />
+                <span>Latest Uploaded</span>
+              </h2>
               <Link href="/admin/movies" className="text-sm text-cyan-300 hover:text-cyan-200 transition font-semibold">
                 View all →
               </Link>
             </div>
             {latestMovie ? (
               <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-white/2 p-5 space-y-3 hover:border-cyan-300/30 transition">
-                <p className="font-bold text-lg">{latestMovie.title}</p>
+                <p className="font-bold text-lg text-white">{latestMovie.title}</p>
                 <div className="flex flex-wrap gap-2">
                   {latestMovie.genre && (
-                    <span className="text-xs px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-300/40 font-semibold">
+                    <span className="text-xs px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-300/40 font-semibold text-cyan-300">
                       {latestMovie.genre}
                     </span>
                   )}
                   {latestMovie.director && (
-                    <span className="text-xs px-3 py-1 rounded-full bg-blue-500/20 border border-blue-300/40">
+                    <span className="text-xs px-3 py-1 rounded-full bg-blue-500/20 border border-blue-300/40 text-blue-300">
                       {latestMovie.director}
                     </span>
                   )}
@@ -456,7 +515,7 @@ export default function AdminDashboard() {
                 <p className="text-xs text-gray-400 pt-2">Recently updated</p>
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-6 text-center text-gray-400">
+              <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-6 text-center text-gray-400 text-xs">
                 No movie uploaded yet
               </div>
             )}
@@ -471,14 +530,17 @@ export default function AdminDashboard() {
             className="glass-card rounded-2xl md:rounded-3xl p-6 md:p-8 border border-pink-400/20"
           >
             <div className="flex items-center justify-between gap-4 mb-6">
-              <h2 className="text-lg md:text-xl font-bold">💬 Recent Comments</h2>
+              <h2 className="text-lg md:text-xl font-bold flex items-center gap-2">
+                <MailIcon className="w-5 h-5 text-pink-400" />
+                <span>Recent Comments</span>
+              </h2>
               <Link href="/admin/comments" className="text-sm text-cyan-300 hover:text-cyan-200 transition font-semibold">
                 Review all →
               </Link>
             </div>
 
             {recentComments.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-6 text-center text-gray-400">
+              <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-6 text-center text-gray-400 text-xs">
                 No recent comments yet
               </div>
             ) : (
@@ -492,7 +554,7 @@ export default function AdminDashboard() {
                     transition={{ delay: index * 0.05 }}
                     className="rounded-xl border border-white/10 bg-white/5 p-4 hover:bg-white/8 hover:border-pink-300/30 transition"
                   >
-                    <p className="text-sm font-bold">{c.name}</p>
+                    <p className="text-sm font-bold text-white">{c.name}</p>
                     <p className="text-xs text-gray-400 line-clamp-2 mt-2">
                       {c.comment}
                     </p>
@@ -501,16 +563,14 @@ export default function AdminDashboard() {
               </div>
             )}
           </motion.div>
-
         </div>
       </div>
-
     </div>
   );
 }
 
 /* ---------- STAT CARD ---------- */
-function StatCard({ title, value, loading, helper, tone }) {
+function StatCard({ title, value, loading, helper, tone, IconComponent }) {
   const toneClass =
     tone === "blue"
       ? "from-blue-500/20 via-cyan-500/10 to-sky-500/5"
@@ -528,11 +588,14 @@ function StatCard({ title, value, loading, helper, tone }) {
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      className={`glass-card rounded-xl md:rounded-3xl p-4 md:p-8 border ${borderTone} bg-gradient-to-br ${toneClass} hover:shadow-lg hover:shadow-current/20 transition-all duration-300 min-w-0`}
+      className={`glass-card rounded-2xl md:rounded-3xl p-5 md:p-8 border ${borderTone} bg-gradient-to-br ${toneClass} hover:shadow-lg hover:shadow-current/20 transition-all duration-300 min-w-0 flex flex-col justify-between`}
     >
-      <p className="text-[10px] md:text-xs uppercase tracking-widest font-bold text-gray-300 mb-2 md:mb-3 truncate">
-        {title}
-      </p>
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <p className="text-[10px] md:text-xs uppercase tracking-widest font-bold text-gray-300 truncate">
+          {title}
+        </p>
+        {IconComponent && <IconComponent className="w-5 h-5 text-cyan-400 shrink-0" />}
+      </div>
 
       {loading ? (
         <div className="space-y-3">
@@ -541,8 +604,8 @@ function StatCard({ title, value, loading, helper, tone }) {
         </div>
       ) : (
         <>
-          <p className="text-xl md:text-4xl font-black text-white drop-shadow-lg">{value}</p>
-          <p className="mt-2 md:mt-3 text-[10px] md:text-xs text-gray-400 font-medium">{helper}</p>
+          <p className="text-2xl md:text-4xl font-black text-white drop-shadow-lg">{value}</p>
+          <p className="mt-2 text-[10px] md:text-xs text-gray-400 font-medium">{helper}</p>
         </>
       )}
     </motion.div>

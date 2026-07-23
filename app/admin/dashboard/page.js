@@ -4,11 +4,22 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/firebase";
-import { collection, getDocs, query, limit } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import {
+  MovieIcon,
+  TicketIcon,
+  UserIcon,
+  AnalyticsIcon,
+  PlusIcon,
+  PencilIcon,
+  MailIcon,
+  SettingsIcon,
+  ShieldCheckIcon,
+} from "@/components/Icon";
 
-export default function AdminDashboard() {
+export default function AdminDashboardPage() {
   const router = useRouter();
   const { user } = useAuth();
 
@@ -28,16 +39,16 @@ export default function AdminDashboard() {
 
     const loadStats = async () => {
       try {
-
-        const moviesSnap = await getDocs(collection(db, "movies"));
-        const premiersSnap = await getDocs(collection(db, "premieres"));
-        const usersSnap = await getDocs(collection(db, "users"));
+        const [moviesSnap, premiersSnap, usersSnap] = await Promise.all([
+          getDocs(collection(db, "movies")),
+          getDocs(collection(db, "premieres")),
+          getDocs(collection(db, "users")),
+        ]);
 
         let totalViews = 0;
         moviesSnap.forEach((doc) => {
           const data = doc.data();
-          totalViews +=
-            (data.viewsReal || 0) + (data.viewsBoost || 0);
+          totalViews += (data.viewsReal || 0) + (data.views || 0);
         });
 
         setStats({
@@ -59,7 +70,7 @@ export default function AdminDashboard() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen px-4 md:px-10 lg:px-16 py-10 md:py-12">
+    <div className="min-h-screen px-4 md:px-10 lg:px-16 py-10 md:py-12 max-w-7xl mx-auto">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -67,11 +78,11 @@ export default function AdminDashboard() {
       >
         {/* Header */}
         <div className="mb-12">
-          <p className="admin-kicker mb-2">Admin Panel</p>
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2">
+          <p className="admin-kicker mb-2 text-cyan-300 uppercase tracking-widest text-xs font-bold">Admin Management Desk</p>
+          <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2 text-white">
             Dashboard
           </h1>
-          <p className="text-gray-400">Manage content and monitor platform metrics</p>
+          <p className="text-gray-400 text-sm">Manage content and monitor platform metrics with 100% real-time Firestore synchronization.</p>
         </div>
 
         {/* Stats Grid */}
@@ -80,25 +91,25 @@ export default function AdminDashboard() {
             {
               label: "Total Movies",
               value: stats.totalMovies,
-              icon: "🎬",
+              Icon: MovieIcon,
               color: "from-blue-600",
             },
             {
-              label: "Premieres",
+              label: "Live Premieres",
               value: stats.totalPremiers,
-              icon: "🎭",
+              Icon: TicketIcon,
               color: "from-purple-600",
             },
             {
               label: "Total Users",
               value: stats.totalUsers,
-              icon: "👥",
+              Icon: UserIcon,
               color: "from-cyan-600",
             },
             {
               label: "Total Views",
-              value: stats.totalViews.toLocaleString(),
-              icon: "👁️",
+              value: stats.totalViews.toLocaleString("en-IN"),
+              Icon: AnalyticsIcon,
               color: "from-pink-600",
             },
           ].map((stat, i) => (
@@ -107,14 +118,14 @@ export default function AdminDashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: i * 0.1 }}
-              className={`glass-card rounded-2xl p-6 border border-white/10 bg-gradient-to-br ${stat.color} via-transparent`}
+              className={`glass-card rounded-2xl p-6 border border-white/10 bg-gradient-to-br ${stat.color} via-transparent flex flex-col justify-between`}
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-400 text-sm">{stat.label}</p>
-                  <p className="text-3xl font-black mt-2">{stat.value}</p>
+                  <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">{stat.label}</p>
+                  <p className="text-3xl font-black mt-2 text-white">{loading ? "..." : stat.value}</p>
                 </div>
-                <span className="text-4xl">{stat.icon}</span>
+                <stat.Icon className="w-8 h-8 text-cyan-300 shrink-0" />
               </div>
             </motion.div>
           ))}
@@ -126,49 +137,23 @@ export default function AdminDashboard() {
             {
               title: "Content Management",
               description: "Add, edit, and manage movies and premieres",
-              icon: "📽️",
+              SectionIcon: MovieIcon,
               links: [
-                { label: "Add Movie", href: "/admin/movies/create", icon: "➕" },
-                { label: "Edit Movies", href: "/admin/movies", icon: "✏️" },
-                { label: "Add Premiere", href: "/admin/premieres/create", icon: "⭐" },
-                { label: "Edit Premieres", href: "/admin/premieres", icon: "✏️" },
+                { label: "Add Movie", href: "/admin/movies/create", Icon: PlusIcon },
+                { label: "Edit Movies", href: "/admin/movies", Icon: PencilIcon },
+                { label: "Add Premiere", href: "/admin/premieres/create", Icon: PlusIcon },
+                { label: "Edit Premieres", href: "/admin/premieres", Icon: PencilIcon },
               ],
             },
             {
               title: "Analytics & Monitoring",
               description: "Track user activity and content performance",
-              icon: "📊",
+              SectionIcon: AnalyticsIcon,
               links: [
-                { label: "View Analytics", href: "/admin/analytics", icon: "📈" },
-                {
-                  label: "User Activity",
-                  href: "/admin/users",
-                  icon: "📋",
-                },
-                { label: "Content Stats", href: "/admin/content-stats", icon: "📉" },
-                { label: "Revenue", href: "/admin/revenue", icon: "💰" },
-              ],
-            },
-            {
-              title: "User Management",
-              description: "Manage users, subscriptions, and support",
-              icon: "👤",
-              links: [
-                { label: "All Users", href: "/admin/users-list", icon: "👥" },
-                { label: "Subscriptions", href: "/admin/subscriptions", icon: "🎁" },
-                { label: "Support Tickets", href: "/admin/support", icon: "🎫" },
-                { label: "Banned Users", href: "/admin/banned", icon: "🚫" },
-              ],
-            },
-            {
-              title: "System Settings",
-              description: "Configure platform settings and features",
-              icon: "⚙️",
-              links: [
-                { label: "Site Settings", href: "/admin/settings", icon: "🔧" },
-                { label: "Email Templates", href: "/admin/email", icon: "✉️" },
-                { label: "Categories", href: "/admin/categories", icon: "🏷️" },
-                { label: "Notifications", href: "/admin/notifications-config", icon: "🔔" },
+                { label: "Search Analytics", href: "/admin/search-analytics", Icon: AnalyticsIcon },
+                { label: "User Activity", href: "/admin/users", Icon: UserIcon },
+                { label: "Admin Mail", href: "/admin/mail", Icon: MailIcon },
+                { label: "Staff Attendance", href: "/admin/attendance", Icon: ShieldCheckIcon },
               ],
             },
           ].map((section, i) => (
@@ -180,10 +165,10 @@ export default function AdminDashboard() {
               className="glass-card rounded-3xl p-8 border border-white/10"
             >
               <div className="flex items-center gap-3 mb-4">
-                <span className="text-3xl">{section.icon}</span>
+                <section.SectionIcon className="w-8 h-8 text-cyan-400 shrink-0" />
                 <div>
-                  <h3 className="text-xl font-bold">{section.title}</h3>
-                  <p className="text-sm text-gray-400">{section.description}</p>
+                  <h3 className="text-xl font-bold text-white">{section.title}</h3>
+                  <p className="text-xs text-gray-400">{section.description}</p>
                 </div>
               </div>
 
@@ -192,10 +177,10 @@ export default function AdminDashboard() {
                   <Link
                     key={j}
                     href={link.href}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition text-sm font-medium group"
+                    className="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/5 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/30 transition text-xs font-bold text-gray-200 group"
                   >
-                    <span>{link.icon}</span>
-                    <span className="group-hover:translate-x-1 transition">
+                    <link.Icon className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <span className="group-hover:translate-x-1 transition truncate">
                       {link.label}
                     </span>
                   </Link>

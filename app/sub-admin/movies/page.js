@@ -82,14 +82,21 @@ export default function SubAdminMovies() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {filtered.map((m) => (
-              <div key={m.id} className="admin-surface p-4 rounded-2xl space-y-3 flex flex-col justify-between">
+              <Link
+                key={m.id}
+                href={`/sub-admin/movies/edit/${m.id}`}
+                className="admin-surface p-4 rounded-2xl space-y-3 flex flex-col justify-between hover:border-cyan-500/40 border border-transparent transition-all duration-200 cursor-pointer group"
+              >
                 <div className="space-y-2">
                   <div className="aspect-video rounded-xl bg-black/40 overflow-hidden relative border border-white/10">
                     {m.posterImage || m.bannerImage ? (
-                      <img src={m.posterImage || m.bannerImage} alt={m.title} className="w-full h-full object-cover" />
+                      <img src={m.posterImage || m.bannerImage} alt={m.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                     ) : (
                       <div className="flex items-center justify-center h-full text-xs text-gray-500">No Preview</div>
                     )}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <span className="bg-cyan-500 text-black font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-full shadow-lg">Edit Movie</span>
+                    </div>
                   </div>
                   <div>
                     <span className="text-[10px] uppercase font-bold text-cyan-400">{m.genre || "Uncategorized"}</span>
@@ -97,7 +104,7 @@ export default function SubAdminMovies() {
                     <p className="text-xs text-gray-400 line-clamp-2 mt-0.5">{m.description}</p>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

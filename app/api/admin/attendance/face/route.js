@@ -58,8 +58,13 @@ export async function POST(req) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { faceHash, sampleImage, descriptor } = await req.json();
-    const cleanEmail = callerEmail.toLowerCase().trim();
+    const { faceHash, sampleImage, descriptor, targetEmail } = await req.json();
+    const isSuper = isSuperAdminEmail(callerEmail);
+
+    // If Super Admin provides targetEmail, enroll for target email
+    const cleanEmail = (isSuper && targetEmail)
+      ? targetEmail.toLowerCase().trim()
+      : callerEmail.toLowerCase().trim();
 
     if (!faceHash && !descriptor) {
       return NextResponse.json({ error: "Facial biometric descriptor is required." }, { status: 400 });
@@ -73,10 +78,10 @@ export async function POST(req) {
       descriptor: descriptor || null,
       sampleImage: sampleImage || null,
       updatedAt: new Date(),
-      enrolledBy: cleanEmail,
+      enrolledBy: callerEmail,
     }, { merge: true });
 
-    await logServerEvent("face_profile_enrolled", { email: cleanEmail });
+    await logServerEvent("face_profile_enrolled", { email: cleanEmail, enrolledBy: callerEmail });
 
     return NextResponse.json({
       success: true,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
+import FaceAttendanceManager from "@/components/admin/FaceAttendanceManager";
 import {
   CalendarIcon,
   PalmtreeIcon,
@@ -52,6 +53,20 @@ export default function SuperAdminAttendanceDesk() {
   const [bulkEndDate, setBulkEndDate] = useState("");
   const [deletingBulk, setDeletingBulk] = useState(false);
 
+  // Timeline Settings State
+  const [timeline, setTimeline] = useState({
+    punchInStart: "08:00",
+    punchInEnd: "11:00",
+    punchOutStart: "17:00",
+    punchOutEnd: "22:00",
+    gracePeriodMins: 15,
+  });
+  const [savingTimeline, setSavingTimeline] = useState(false);
+
+  // Super Admin Remote Face Enrollment Modal State
+  const [showFaceEnrollModal, setShowFaceEnrollModal] = useState(false);
+  const [targetEnrollEmail, setTargetEnrollEmail] = useState("");
+
   // Reject Modal State
   const [rejectModal, setRejectModal] = useState(null);
   const [rejectType, setRejectType] = useState("");
@@ -68,10 +83,11 @@ export default function SuperAdminAttendanceDesk() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [adminsRes, leavesRes, regRes] = await Promise.all([
+      const [adminsRes, leavesRes, regRes, timelineRes] = await Promise.all([
         fetch("/api/admin/sub-admins"),
         fetch("/api/admin/leaves"),
         fetch("/api/admin/attendance/regularization"),
+        fetch("/api/admin/attendance/timeline"),
       ]);
 
       if (adminsRes.ok) {
@@ -88,12 +104,41 @@ export default function SuperAdminAttendanceDesk() {
         const d = await regRes.json();
         setRegularizations(d.requests || []);
       }
+
+      if (timelineRes.ok) {
+        const d = await timelineRes.json();
+        if (d.timeline) setTimeline(d.timeline);
+      }
     } catch (err) {
       console.warn("Failed to load attendance desk data:", err);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const handleSaveTimeline = async (e) => {
+    e.preventDefault();
+    try {
+      setSavingTimeline(true);
+      const res = await fetch("/api/admin/attendance/timeline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(timeline),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        showAlert(data.error || "Failed to save timeline settings.", "error");
+        return;
+      }
+
+      showAlert("Shift timeline & window settings saved successfully!");
+    } catch (err) {
+      showAlert("Error saving timeline: " + err.message, "error");
+    } finally {
+      setSavingTimeline(false);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -505,6 +550,18 @@ export default function SuperAdminAttendanceDesk() {
             </span>
           )}
         </button>
+
+        <button
+          onClick={() => setActiveTab("timeline")}
+          className={`px-5 py-2.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 ${
+            activeTab === "timeline"
+              ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20"
+              : "bg-white/5 text-gray-300 hover:bg-white/10"
+          }`}
+        >
+          <CalendarIcon className="w-4 h-4" />
+          <span>Shift Timeline & Window Settings</span>
+        </button>
       </div>
 
       {/* TAB 1: STAFF ATTENDANCE ROSTER */}
@@ -719,12 +776,94 @@ export default function SuperAdminAttendanceDesk() {
         </div>
       )}
 
-      {/* SUB-ADMIN ATTENDANCE INSPECTOR MODAL / DRAWER */}
+      {/* TAB 4: SHIFT TIMELINE & WINDOW SETTINGS */}
+      {activeTab === "timeline" && (
+        <div className="space-y-6">
+          <div className="admin-surface p-6 rounded-3xl space-y-6 border border-white/10 max-w-2xl">
+            <div>
+              <p className="admin-kicker text-cyan-300">Shift Schedule & Time Windows</p>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <CalendarIcon className="w-5 h-5 text-cyan-400" />
+                <span>Super Admin Shift Timeline Configuration</span>
+              </h2>
+              <p className="text-xs text-gray-400">Define the official daily window times for Morning Check-In and Evening Shift Punch-Out.</p>
+            </div>
+
+            <form onSubmit={handleSaveTimeline} className="space-y-5 text-xs">
+              <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-3">
+                <h3 className="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-2">
+                  <span>☀️ Morning Punch-In Window</span>
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-gray-300 uppercase mb-1">Window Starts (Earliest Check-In)</label>
+                    <input
+                      type="time"
+                      required
+                      value={timeline.punchInStart}
+                      onChange={(e) => setTimeline({ ...timeline, punchInStart: e.target.value })}
+                      className="admin-input focus-ring text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-gray-300 uppercase mb-1">Cutoff Time (Latest Check-In)</label>
+                    <input
+                      type="time"
+                      required
+                      value={timeline.punchInEnd}
+                      onChange={(e) => setTimeline({ ...timeline, punchInEnd: e.target.value })}
+                      className="admin-input focus-ring text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 space-y-3">
+                <h3 className="text-xs font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-2">
+                  <span>🌙 Evening Punch-Out Window</span>
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-gray-300 uppercase mb-1">Punch-Out Starts (Earliest Departure)</label>
+                    <input
+                      type="time"
+                      required
+                      value={timeline.punchOutStart}
+                      onChange={(e) => setTimeline({ ...timeline, punchOutStart: e.target.value })}
+                      className="admin-input focus-ring text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-gray-300 uppercase mb-1">Punch-Out Cutoff Time</label>
+                    <input
+                      type="time"
+                      required
+                      value={timeline.punchOutEnd}
+                      onChange={(e) => setTimeline({ ...timeline, punchOutEnd: e.target.value })}
+                      className="admin-input focus-ring text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={savingTimeline}
+                  className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs uppercase rounded-xl shadow-lg shadow-cyan-500/20 disabled:opacity-50"
+                >
+                  {savingTimeline ? "Saving Settings..." : "Save Shift Timeline Configuration"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {selectedSubAdmin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
           <div className="bg-[#0b1329] border border-white/15 rounded-3xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl space-y-6">
             {/* INSPECTOR HEADER */}
-            <div className="flex justify-between items-start border-b border-white/10 pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
               <div>
                 <span className="text-[10px] font-bold text-cyan-400 uppercase">Super Admin Calendar Inspector</span>
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -732,12 +871,25 @@ export default function SuperAdminAttendanceDesk() {
                   <span>{selectedSubAdmin.name} ({selectedSubAdmin.email})</span>
                 </h2>
               </div>
-              <button
-                onClick={() => setSelectedSubAdmin(null)}
-                className="text-gray-400 hover:text-white p-2 rounded-xl hover:bg-white/10"
-              >
-                ✕
-              </button>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setTargetEnrollEmail(selectedSubAdmin.email);
+                    setShowFaceEnrollModal(true);
+                  }}
+                  className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs uppercase rounded-xl shadow-md flex items-center gap-1.5"
+                >
+                  <span>Enroll / Reset Face</span>
+                </button>
+
+                <button
+                  onClick={() => setSelectedSubAdmin(null)}
+                  className="text-gray-400 hover:text-white p-2 rounded-xl hover:bg-white/10"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             {/* MONTH NAV & LEGEND */}
@@ -1119,6 +1271,26 @@ export default function SuperAdminAttendanceDesk() {
                 Confirm Rejection
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUPER ADMIN REMOTE FACE ENROLLMENT MODAL */}
+      {showFaceEnrollModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <div className="bg-[#0f0f0f] border border-white/15 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b border-white/10 pb-3">
+              <h3 className="text-sm font-bold text-cyan-300 uppercase">Super Admin Face Biometric Setup ({targetEnrollEmail})</h3>
+              <button onClick={() => setShowFaceEnrollModal(false)} className="text-gray-400 hover:text-white font-bold">✕</button>
+            </div>
+
+            <FaceAttendanceManager
+              targetEmail={targetEnrollEmail}
+              onAttendanceSuccess={() => {
+                showAlert(`Face biometric profile updated for ${targetEnrollEmail}`);
+                setShowFaceEnrollModal(false);
+              }}
+            />
           </div>
         </div>
       )}

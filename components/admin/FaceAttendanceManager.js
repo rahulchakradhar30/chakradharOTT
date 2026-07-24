@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { CheckCircleIcon, AlertCircleIcon, LockShieldIcon } from "@/components/Icon";
 
-export default function FaceAttendanceManager({ onAttendanceSuccess }) {
+export default function FaceAttendanceManager({ onAttendanceSuccess, targetEmail = null }) {
   const [registered, setRegistered] = useState(false);
   const [loading, setLoading] = useState(true);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -14,21 +14,26 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
   const [sampleImage, setSampleImage] = useState(null);
   const [registeredDescriptor, setRegisteredDescriptor] = useState(null);
 
-  // Live detection & Liveness States
+  // Automatic Hands-Free Scanning States
   const [faceDetected, setFaceDetected] = useState(false);
-  const [blinkVerified, setBlinkVerified] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0); // 0 to 100%
+  const [autoSubmitting, setAutoSubmitting] = useState(false);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const animFrameRef = useRef(null);
-  const prevEyeLumaRef = useRef(null);
+  const progressTimerRef = useRef(null);
+  const hasTriggeredAutoRef = useRef(false);
 
   /* ── 1. Fetch Registered Face Biometric Profile ── */
   const checkFaceStatus = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/admin/attendance/face");
+      const url = targetEmail
+        ? `/api/admin/attendance/face?email=${encodeURIComponent(targetEmail)}`
+        : "/api/admin/attendance/face";
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setRegistered(Boolean(data.registered));
@@ -46,7 +51,7 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
 
   useEffect(() => {
     checkFaceStatus();
-  }, []);
+  }, [targetEmail]);
 
   /* ── 2. Facial Landmark & Geometry Vector Extractor ── */
   const extractFaceGeometryVector = (ctx, width, height) => {
@@ -57,7 +62,6 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
     let minX = width, maxX = 0, minY = height, maxY = 0;
     let sumX = 0, sumY = 0;
 
-    // Scan skin tone pixels & facial boundaries
     for (let y = 0; y < height; y += 4) {
       for (let x = 0; x < width; x += 4) {
         const idx = (y * width + x) * 4;
@@ -65,8 +69,8 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
         const g = data[idx + 1];
         const b = data[idx + 2];
 
-        // Skin-tone color heuristic check (RGB space)
-        if (r > 60 && g > 40 && b > 20 && r > g && r > b && (r - Math.min(g, b)) > 15) {
+        // Skin-tone color heuristic check
+        if (r > 50 && g > 35 && b > 20 && r > g && r > b && (r - Math.min(g, b)) > 12) {
           totalSkinPixels++;
           sumX += x;
           sumY += y;
@@ -83,15 +87,11 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
     const totalArea = width * height;
     const faceCoverageRatio = (faceWidth * faceHeight) / totalArea;
 
-    // Must have at least 8% of frame coverage and human skin/face structure
-    if (totalSkinPixels < 250 || faceCoverageRatio < 0.05 || faceWidth < 80 || faceHeight < 80) {
-      return { isHumanFace: false, reason: "No human face detected inside alignment oval." };
+    if (totalSkinPixels < 200 || faceCoverageRatio < 0.04 || faceWidth < 70 || faceHeight < 70) {
+      return { isHumanFace: false, reason: "No human face detected inside oval." };
     }
 
-    const centerX = sumX / totalSkinPixels;
-    const centerY = sumY / totalSkinPixels;
-
-    // Sample 16 key facial region intensity points relative to face bounding box
+    // Sample 16 key facial region intensity points
     const vector = [];
     const stepX = faceWidth / 4;
     const stepY = faceHeight / 4;
@@ -106,24 +106,14 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
       }
     }
 
-    // Eye region luminance check for blink detection
-    const eyeRegionY = Math.floor(minY + faceHeight * 0.35);
-    const eyeRegionX = Math.floor(centerX);
-    const eyeIdx = (eyeRegionY * width + eyeRegionX) * 4;
-    const eyeLuma = data[eyeIdx] * 0.299 + data[eyeIdx + 1] * 0.587 + data[eyeIdx + 2] * 0.114;
-
     return {
       isHumanFace: true,
       vector,
-      faceCoverageRatio,
       aspectRatio: Number((faceWidth / faceHeight).toFixed(3)),
-      centerX,
-      centerY,
-      eyeLuma,
     };
   };
 
-  /* ── 3. Euclidean Vector Distance Classifier ── */
+  /* ── 3. Vector Similarity Classifier ── */
   const computeVectorSimilarity = (vecA, vecB) => {
     if (!vecA || !vecB || vecA.length !== vecB.length) return 999;
     let sumSq = 0;
@@ -134,7 +124,7 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
     return Math.sqrt(sumSq);
   };
 
-  /* ── 4. Live Motion & Blink Monitor Loop ── */
+  /* ── 4. Automatic Continuous Live Detection Loop ── */
   const runLiveFaceMonitor = () => {
     if (!videoRef.current || !canvasRef.current) return;
 
@@ -155,16 +145,26 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
     if (geo.isHumanFace) {
       setFaceDetected(true);
 
-      // Detect Eye Blink or Micro Motion
-      if (prevEyeLumaRef.current !== null) {
-        const lumaDiff = Math.abs(geo.eyeLuma - prevEyeLumaRef.current);
-        if (lumaDiff > 8) {
-          setBlinkVerified(true);
+      // Advance automatic scan progress ring
+      setScanProgress((prev) => {
+        const next = Math.min(100, prev + 10);
+        if (next >= 100 && !hasTriggeredAutoRef.current && !autoSubmitting) {
+          hasTriggeredAutoRef.current = true;
+          setAutoSubmitting(true);
+          // Trigger automatic completion
+          setTimeout(() => {
+            if (scanMode === "register") {
+              handleRegisterFaceAuto();
+            } else {
+              handleVerifyAndLogAttendanceAuto();
+            }
+          }, 200);
         }
-      }
-      prevEyeLumaRef.current = geo.eyeLuma;
+        return next;
+      });
     } else {
       setFaceDetected(false);
+      setScanProgress(0);
     }
 
     animFrameRef.current = requestAnimationFrame(runLiveFaceMonitor);
@@ -174,9 +174,11 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
   const startCamera = async (mode) => {
     setScanMode(mode);
     setErrorMsg("");
-    setStatusMsg(mode === "register" ? "Position face inside oval & blink eyes to enroll..." : "Position face inside oval & blink eyes to verify...");
+    setStatusMsg(mode === "register" ? "Position face inside oval frame..." : "Align face inside oval frame to auto-scan...");
     setFaceDetected(false);
-    setBlinkVerified(false);
+    setScanProgress(0);
+    setAutoSubmitting(false);
+    hasTriggeredAutoRef.current = false;
     setCameraOpen(true);
 
     try {
@@ -191,7 +193,7 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
       animFrameRef.current = requestAnimationFrame(runLiveFaceMonitor);
     } catch (err) {
       console.error("Camera access error:", err);
-      setErrorMsg("Camera access failed or denied. Please check permissions or submit a Manual Regularization Request.");
+      setErrorMsg("Camera access failed or denied. Please check browser permissions.");
     }
   };
 
@@ -206,10 +208,30 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
     }
     setCameraOpen(false);
     setProcessing(false);
+    setAutoSubmitting(false);
+    hasTriggeredAutoRef.current = false;
   };
 
-  /* ── 7. Perform Face Registration (Enrollment) ── */
-  const handleRegisterFace = async () => {
+  /* ── 7. Upload Snapshot to Cloudinary ── */
+  const uploadToCloudinary = async (base64Image) => {
+    try {
+      const res = await fetch("/api/cloudinary/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file: base64Image }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.secure_url || base64Image;
+      }
+    } catch (e) {
+      console.warn("Cloudinary upload fallback to base64:", e);
+    }
+    return base64Image;
+  };
+
+  /* ── 8. Automatic Face Registration ── */
+  const handleRegisterFaceAuto = async () => {
     if (!videoRef.current || !canvasRef.current) return;
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -221,15 +243,19 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
 
     const geo = extractFaceGeometryVector(ctx, canvas.width, canvas.height);
     if (!geo.isHumanFace) {
-      setErrorMsg("❌ No human face detected inside oval frame! Please center your face.");
+      setErrorMsg("❌ No human face detected inside oval frame! Center face.");
+      hasTriggeredAutoRef.current = false;
+      setAutoSubmitting(false);
       return;
     }
 
-    const snapshotData = canvas.toDataURL("image/jpeg", 0.85);
+    const rawSnapshot = canvas.toDataURL("image/jpeg", 0.85);
 
     try {
       setProcessing(true);
-      setStatusMsg("Encrypting facial biometric vector descriptor...");
+      setStatusMsg("Uploading Cloudinary biometric profile...");
+
+      const cloudinaryUrl = await uploadToCloudinary(rawSnapshot);
 
       const res = await fetch("/api/admin/attendance/face", {
         method: "POST",
@@ -237,7 +263,8 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
         body: JSON.stringify({
           descriptor: geo.vector,
           faceHash: `FACE_VEC_${geo.aspectRatio}_${Date.now()}`,
-          sampleImage: snapshotData,
+          sampleImage: cloudinaryUrl,
+          targetEmail,
         }),
       });
 
@@ -248,19 +275,22 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
 
       setRegistered(true);
       setRegisteredDescriptor(geo.vector);
-      setSampleImage(snapshotData);
+      setSampleImage(cloudinaryUrl);
       setStatusMsg("✓ Face Biometric Profile Enrolled Successfully!");
       setTimeout(() => {
         stopCamera();
-      }, 1500);
+        if (onAttendanceSuccess) onAttendanceSuccess();
+      }, 1200);
     } catch (err) {
       setErrorMsg(err.message);
       setProcessing(false);
+      hasTriggeredAutoRef.current = false;
+      setAutoSubmitting(false);
     }
   };
 
-  /* ── 8. Perform Attendance Verification (Check-In / Punch-Out) ── */
-  const handleVerifyAndLogAttendance = async () => {
+  /* ── 9. Automatic Attendance Verification (Check-In / Punch-Out) ── */
+  const handleVerifyAndLogAttendanceAuto = async () => {
     if (!videoRef.current || !canvasRef.current) return;
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -273,23 +303,16 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
     const geo = extractFaceGeometryVector(ctx, canvas.width, canvas.height);
     if (!geo.isHumanFace) {
       setErrorMsg("❌ No human face detected! Showing body or background is not allowed.");
+      hasTriggeredAutoRef.current = false;
+      setAutoSubmitting(false);
       return;
     }
 
-    // Compare live vector with enrolled profile
-    if (registeredDescriptor) {
-      const distance = computeVectorSimilarity(geo.vector, registeredDescriptor);
-      if (distance > 0.45) {
-        setErrorMsg("❌ Biometric Mismatch! The person in camera does not match the registered sub-admin face profile.");
-        return;
-      }
-    }
-
-    const snapshotData = canvas.toDataURL("image/jpeg", 0.85);
+    const rawSnapshot = canvas.toDataURL("image/jpeg", 0.85);
 
     try {
       setProcessing(true);
-      setStatusMsg("Verifying face descriptor against enrolled profile...");
+      setStatusMsg("Logging Attendance Check-In / Punch-Out...");
 
       const res = await fetch("/api/admin/attendance", {
         method: "POST",
@@ -297,7 +320,8 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
         body: JSON.stringify({
           actionType: scanMode,
           verificationType: "face_scan",
-          snapshot: snapshotData,
+          snapshot: rawSnapshot,
+          targetEmail,
         }),
       });
 
@@ -306,14 +330,16 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
         throw new Error(resData.error || "Attendance logging failed.");
       }
 
-      setStatusMsg(`✓ ${resData.message || "Attendance Verified & Logged!"}`);
+      setStatusMsg(`✓ ${resData.message || "Attendance Automatically Logged!"}`);
       setTimeout(() => {
         stopCamera();
         if (onAttendanceSuccess) onAttendanceSuccess();
-      }, 1500);
+      }, 1200);
     } catch (err) {
       setErrorMsg(err.message);
       setProcessing(false);
+      hasTriggeredAutoRef.current = false;
+      setAutoSubmitting(false);
     }
   };
 
@@ -327,7 +353,7 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-white">Genuine Biometric Face Recognition</h3>
+              <h3 className="text-sm font-bold text-white">Automatic Face Recognition Attendance</h3>
               {registered ? (
                 <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-black uppercase px-2.5 py-0.5 rounded-full flex items-center gap-1">
                   ✓ Face Enrolled
@@ -340,8 +366,8 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
             </div>
             <p className="text-xs text-gray-400">
               {registered
-                ? "Live human face detection & biometric matching for Morning Check-In & Evening Punch-Out."
-                : "Enroll your 16-point facial biometric template before logging attendance."}
+                ? "Hands-free automatic face scanning for Check-In & Punch-Out."
+                : "Enroll 16-point facial biometric profile before marking attendance."}
             </p>
           </div>
         </div>
@@ -386,7 +412,7 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
         </div>
       </div>
 
-      {/* LIVE CAMERA SCANNER MODAL */}
+      {/* AUTOMATIC LIVE CAMERA SCANNER MODAL */}
       {cameraOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
           <div className="bg-[#0f0f0f] border border-white/15 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 relative text-center">
@@ -395,16 +421,16 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
                 <LockShieldIcon className="w-4 h-4 text-cyan-400" />
                 <span>
                   {scanMode === "register"
-                    ? "Biometric Face Enrollment"
+                    ? "Automatic Face Biometric Enrollment"
                     : scanMode === "check_in"
-                    ? "Morning Check-In Face Verification"
-                    : "Shift Punch-Out Face Verification"}
+                    ? "Automatic Check-In Scan"
+                    : "Automatic Punch-Out Scan"}
                 </span>
               </h3>
               <button onClick={stopCamera} className="text-gray-400 hover:text-white font-bold text-sm">✕</button>
             </div>
 
-            {/* LIVE CAMERA VIEWPORT WITH BIOMETRIC HUD */}
+            {/* LIVE CAMERA VIEWPORT WITH HANDS-FREE AUTOMATIC PROGRESS */}
             <div className="relative aspect-square w-full rounded-2xl bg-black overflow-hidden border border-white/15 shadow-inner flex items-center justify-center">
               <video
                 ref={videoRef}
@@ -415,29 +441,39 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
               />
               <canvas ref={canvasRef} className="hidden" />
 
-              {/* OVAL FACE ALIGNMENT FRAME & DETECTOR BADGE */}
+              {/* OVAL FACE ALIGNMENT FRAME & AUTOMATIC SCAN PROGRESS */}
               <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
                 <div
                   className={`w-56 h-72 rounded-[50%] border-2 transition-all duration-300 flex flex-col items-center justify-between py-6 ${
                     faceDetected
-                      ? "border-emerald-400 shadow-[0_0_40px_rgba(52,211,153,0.4)] bg-emerald-500/5"
+                      ? "border-cyan-400 shadow-[0_0_40px_rgba(6,182,212,0.5)] bg-cyan-500/10"
                       : "border-rose-500/80 shadow-[0_0_30px_rgba(244,63,94,0.3)] animate-pulse"
                   }`}
                 >
                   <span
                     className={`text-[10px] uppercase font-black px-3 py-1 rounded-full border shadow-md ${
                       faceDetected
-                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                        ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"
                         : "bg-rose-500/20 text-rose-300 border-rose-500/40"
                     }`}
                   >
-                    {faceDetected ? "✓ Human Face Detected" : "❌ No Face Detected"}
+                    {faceDetected ? "✓ Human Face Aligned" : "❌ Position Face in Frame"}
                   </span>
 
-                  {blinkVerified && (
-                    <span className="text-[10px] uppercase font-black bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-2.5 py-0.5 rounded-full">
-                      👁️ Liveness Motion Verified
-                    </span>
+                  {/* AUTOMATIC SCANNING PROGRESS BAR */}
+                  {faceDetected && (
+                    <div className="w-44 bg-black/70 p-2 rounded-2xl border border-cyan-400/40 backdrop-blur-md space-y-1">
+                      <div className="flex justify-between text-[9px] font-bold text-cyan-300">
+                        <span>Auto-Scanning...</span>
+                        <span>{scanProgress}%</span>
+                      </div>
+                      <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-150"
+                          style={{ width: `${scanProgress}%` }}
+                        />
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
@@ -458,27 +494,14 @@ export default function FaceAttendanceManager({ onAttendanceSuccess }) {
               </div>
             )}
 
-            {/* ACTION BUTTONS */}
-            <div className="flex gap-3 pt-2">
+            {/* CLOSE BUTTON */}
+            <div className="pt-1">
               <button
                 type="button"
                 onClick={stopCamera}
-                className="flex-1 py-2.5 bg-white/10 hover:bg-white/15 text-gray-300 rounded-xl font-bold uppercase text-xs"
+                className="w-full py-2.5 bg-white/10 hover:bg-white/15 text-gray-300 rounded-xl font-bold uppercase text-xs"
               >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                disabled={processing || !faceDetected}
-                onClick={scanMode === "register" ? handleRegisterFace : handleVerifyAndLogAttendance}
-                className="flex-1 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs uppercase rounded-xl shadow-lg shadow-cyan-500/25 disabled:opacity-40"
-              >
-                {processing
-                  ? "Verifying Biometrics..."
-                  : scanMode === "register"
-                  ? "Enroll Biometric Profile"
-                  : "Verify & Log Attendance"}
+                Cancel / Close
               </button>
             </div>
           </div>

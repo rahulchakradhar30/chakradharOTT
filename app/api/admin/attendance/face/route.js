@@ -6,7 +6,7 @@ import { logServerEvent } from "@/lib/auditLog";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/* ── GET: Check face registration status & template ── */
+/* ── GET: Check face registration status & descriptor template ── */
 export async function GET(req) {
   try {
     const token = req.cookies.get("admin-session")?.value || "";
@@ -40,6 +40,7 @@ export async function GET(req) {
       email: cleanEmail,
       updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
       sampleImage: data.sampleImage || null,
+      descriptor: data.descriptor || null,
     });
   } catch (error) {
     console.error("Fetch face profile error:", error);
@@ -47,7 +48,7 @@ export async function GET(req) {
   }
 }
 
-/* ── POST: Register / Enroll sub-admin face profile ── */
+/* ── POST: Register / Enroll sub-admin face biometric profile ── */
 export async function POST(req) {
   try {
     const token = req.cookies.get("admin-session")?.value || "";
@@ -57,18 +58,19 @@ export async function POST(req) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { faceHash, sampleImage } = await req.json();
+    const { faceHash, sampleImage, descriptor } = await req.json();
     const cleanEmail = callerEmail.toLowerCase().trim();
 
-    if (!faceHash) {
-      return NextResponse.json({ error: "Face feature descriptor is required." }, { status: 400 });
+    if (!faceHash && !descriptor) {
+      return NextResponse.json({ error: "Facial biometric descriptor is required." }, { status: 400 });
     }
 
     const faceRef = adminDb.collection("admin_faces").doc(cleanEmail);
 
     await faceRef.set({
       email: cleanEmail,
-      faceHash,
+      faceHash: faceHash || "FACIAL_VEC",
+      descriptor: descriptor || null,
       sampleImage: sampleImage || null,
       updatedAt: new Date(),
       enrolledBy: cleanEmail,
@@ -78,7 +80,7 @@ export async function POST(req) {
 
     return NextResponse.json({
       success: true,
-      message: `Face biometric profile registered successfully for ${cleanEmail}.`,
+      message: `Genuine face biometric profile enrolled successfully for ${cleanEmail}.`,
     });
   } catch (error) {
     console.error("Enroll face profile error:", error);

@@ -37,6 +37,8 @@ export async function GET(req) {
         id: docSnap.id,
         ...d,
         loginTime: d.loginTime?.toDate ? d.loginTime.toDate().toISOString() : d.loginTime,
+        checkInTime: d.checkInTime?.toDate ? d.checkInTime.toDate().toISOString() : d.checkInTime,
+        checkOutTime: d.checkOutTime?.toDate ? d.checkOutTime.toDate().toISOString() : d.checkOutTime,
         lastActiveTime: d.lastActiveTime?.toDate ? d.lastActiveTime.toDate().toISOString() : d.lastActiveTime,
       });
     });
@@ -107,7 +109,7 @@ export async function POST(req) {
       });
     }
 
-    // Default: Self daily login record
+    // Check-In or Punch-Out Attendance Logging
     const cleanEmail = callerEmail.toLowerCase().trim();
     const todayStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
     const docId = `${cleanEmail}_${todayStr}`;
@@ -116,27 +118,71 @@ export async function POST(req) {
     const docSnap = await attRef.get();
     const now = new Date();
 
-    if (!docSnap.exists) {
-      // First login of the day → mark present
+    const actionType = body.actionType; // 'check_in' or 'punch_out'
+    const verificationType = body.verificationType || "face_scan";
+
+    if (actionType === "check_in" || (!docSnap.exists && !actionType)) {
+      // Perform Check-In (Morning Present)
       await attRef.set({
         email: cleanEmail,
         date: todayStr,
         status: "present",
         loginTime: now,
+        checkInTime: now,
         lastActiveTime: now,
-        autoRecorded: true,
+        verificationType,
+        faceSnapshot: body.snapshot || null,
+        autoRecorded: false,
         overrideBy: null,
-      });
+      }, { merge: true });
 
-      await logServerEvent("attendance_logged", { email: cleanEmail, date: todayStr });
-    } else {
-      // Update last active timestamp if not manually overridden
-      const currentData = docSnap.data();
-      if (currentData.status === "present") {
-        await attRef.update({
-          lastActiveTime: now,
-        });
-      }
+      await logServerEvent("attendance_check_in", { email: cleanEmail, date: todayStr, verificationType });
+      return NextResponse.json({
+        success: true,
+        action: "check_in",
+        date: todayStr,
+        checkInTime: now.toISOString(),
+        message: "Morning Check-In completed successfully!",
+      });
+    }
+
+    if (actionType === "punch_out") {
+      // Perform Evening Punch-Out (Take Off Time)
+      const existingData = docSnap.exists ? docSnap.data() : {};
+      const checkInDate = existingData.checkInTime?.toDate
+        ? existingData.checkInTime.toDate()
+        : (existingData.loginTime?.toDate ? existingData.loginTime.toDate() : now);
+
+      const diffMs = now.getTime() - checkInDate.getTime();
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      const durationStr = `${diffHours}h ${diffMins}m`;
+
+      await attRef.set({
+        email: cleanEmail,
+        date: todayStr,
+        status: "present",
+        checkOutTime: now,
+        lastActiveTime: now,
+        shiftDuration: durationStr,
+        punchOutVerification: verificationType,
+        punchOutSnapshot: body.snapshot || null,
+      }, { merge: true });
+
+      await logServerEvent("attendance_punch_out", { email: cleanEmail, date: todayStr, durationStr });
+      return NextResponse.json({
+        success: true,
+        action: "punch_out",
+        date: todayStr,
+        checkOutTime: now.toISOString(),
+        shiftDuration: durationStr,
+        message: `Shift Punch-Out recorded! Total shift time: ${durationStr}`,
+      });
+    }
+
+    // Default passive active heartbeat
+    if (docSnap.exists && docSnap.data().status === "present") {
+      await attRef.update({ lastActiveTime: now });
     }
 
     return NextResponse.json({ success: true, date: todayStr, status: "present" });

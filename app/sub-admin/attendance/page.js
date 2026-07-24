@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import SubAdminAccessGuard from "@/components/admin/SubAdminAccessGuard";
 import ImageUploadSelector from "@/components/ImageUploadSelector";
+import FaceAttendanceManager from "@/components/admin/FaceAttendanceManager";
 import {
   CalendarIcon,
   PalmtreeIcon,
@@ -161,6 +162,10 @@ export default function SubAdminAttendancePage() {
         status,
         notes: rec?.notes || (matchingLeave ? `Approved ${matchingLeave.leaveType}` : ""),
         loginTime: rec?.loginTime,
+        checkInTime: rec?.checkInTime,
+        checkOutTime: rec?.checkOutTime,
+        shiftDuration: rec?.shiftDuration,
+        verificationType: rec?.verificationType,
       });
     }
 
@@ -369,6 +374,9 @@ export default function SubAdminAttendancePage() {
           </div>
         </div>
 
+        {/* BIOMETRIC FACE RECOGNITION ATTENDANCE CONTROL PANEL */}
+        <FaceAttendanceManager onAttendanceSuccess={loadData} />
+
         {/* ACTIVE LEAVE WARNING BANNER WITH CLEAR LEAVE ACTION */}
         {activeApprovedLeave && (
           <div className="p-5 rounded-3xl bg-amber-500/10 border border-amber-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
@@ -530,6 +538,21 @@ export default function SubAdminAttendancePage() {
 
                   <div className="truncate space-y-0.5">
                     {badge}
+                    {cell.checkInTime && (
+                      <p className="text-[9px] truncate text-emerald-300 font-medium">
+                        In: {new Date(cell.checkInTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    )}
+                    {cell.checkOutTime && (
+                      <p className="text-[9px] truncate text-indigo-300 font-medium">
+                        Out: {new Date(cell.checkOutTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    )}
+                    {cell.shiftDuration && (
+                      <p className="text-[8px] truncate text-cyan-300 font-bold">
+                        Duration: {cell.shiftDuration}
+                      </p>
+                    )}
                     {cell.notes && (
                       <p className="text-[9px] truncate text-gray-400">{cell.notes}</p>
                     )}

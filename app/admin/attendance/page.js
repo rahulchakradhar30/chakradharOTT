@@ -179,6 +179,10 @@ export default function SuperAdminAttendanceDesk() {
         status,
         notes: rec?.notes || (matchingLeave ? `Approved ${matchingLeave.leaveType}` : ""),
         loginTime: rec?.loginTime,
+        checkInTime: rec?.checkInTime,
+        checkOutTime: rec?.checkOutTime,
+        shiftDuration: rec?.shiftDuration,
+        verificationType: rec?.verificationType,
         record: rec || null,
       });
     }
@@ -816,8 +820,27 @@ export default function SuperAdminAttendanceDesk() {
                         {badge}
                       </div>
 
-                      <div className="truncate text-[9px] text-gray-400">
-                        {cell.status ? cell.status.toUpperCase() : "Unmarked"}
+                      <div className="truncate text-[9px] space-y-0.5">
+                        {cell.checkInTime && (
+                          <p className="text-emerald-300 font-medium truncate">
+                            In: {new Date(cell.checkInTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        )}
+                        {cell.checkOutTime && (
+                          <p className="text-indigo-300 font-medium truncate">
+                            Out: {new Date(cell.checkOutTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        )}
+                        {cell.verificationType === "face_scan" && (
+                          <span className="text-[8px] text-cyan-300 font-bold block truncate">
+                            🟢 Face Verified
+                          </span>
+                        )}
+                        {!cell.checkInTime && !cell.checkOutTime && (
+                          <span className="text-gray-400 truncate block">
+                            {cell.status ? cell.status.toUpperCase() : "Unmarked"}
+                          </span>
+                        )}
                       </div>
                     </button>
                   );

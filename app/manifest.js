@@ -3,7 +3,7 @@ import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/seo";
 export default function manifest() {
   return {
     name: SITE_NAME,
-    short_name: "Chakradhar",
+    short_name: "Chakradhar Stream",
     description: SITE_DESCRIPTION,
     start_url: "/",
     scope: "/",
@@ -13,21 +13,40 @@ export default function manifest() {
     orientation: "portrait-primary",
     icons: [
       {
-        src: "/favicon.ico",
-        sizes: "any",
-        type: "image/x-icon",
+        src: "/favicon-48x48.png",
+        sizes: "48x48",
+        type: "image/png",
+        purpose: "any",
       },
       {
-        src: "/favicon.ico",
+        src: "/icon-96x96.png",
+        sizes: "96x96",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icon-192x192.png",
         sizes: "192x192",
-        type: "image/x-icon",
+        type: "image/png",
         purpose: "any maskable",
       },
       {
-        src: "/favicon.ico",
+        src: "/icon-512x512.png",
         sizes: "512x512",
-        type: "image/x-icon",
+        type: "image/png",
         purpose: "any maskable",
+      },
+      {
+        src: "/apple-touch-icon.png",
+        sizes: "180x180",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icon.svg",
+        sizes: "any",
+        type: "image/svg+xml",
+        purpose: "any",
       },
     ],
   };

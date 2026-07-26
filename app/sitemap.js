@@ -34,7 +34,8 @@ function toDate(value) {
 }
 
 function createUrl(path) {
-  return `${SITE_URL}${path}`;
+  if (path === "/") return `${SITE_URL}/`;
+  return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 /**
@@ -65,7 +66,7 @@ export default async function sitemap() {
     console.error("Sitemap generation error:", error);
   }
 
-  // Parse and extract unique genres, filtering out null/undefined/empty/malformed values
+  // Parse and extract unique genres
   const genreSet = new Set();
   [...movies, ...premieres].forEach((item) => {
     if (item?.genre) {
@@ -83,7 +84,6 @@ export default async function sitemap() {
     }
   });
 
-  // Map unique genres to unique slugs to prevent duplicates
   const uniqueGenres = Array.from(genreSet);
   const slugSet = new Set();
   const dynamicGenres = [];
@@ -99,7 +99,6 @@ export default async function sitemap() {
     }
   });
 
-  // Filter and validate movies to remove drafts or entries with malformed/missing IDs
   const validMovies = movies.filter(
     (movie) =>
       movie &&
@@ -111,7 +110,6 @@ export default async function sitemap() {
       movie.id.toLowerCase() !== "null"
   );
 
-  // Filter and validate premieres to remove drafts or entries with malformed/missing IDs
   const validPremieres = premieres.filter(
     (premiere) =>
       premiere &&
@@ -150,4 +148,3 @@ export default async function sitemap() {
     })),
   ];
 }
-

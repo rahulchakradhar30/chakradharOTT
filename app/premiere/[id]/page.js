@@ -45,45 +45,22 @@ export async function generateMetadata({ params }) {
     const description = toText(premiere.description, "") || `Watch ${title} on Chakradhar Stream.`;
     const image = toText(premiere.bannerImage || premiere.thumbnailImage, "/homepage-banner.jpg");
 
-    return {
+    return buildBaseMetadata({
       title: `${title} | Chakradhar Stream`,
       description,
+      path: `/premiere/${id}`,
+      image,
       keywords: [title, "TV Series", "Chakradhar Stream", "Premiere", toText(premiere.genre, "")].filter(Boolean),
-      alternates: {
-        canonical: `/premiere/${id}`,
-      },
-      robots: {
-        index: true,
-        follow: true,
-        googleBot: {
-          index: true,
-          follow: true,
-        },
-      },
-      openGraph: {
-        title,
-        description,
-        url: `/premiere/${id}`,
-        type: "video.tv_show",
-        images: [
-          {
-            url: image,
-            width: 1200,
-            height: 630,
-            alt: title,
-          },
-        ],
-      },
-      twitter: {
-        card: "summary_large_image",
-        title,
-        description,
-        images: [image],
-      },
-    };
+      type: "video.tv_show",
+      openGraphTitle: `${title} | Chakradhar Stream`,
+      openGraphDescription: description,
+    });
   } catch (error) {
     console.error("Premiere metadata error:", error);
-    return {};
+    return buildBaseMetadata({
+      title: "Premiere | Chakradhar Stream",
+      path: `/premiere/${id}`,
+    });
   }
 }
 

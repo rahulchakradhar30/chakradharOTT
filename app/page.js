@@ -1,34 +1,23 @@
-import { buildBaseMetadata, absoluteUrl, jsonLdScript, SITE_NAME, SITE_URL } from "@/lib/seo";
+import {
+  buildBaseMetadata,
+  jsonLdScript,
+  buildWebSiteJsonLd,
+  buildOrganizationJsonLd,
+  SITE_NAME,
+  SITE_DESCRIPTION,
+} from "@/lib/seo";
 import HomeClient from "./HomeClient";
 
 export const metadata = buildBaseMetadata({
-  title: "Chakradhar Stream – Watch Movies & Series Online",
-  description: "Chakradhar Stream is a premium streaming platform to watch movies, series, and exclusive live premiere content.",
+  title: `${SITE_NAME} – Watch Movies & Series Online`,
+  description: SITE_DESCRIPTION,
   path: "/",
 });
 
-const websiteJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  "name": SITE_NAME,
-  "url": SITE_URL,
-  "potentialAction": {
-    "@type": "SearchAction",
-    "target": `${SITE_URL}/search?q={search_term_string}`,
-    "query-input": "required name=search_term_string",
-  },
-};
-
-const organizationJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  "name": SITE_NAME,
-  "url": SITE_URL,
-  "logo": absoluteUrl("/favicon.ico"),
-  "sameAs": [],
-};
-
 export default function HomePage() {
+  const websiteJsonLd = buildWebSiteJsonLd();
+  const organizationJsonLd = buildOrganizationJsonLd();
+
   return (
     <>
       <script

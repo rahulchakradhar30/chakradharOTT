@@ -6,6 +6,14 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import {
+  buildBaseMetadata,
+  buildMovieJsonLd,
+  buildVideoObjectJsonLd,
+  buildBreadcrumbJsonLd,
+  jsonLdScript,
+  absoluteUrl,
+} from "@/lib/seo";
 import ViewTracker from "@/components/ViewTracker";
 import MovieActionBar from "@/components/MovieActionBar";
 import MovieVideoSection from "@/components/MovieVideoSection";
@@ -47,44 +55,21 @@ export async function generateMetadata({ params }) {
     const description = movie.description?.slice(0, 160) || movie.tagline || "Watch premium movies on Chakradhar Stream.";
     const image = movie.bannerImage || movie.posterImage || "/homepage-banner.jpg";
 
-    return {
+    return buildBaseMetadata({
       title: `${title} | Chakradhar Stream`,
       description,
+      path: `/movie/${id}`,
+      image,
       keywords: [title, movie.genre, "Chakradhar Stream", "Movies", "Streaming"].filter(Boolean),
-      alternates: {
-        canonical: `/movie/${id}`,
-      },
-      robots: {
-        index: true,
-        follow: true,
-        googleBot: {
-          index: true,
-          follow: true,
-        },
-      },
-      openGraph: {
-        title,
-        description,
-        url: `/movie/${id}`,
-        type: "article",
-        images: [
-          {
-            url: image,
-            width: 1200,
-            height: 630,
-            alt: title,
-          },
-        ],
-      },
-      twitter: {
-        card: "summary_large_image",
-        title,
-        description,
-        images: [image],
-      },
-    };
+      type: "video.movie",
+      openGraphTitle: `${title} | Chakradhar Stream`,
+      openGraphDescription: description,
+    });
   } catch {
-    return {};
+    return buildBaseMetadata({
+      title: "Movie | Chakradhar Stream",
+      path: `/movie/${id}`,
+    });
   }
 }
 
@@ -160,9 +145,32 @@ export default async function MovieDetail({ params }) {
   const recommendedMovies = allMoviesSnap.docs
     .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
     .filter((m) => m.id !== id);
+  const movieJsonLd = buildMovieJsonLd({ id, ...movie, title, description, genre, director, cast, bannerImage: banner }, `/movie/${id}`);
+  const videoObjectJsonLd = buildVideoObjectJsonLd({ id, ...movie, title, description, bannerImage: banner, videoUrl, embedLink }, `/movie/${id}`);
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "Home", path: "/" },
+    { name: "Movies", path: "/movies" },
+    { name: title, path: `/movie/${id}` }
+  ]);
 
   return (
     <div className="min-h-screen bg-[#0f0f0f] text-white px-3 sm:px-6 md:px-10 lg:px-14 py-6">
+      {movieJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLdScript(movieJsonLd) }}
+        />
+      )}
+      {videoObjectJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLdScript(videoObjectJsonLd) }}
+        />
+      )}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(breadcrumbJsonLd) }}
+      />
       <ViewTracker movieId={id} />
 
       {/* YOUTUBE WATCH PAGE MAIN LAYOUT GRID */}

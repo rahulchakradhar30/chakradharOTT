@@ -157,14 +157,14 @@ function CinematicHero({ movie, loading }) {
           </motion.div>
 
           {/* Title */}
-          <motion.h1
+          <motion.h2
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.1 }}
             className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.95] drop-shadow-2xl"
           >
             {movie.title}
-          </motion.h1>
+          </motion.h2>
 
           {/* Description */}
           <motion.p
@@ -552,6 +552,7 @@ export default function HomeClient() {
 
   return (
     <div className="min-h-screen pb-20">
+      <h1 className="sr-only">Chakradhar Stream</h1>
       {loading ? (
         <div className="space-y-12 pb-16">
           {/* Main Hero Banner skeleton */}

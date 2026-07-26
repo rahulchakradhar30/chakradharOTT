@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
@@ -258,7 +259,16 @@ export default function LoginClient() {
         transition={{ duration: 0.35 }}
         className="relative z-10 w-full max-w-md glass-card rounded-[2rem] p-6 md:p-8 shadow-2xl"
       >
-        <p className="admin-kicker mb-2">Chakradhar Stream</p>
+        <div className="flex items-center gap-2 mb-2">
+          <Image
+            src="/apple-touch-icon.png"
+            alt="Logo"
+            width={24}
+            height={24}
+            className="w-6 h-6 rounded-md object-cover border border-cyan-400/30"
+          />
+          <p className="admin-kicker">Chakradhar Stream</p>
+        </div>
         <h1 className="text-3xl font-black mb-6 tracking-tight">
           {mode === "login" ? "Welcome Back" : mode === "register" ? "Create Account" : "Verify Email"}
         </h1>

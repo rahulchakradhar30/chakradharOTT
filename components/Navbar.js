@@ -157,12 +157,21 @@ export default function Navbar() {
               
               <Link
                 href="/"
-                className="whitespace-nowrap tracking-tight"
+                className="flex items-center gap-2.5 whitespace-nowrap tracking-tight group"
               >
-                <span className="text-lg md:text-2xl font-black">CHAKRADHAR</span>{" "}
-                <span className="bg-gradient-to-r from-cyan-300 via-blue-300 to-pink-300 bg-clip-text text-transparent font-black text-lg md:text-2xl">
-                  STREAM
-                </span>
+                <Image
+                  src="/apple-touch-icon.png"
+                  alt="Chakradhar Stream Logo"
+                  width={32}
+                  height={32}
+                  className="w-8 h-8 rounded-lg object-cover border border-cyan-400/30 group-hover:scale-105 transition duration-300 shadow-md shadow-cyan-500/20"
+                />
+                <div>
+                  <span className="text-lg md:text-2xl font-black">CHAKRADHAR</span>{" "}
+                  <span className="bg-gradient-to-r from-cyan-300 via-blue-300 to-pink-300 bg-clip-text text-transparent font-black text-lg md:text-2xl">
+                    STREAM
+                  </span>
+                </div>
               </Link>
             </div>
 
@@ -327,9 +336,18 @@ export default function Navbar() {
             >
               <div className="space-y-8">
                 <div className="flex justify-between items-center pb-4 border-b border-white/10">
-                  <span className="font-black text-[10px] uppercase tracking-widest text-cyan-300 flex items-center gap-1.5">
-                    <FolderIcon className="w-4 h-4 text-cyan-400" /> Navigation menu
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <Image
+                      src="/apple-touch-icon.png"
+                      alt="Logo"
+                      width={24}
+                      height={24}
+                      className="w-6 h-6 rounded-md object-cover border border-cyan-400/30"
+                    />
+                    <span className="font-black text-xs uppercase tracking-widest text-cyan-300">
+                      Navigation Menu
+                    </span>
+                  </div>
                   <button
                     onClick={() => setMobileMenuOpen(false)}
                     className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white"

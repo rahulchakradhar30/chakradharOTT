@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { MailIcon, SendIcon, CheckCircleIcon, StarIcon } from "@/components/Icon";
@@ -72,9 +73,18 @@ export default function Footer() {
           {/* Left section containing brand, links, and support */}
           <div className="lg:col-span-7 grid md:grid-cols-3 gap-8 text-center md:text-left">
             <div className="space-y-3">
-              <h2 className="text-white font-black text-xl tracking-tight">
-                CHAKRADHAR STREAM
-              </h2>
+              <div className="flex items-center justify-center md:justify-start gap-2.5">
+                <Image
+                  src="/apple-touch-icon.png"
+                  alt="Chakradhar Stream Logo"
+                  width={32}
+                  height={32}
+                  className="w-8 h-8 rounded-lg object-cover border border-cyan-400/30"
+                />
+                <h2 className="text-white font-black text-xl tracking-tight">
+                  CHAKRADHAR STREAM
+                </h2>
+              </div>
               <p className="text-xs text-gray-400 max-w-sm leading-relaxed">
                 Premium movies, limited-run premieres, and cinematic storytelling crafted for modern audiences.
               </p>

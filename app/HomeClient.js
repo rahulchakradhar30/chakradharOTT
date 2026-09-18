@@ -14,11 +14,22 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
-import CardWishlistIcon from "@/components/CardWishlistIcon";
 import MovieHoverCard from "@/components/MovieHoverCard";
 import { SkeletonHero, SkeletonGrid } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
-import { SparklesIcon, PlayIcon, ClockIcon, WarningIcon, PosterIcon, WishlistIcon, ChatIcon } from "@/components/Icon";
+import {
+  Sparkles,
+  Play,
+  Clock,
+  AlertTriangle,
+  Flame,
+  ChevronRight,
+  Heart,
+  MessageSquare,
+  Ticket,
+  Film,
+  Compass,
+} from "lucide-react";
 
 function toDateSafe(value) {
   if (!value) return null;
@@ -42,12 +53,12 @@ function toDateSafe(value) {
 function resolvePremiereStatus(data, now, start, display, end) {
   const explicitStatus = String(data?.status || "").trim().toLowerCase();
 
-  // Respect admin-controlled lifecycle first.
+  // Respect admin-controlled lifecycle first
   if (explicitStatus === "live") return "live";
   if (explicitStatus === "ended") return "ended";
   if (explicitStatus === "scheduled") return "scheduled";
 
-  // Fallback to time-based status inference.
+  // Fallback to time-based status inference
   if (end && now >= end) return "ended";
   if (start && now >= start) return "live";
   if (!start && display && now >= display) return "live";
@@ -58,43 +69,27 @@ function SectionHeader({ title, subtitle }) {
   return (
     <div className="flex items-end justify-between gap-4 mb-6 md:mb-8">
       <div>
-        <motion.p
-          initial={{ opacity: 0, x: -20 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-          className="admin-kicker mb-2 text-cyan-300 text-sm tracking-widest"
-        >
-          ✦ Discover
-        </motion.p>
-        <motion.h2
-          initial={{ opacity: 0, x: -20 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.1 }}
-          className="section-title text-3xl md:text-4xl lg:text-5xl font-black bg-gradient-to-r from-white via-cyan-200 to-blue-200 bg-clip-text text-transparent"
-        >
+        <div className="flex items-center gap-2 mb-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+          <p className="text-[11px] uppercase tracking-[0.2em] font-black text-red-400">
+            Discover
+          </p>
+        </div>
+        <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black tracking-tight text-white">
           {title}
-        </motion.h2>
+        </h2>
         {subtitle && (
-          <motion.p
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-            className="text-sm md:text-base text-gray-400 mt-2"
-          >
+          <p className="text-xs sm:text-sm text-gray-400 mt-1.5 max-w-2xl leading-relaxed">
             {subtitle}
-          </motion.p>
+          </p>
         )}
       </div>
       <Link
         href="/movies"
-        className="hidden md:inline-block text-sm text-cyan-300 hover:text-cyan-200 transition font-bold group"
+        className="hidden md:inline-flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-white transition-colors group px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] hover:border-white/20"
       >
-        <span className="inline-flex items-center gap-2">
-          See all
-          <span className="group-hover:translate-x-1 transition-transform">→</span>
-        </span>
+        <span>See all</span>
+        <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
       </Link>
     </div>
   );
@@ -110,92 +105,104 @@ function CinematicHero({ movie, loading }) {
   const image = movie.bannerImage || movie.posterImage || fallback;
 
   return (
-    <section className="relative h-[75vh] md:h-[92vh] w-full overflow-hidden -mt-20 md:-mt-24">
-      {image.startsWith("data:image/") ? (
-        <img
-          src={image}
-          alt={movie.title}
-          className="absolute inset-0 w-full h-full object-cover object-center lg:object-[right_center]"
-        />
-      ) : (
-        <Image 
-          src={image} 
-          alt={movie.title} 
-          fill 
-          priority 
-          className="object-cover object-center lg:object-[right_center]" 
-        />
-      )}
+    <section className="relative h-[80vh] sm:h-[86vh] md:h-[92vh] w-full overflow-hidden -mt-20 md:-mt-24 select-none">
+      {/* Hero Backdrop Image */}
+      <div className="absolute inset-0">
+        {image.startsWith("data:image/") ? (
+          <img
+            src={image}
+            alt={movie.title || "Hero banner"}
+            className="w-full h-full object-cover object-center lg:object-[right_center] scale-105 animate-fadeUp"
+          />
+        ) : (
+          <Image
+            src={image}
+            alt={movie.title || "Hero banner"}
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover object-center lg:object-[right_center] scale-105"
+          />
+        )}
+      </div>
 
-      {/* Multi-layer gradient for premium look */}
-      <div className="absolute inset-0 bg-gradient-to-r from-[#04070f] via-[#04070f]/75 to-transparent" />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#04070f] via-[#04070f]/20 to-transparent" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_25%,rgba(0,212,255,0.15),transparent_40%),radial-gradient(circle_at_20%_20%,rgba(255,77,141,0.08),transparent_30%)]" />
+      {/* Multi-layer luxury cinematic vignette and radial highlights */}
+      <div className="absolute inset-0 bg-gradient-to-r from-[#06070a] via-[#06070a]/80 sm:via-[#06070a]/60 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#06070a] via-[#06070a]/30 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#06070a]/70 via-transparent to-transparent h-40" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(229,9,20,0.15),transparent_50%)] pointer-events-none" />
 
-      {/* Animated glow elements */}
-      <div className="absolute -top-20 -right-20 w-72 h-72 md:w-96 md:h-96 rounded-full bg-cyan-400/10 blur-3xl animate-pulse" />
-      <div className="absolute -bottom-32 -left-20 w-80 h-80 rounded-full bg-purple-500/5 blur-3xl" />
-
-      {/* Content container aligned with Navbar margins */}
-      <div className="absolute inset-0 flex items-end pb-12 md:pb-20">
-        <div className="px-4 md:px-8 lg:px-14 max-w-4xl w-full space-y-5 md:space-y-7">
-          {/* Badge */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="flex flex-wrap items-center gap-2"
-          >
-            <span className="animate-softPulse text-xs md:text-sm tracking-widest uppercase px-4 py-2 rounded-full glass-card border-cyan-300/50 backdrop-blur-md font-semibold flex items-center gap-1.5">
-              <SparklesIcon className="w-4 h-4 text-cyan-300" /> Featured Tonight
-            </span>
-            {movie.genre && (
-              <span className="text-xs md:text-sm px-4 py-2 rounded-full bg-white/10 border border-white/25 backdrop-blur-sm font-medium">
-                {movie.genre}
+      {/* Content container */}
+      <div className="absolute inset-0 flex items-end pb-12 sm:pb-16 md:pb-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+          <div className="max-w-3xl space-y-4 sm:space-y-6">
+            
+            {/* Pill Badges */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="flex flex-wrap items-center gap-2"
+            >
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-red-600/90 text-white shadow-lg shadow-red-600/30 border border-red-400/40 backdrop-blur-md">
+                <Sparkles className="w-3.5 h-3.5 text-white" /> Featured Tonight
               </span>
-            )}
-          </motion.div>
+              {movie.genre && (
+                <span className="px-3 py-1 rounded-full text-[11px] font-semibold bg-white/[0.08] text-gray-200 border border-white/[0.15] backdrop-blur-md">
+                  {movie.genre}
+                </span>
+              )}
+              {movie.rating && (
+                <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-300 border border-amber-400/30 backdrop-blur-md">
+                  ★ {movie.rating.toFixed(1)}
+                </span>
+              )}
+            </motion.div>
 
-          {/* Title */}
-          <motion.h2
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.1 }}
-            className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.95] drop-shadow-2xl"
-          >
-            {movie.title}
-          </motion.h2>
-
-          {/* Description */}
-          <motion.p
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.15 }}
-            className="text-gray-200/95 text-base md:text-lg lg:text-xl max-w-3xl line-clamp-3 drop-shadow-lg leading-relaxed"
-          >
-            {movie.tagline || movie.description || "Experience the next chapter of cinematic storytelling."}
-          </motion.p>
-
-          {/* CTA Buttons */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.2 }}
-            className="flex items-center gap-4 flex-wrap pt-2"
-          >
-            <Link
-              href={`/movie/${movie.id}`}
-              className="focus-ring admin-button admin-button-primary px-8 md:px-10 py-3.5 rounded-full text-base md:text-lg font-bold shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 transition-all hover:-translate-y-0.5 flex items-center gap-2"
+            {/* Editorial Title */}
+            <motion.h1
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.1 }}
+              className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.95] text-white drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)]"
             >
-              <PlayIcon className="w-5 h-5" /> Watch Now
-            </Link>
-            <Link
-              href="/movies"
-              className="focus-ring admin-button admin-button-secondary px-8 md:px-10 py-3.5 rounded-full text-base md:text-lg font-bold backdrop-blur-md border-white/25 hover:border-white/40 transition-all"
+              {movie.title}
+            </motion.h1>
+
+            {/* Tagline / Description */}
+            <motion.p
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.15 }}
+              className="text-gray-300 text-sm sm:text-base md:text-lg max-w-2xl line-clamp-3 leading-relaxed drop-shadow-md font-normal"
             >
-              Explore More
-            </Link>
-          </motion.div>
+              {movie.tagline || movie.description || "Experience the next chapter of cinematic storytelling."}
+            </motion.p>
+
+            {/* CTAs */}
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, delay: 0.2 }}
+              className="flex items-center gap-3.5 flex-wrap pt-2"
+            >
+              <Link
+                href={`/movie/${movie.id}`}
+                className="btn-luxury-primary px-7 sm:px-9 py-3.5 rounded-full text-sm sm:text-base font-bold flex items-center gap-2.5 shadow-xl"
+              >
+                <Play className="w-4 h-4 fill-current ml-0.5" />
+                <span>Watch Now</span>
+              </Link>
+              <Link
+                href="/movies"
+                className="btn-luxury-secondary px-7 sm:px-9 py-3.5 rounded-full text-sm sm:text-base font-semibold flex items-center gap-2"
+              >
+                <Compass className="w-4 h-4 text-gray-300" />
+                <span>Explore More</span>
+              </Link>
+            </motion.div>
+
+          </div>
         </div>
       </div>
     </section>
@@ -208,8 +215,8 @@ function PremiereRow({ premieres, scheduled, loading }) {
 
   if (loading) {
     return (
-      <section className="px-4 md:px-10 lg:px-16 py-10 md:py-14">
-        <div className="h-10 bg-white/10 rounded w-56 mb-8" />
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14">
+        <div className="h-10 bg-white/10 rounded-xl w-56 mb-8 animate-pulse" />
         <SkeletonGrid count={3} columns={3} />
       </section>
     );
@@ -224,10 +231,12 @@ function PremiereRow({ premieres, scheduled, loading }) {
   };
 
   const Card = ({ p, accent, href, isLive }) => (
-    <Link href={href} className="group/card min-w-[280px] md:min-w-[320px] flex-shrink-0">
+    <Link href={href} className="group/card min-w-[280px] sm:min-w-[320px] md:min-w-[360px] flex-shrink-0">
       <article
-        className={`relative h-[200px] md:h-[220px] rounded-3xl overflow-hidden border transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_25px_50px_rgba(0,212,255,0.2)] ${
-          isLive ? "border-red-400/50 hover:border-red-300/80" : "border-cyan-300/30 hover:border-cyan-300/60"
+        className={`relative h-[210px] md:h-[230px] rounded-3xl overflow-hidden border transition-all duration-500 hover:-translate-y-1.5 shadow-lg ${
+          isLive
+            ? "border-red-500/50 hover:border-red-400 hover:shadow-[0_15px_40px_rgba(229,9,20,0.3)] bg-gradient-to-b from-red-950/40 to-black"
+            : "border-white/[0.1] hover:border-white/30 hover:shadow-[0_15px_40px_rgba(0,0,0,0.8)] bg-gradient-to-b from-white/[0.04] to-black"
         }`}
       >
         {p.bannerImage ? (
@@ -242,6 +251,7 @@ function PremiereRow({ premieres, scheduled, loading }) {
               src={p.bannerImage}
               alt=""
               fill
+              sizes="(max-width: 768px) 320px, 360px"
               className="object-cover transition-transform duration-700 group-hover/card:scale-105"
             />
           )
@@ -251,40 +261,48 @@ function PremiereRow({ premieres, scheduled, loading }) {
             style={{ background: `linear-gradient(135deg, ${accent})` }}
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-br from-transparent via-[#04070f]/40 to-[#04070f]/80" />
+        
+        {/* Vignette */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent" />
+        
         <div className="absolute inset-0 p-5 md:p-6 flex flex-col justify-between relative z-10">
           <div className="flex flex-wrap gap-2 text-xs">
             <span
-              className={`px-3 py-1.5 rounded-full backdrop-blur-md font-bold uppercase tracking-widest flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-full backdrop-blur-md font-black uppercase tracking-wider flex items-center gap-1.5 text-[10px] ${
                 p.status === "live"
-                  ? "bg-red-500/80 border border-red-300/50 text-white animate-pulse"
-                  : "bg-cyan-500/60 border border-cyan-300/40 text-white"
+                  ? "bg-red-600 text-white shadow-md shadow-red-600/40 border border-red-400/50"
+                  : "bg-white/[0.1] text-white border border-white/20"
               }`}
             >
               {p.status === "live" ? (
                 <>
-                  <span className="w-2.5 h-2.5 bg-white rounded-full animate-ping" /> LIVE NOW
+                  <span className="w-2 h-2 bg-white rounded-full animate-ping" /> LIVE NOW
                 </>
               ) : (
                 <>
-                  <ClockIcon className="w-3.5 h-3.5" /> Coming
+                  <Clock className="w-3 h-3 text-amber-400" /> Coming Soon
                 </>
               )}
             </span>
             {p.ticketRequired && p.ticketPrice && (
-              <span className="px-3 py-1.5 rounded-full bg-white/15 border border-white/25 backdrop-blur-md font-bold">
+              <span className="px-3 py-1.5 rounded-full bg-white/15 border border-white/25 backdrop-blur-md font-bold text-[10px] text-white flex items-center gap-1">
+                <Ticket className="w-3 h-3 text-amber-400" />
                 ₹{p.ticketPrice}
               </span>
             )}
-            <span className="px-3 py-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md font-medium">
+            <span className="px-3 py-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-md font-medium text-[10px] text-gray-200">
               {getTicketInfo(p)}
             </span>
           </div>
 
           <div>
-            <h3 className="text-lg md:text-xl font-black line-clamp-1 drop-shadow-lg">{p.title}</h3>
-            <p className="text-xs md:text-sm text-gray-200/90 mt-2 line-clamp-1">
-              {p.status === "live" ? "Join now and be part of the experience" : "Reserve your spot for this exclusive event"}
+            <h3 className="text-base md:text-lg font-black text-white line-clamp-1 drop-shadow-md group-hover/card:text-red-400 transition-colors">
+              {p.title}
+            </h3>
+            <p className="text-xs text-gray-300 mt-1 line-clamp-1 font-normal">
+              {p.status === "live"
+                ? "Join now and be part of the experience"
+                : "Reserve your spot for this exclusive event"}
             </p>
           </div>
         </div>
@@ -297,11 +315,11 @@ function PremiereRow({ premieres, scheduled, loading }) {
   return (
     <>
       {livePremieres.length > 0 && (
-        <section className="px-4 md:px-10 lg:px-16 py-10 md:py-16">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
           <SectionHeader
             title={
-              <span className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
+              <span className="flex items-center gap-2.5">
+                <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse shrink-0" />
                 <span>Live Premieres</span>
               </span>
             }
@@ -311,14 +329,14 @@ function PremiereRow({ premieres, scheduled, loading }) {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="flex gap-5 md:gap-6 overflow-x-auto hide-scrollbar pb-4"
+            className="flex gap-4 md:gap-6 overflow-x-auto hide-scrollbar pb-4 pt-1 snap-x"
           >
             {livePremieres.map((p) => (
               <Card
                 key={p.id}
                 p={p}
                 isLive
-                accent="rgba(239, 68, 68, 0.3), rgba(236, 72, 153, 0.2), rgba(99, 102, 241, 0.25)"
+                accent="rgba(229, 9, 20, 0.4), rgba(15, 23, 42, 0.8)"
                 href={`/premiere/${p.id}/join`}
               />
             ))}
@@ -327,19 +345,22 @@ function PremiereRow({ premieres, scheduled, loading }) {
       )}
 
       {scheduledPremieres.length > 0 && (
-        <section className="px-4 md:px-10 lg:px-16 py-10 md:py-16">
-          <SectionHeader title="Coming Up Soon" subtitle="Upcoming premieres and special sessions" />
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+          <SectionHeader
+            title="Coming Up Soon"
+            subtitle="Upcoming premieres and special sessions"
+          />
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="flex gap-5 md:gap-6 overflow-x-auto hide-scrollbar pb-4"
+            className="flex gap-4 md:gap-6 overflow-x-auto hide-scrollbar pb-4 pt-1 snap-x"
           >
             {scheduledPremieres.map((p) => (
               <Card
                 key={p.id}
                 p={p}
-                accent="rgba(251, 191, 36, 0.3), rgba(249, 115, 22, 0.2), rgba(99, 102, 241, 0.25)"
+                accent="rgba(245, 158, 11, 0.3), rgba(15, 23, 42, 0.8)"
                 href={`/premiere/${p.id}/join`}
               />
             ))}
@@ -353,8 +374,8 @@ function PremiereRow({ premieres, scheduled, loading }) {
 function MovieRow({ title, subtitle, movies, loading }) {
   if (loading) {
     return (
-      <section className="px-4 md:px-10 lg:px-16 py-10 md:py-14">
-        <div className="h-10 bg-white/10 rounded w-56 mb-8" />
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        <div className="h-8 bg-white/10 rounded-xl w-56 mb-6 animate-pulse" />
         <SkeletonGrid count={5} columns={5} />
       </section>
     );
@@ -363,21 +384,18 @@ function MovieRow({ title, subtitle, movies, loading }) {
   if (!movies?.length) return null;
 
   return (
-    <section className="px-4 md:px-10 lg:px-16 py-10 md:py-16">
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
       <SectionHeader title={title} subtitle={subtitle} />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "0px 0px -100px 0px" }}
+        viewport={{ once: true, margin: "0px 0px -80px 0px" }}
         transition={{ duration: 0.5 }}
-        className="flex gap-5 md:gap-6 overflow-x-auto hide-scrollbar pb-10 pt-4 group"
+        className="flex gap-4 sm:gap-5 md:gap-6 overflow-x-auto hide-scrollbar pb-8 pt-2"
       >
         {movies.map((movie) => (
-          <div
-            key={movie.id}
-            className="flex-shrink-0 transition-transform duration-300 hover:scale-[1.02]"
-          >
+          <div key={movie.id} className="flex-shrink-0">
             <MovieHoverCard movie={movie} />
           </div>
         ))}
@@ -460,7 +478,7 @@ export default function HomeClient() {
 
             return { id: doc.id, ...data, status, displayTime: display };
           })
-          .filter((p) => !p.archived) // Filter out archived/disabled premieres from homepage
+          .filter((p) => !p.archived)
           .sort((a, b) => (b.displayTime?.getTime?.() || 0) - (a.displayTime?.getTime?.() || 0));
 
         const liveList = premiereData.filter((p) => p.status === "live");
@@ -533,15 +551,17 @@ export default function HomeClient() {
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center text-center px-4">
-        <div className="glass-card rounded-2xl px-6 py-8 max-w-sm w-full">
-          <WarningIcon className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-black mb-2">Something went wrong</h2>
-          <p className="text-gray-300 text-sm mb-6">
+        <div className="glass-card rounded-3xl p-8 max-w-md w-full border border-white/10 shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-5 text-amber-400">
+            <AlertTriangle className="w-8 h-8" />
+          </div>
+          <h2 className="text-2xl font-black text-white mb-2 tracking-tight">Something went wrong</h2>
+          <p className="text-gray-300 text-sm mb-6 leading-relaxed">
             We&apos;re having trouble loading content. Please try refreshing the page.
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition"
+            className="w-full btn-luxury-primary py-3 rounded-xl text-sm font-bold shadow-lg"
           >
             Refresh Page
           </button>
@@ -555,18 +575,16 @@ export default function HomeClient() {
       <h1 className="sr-only">Chakradhar Stream</h1>
       {loading ? (
         <div className="space-y-12 pb-16">
-          {/* Main Hero Banner skeleton */}
-          <div className="h-[75vh] md:h-[92vh] w-full bg-white/5 animate-pulse -mt-20 md:-mt-24" />
-          
-          {/* Movie rows skeletons */}
-          <div className="px-4 md:px-8 lg:px-14 space-y-4">
-            <div className="h-8 bg-white/10 rounded w-48 animate-pulse" />
+          <div className="h-[80vh] md:h-[92vh] w-full bg-white/[0.04] animate-pulse -mt-20 md:-mt-24" />
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+            <div className="h-8 bg-white/10 rounded-xl w-48 animate-pulse" />
             <div className="flex gap-6 overflow-x-hidden">
-              <div className="w-[160px] md:w-[220px] lg:w-[260px] aspect-[2/3] bg-white/5 rounded-3xl animate-pulse shrink-0" />
-              <div className="w-[160px] md:w-[220px] lg:w-[260px] aspect-[2/3] bg-white/5 rounded-3xl animate-pulse shrink-0" />
-              <div className="w-[160px] md:w-[220px] lg:w-[260px] aspect-[2/3] bg-white/5 rounded-3xl animate-pulse shrink-0" />
-              <div className="w-[160px] md:w-[220px] lg:w-[260px] aspect-[2/3] bg-white/5 rounded-3xl animate-pulse shrink-0" />
-              <div className="w-[160px] md:w-[220px] lg:w-[260px] aspect-[2/3] bg-white/5 rounded-3xl animate-pulse shrink-0" />
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="w-[160px] sm:w-[200px] md:w-[240px] aspect-[2/3] bg-white/[0.04] rounded-3xl animate-pulse shrink-0"
+                />
+              ))}
             </div>
           </div>
         </div>
@@ -574,7 +592,11 @@ export default function HomeClient() {
         <>
           <CinematicHero movie={hero} loading={loading} />
 
-          <PremiereRow premieres={premieres} scheduled={scheduledPremieresData} loading={loading} />
+          <PremiereRow
+            premieres={premieres}
+            scheduled={scheduledPremieresData}
+            loading={loading}
+          />
 
           <MovieRow
             title="Trending Now"
@@ -582,12 +604,14 @@ export default function HomeClient() {
             movies={trending}
             loading={loading}
           />
+
           <MovieRow
             title="Editors' Choice"
             subtitle="Handpicked spotlight picks"
             movies={featured}
             loading={loading}
           />
+
           <MovieRow
             title="Latest Drops"
             subtitle="Freshly released titles"
@@ -597,9 +621,12 @@ export default function HomeClient() {
 
           {/* Latest Posters Section */}
           {latestPosters.length > 0 && (
-            <section className="px-4 md:px-8 lg:px-14 py-8">
-              <SectionHeader title="Latest Posters" subtitle="Explore our curated movie poster collection" />
-              <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory">
+            <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+              <SectionHeader
+                title="Latest Posters"
+                subtitle="Explore our curated movie poster collection"
+              />
+              <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 hide-scrollbar snap-x snap-mandatory">
                 {latestPosters.map((poster, idx) => (
                   <Link
                     key={poster.id}
@@ -610,11 +637,15 @@ export default function HomeClient() {
                       initial={{ opacity: 0, y: 20 }}
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true }}
-                      transition={{ delay: idx * 0.05 }}
-                      className="relative w-[160px] md:w-[200px] lg:w-[220px] aspect-[3/4] rounded-2xl overflow-hidden border border-white/15 group-hover:border-cyan-300/40 transition shadow-lg group-hover:shadow-cyan-500/10"
+                      transition={{ delay: idx * 0.04 }}
+                      className="relative w-[160px] sm:w-[190px] md:w-[220px] aspect-[3/4] rounded-2xl md:rounded-3xl overflow-hidden border border-white/[0.08] group-hover:border-red-500/40 transition-all duration-300 shadow-lg group-hover:shadow-[0_15px_35px_rgba(0,0,0,0.8)]"
                     >
                       {poster.imageUrl?.startsWith("data:") ? (
-                        <img src={poster.imageUrl} alt={poster.caption || "Poster"} className="w-full h-full object-cover group-hover:scale-105 transition duration-700" />
+                        <img
+                          src={poster.imageUrl}
+                          alt={poster.caption || "Poster"}
+                          className="w-full h-full object-cover group-hover:scale-105 transition duration-700"
+                        />
                       ) : poster.imageUrl ? (
                         <Image
                           src={poster.imageUrl}
@@ -624,18 +655,24 @@ export default function HomeClient() {
                           className="object-cover group-hover:scale-105 transition duration-700"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-cyan-900 to-blue-900 flex items-center justify-center">
-                          <PosterIcon className="w-8 h-8 text-cyan-300" />
+                        <div className="w-full h-full bg-gradient-to-br from-red-950 to-black flex items-center justify-center">
+                          <Film className="w-8 h-8 text-red-400" />
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition duration-300 flex flex-col justify-end p-3">
-                        <p className="text-xs text-white line-clamp-2">{poster.caption || ""}</p>
-                        <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-300 font-semibold">
-                          <span className="flex items-center gap-0.5">
-                            <WishlistIcon className="w-3 h-3 text-rose-500 fill-current" /> {poster.likesCount || 0}
+                      
+                      {/* Hover Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3.5">
+                        <p className="text-xs text-white font-bold line-clamp-2 leading-tight">
+                          {poster.caption || "Chakradhar Poster"}
+                        </p>
+                        <div className="flex items-center gap-3 mt-2 text-[10px] text-gray-300 font-semibold">
+                          <span className="flex items-center gap-1">
+                            <Heart className="w-3 h-3 text-rose-500 fill-current" />
+                            {poster.likesCount || 0}
                           </span>
-                          <span className="flex items-center gap-0.5">
-                            <ChatIcon className="w-3 h-3 text-cyan-400" /> {poster.commentsCount || 0}
+                          <span className="flex items-center gap-1">
+                            <MessageSquare className="w-3 h-3 text-sky-400" />
+                            {poster.commentsCount || 0}
                           </span>
                         </div>
                       </div>

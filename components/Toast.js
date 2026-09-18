@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from "lucide-react";
 
 const ToastContext = createContext();
 
@@ -44,54 +45,74 @@ export function useToast() {
 
 function ToastContainer({ toasts, onRemove }) {
   return (
-    <div className="fixed bottom-6 right-6 z-[9999] max-w-sm pointer-events-none">
+    <div className="fixed bottom-6 right-6 z-[9999] max-w-sm w-full pointer-events-none px-4 sm:px-0">
       <AnimatePresence mode="popLayout">
         {toasts.map((toast) => (
-          <Toast key={toast.id} toast={toast} onRemove={onRemove} />
+          <ToastItem key={toast.id} toast={toast} onRemove={onRemove} />
         ))}
       </AnimatePresence>
     </div>
   );
 }
 
-function Toast({ toast, onRemove }) {
-  const bgColor = {
-    success: "bg-green-600",
-    error: "bg-red-600",
-    warning: "bg-amber-600",
-    info: "bg-blue-600",
-  }[toast.type] || "bg-gray-600";
-
-  const icon = {
-    success: "✓",
-    error: "✕",
-    warning: "⚠",
-    info: "ℹ",
-  }[toast.type] || "•";
+function ToastItem({ toast, onRemove }) {
+  const styles = {
+    success: {
+      border: "border-emerald-500/30",
+      glow: "shadow-[0_8px_30px_rgba(16,185,129,0.15)]",
+      icon: <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />,
+      accent: "from-emerald-950/80 to-black/90",
+    },
+    error: {
+      border: "border-rose-500/30",
+      glow: "shadow-[0_8px_30px_rgba(244,63,94,0.2)]",
+      icon: <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />,
+      accent: "from-rose-950/80 to-black/90",
+    },
+    warning: {
+      border: "border-amber-500/30",
+      glow: "shadow-[0_8px_30px_rgba(245,158,11,0.15)]",
+      icon: <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />,
+      accent: "from-amber-950/80 to-black/90",
+    },
+    info: {
+      border: "border-sky-500/30",
+      glow: "shadow-[0_8px_30px_rgba(56,189,248,0.15)]",
+      icon: <Info className="w-5 h-5 text-sky-400 shrink-0" />,
+      accent: "from-slate-900/90 to-black/90",
+    },
+  }[toast.type] || {
+    border: "border-white/20",
+    glow: "shadow-2xl",
+    icon: <Info className="w-5 h-5 text-gray-400 shrink-0" />,
+    accent: "from-slate-900/90 to-black/90",
+  };
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 20, x: 100 }}
-      animate={{ opacity: 1, y: 0, x: 0 }}
-      exit={{ opacity: 0, y: -20, x: 100 }}
-      transition={{ duration: 0.3 }}
+      initial={{ opacity: 0, y: 30, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9, y: 15 }}
+      transition={{ type: "spring", stiffness: 350, damping: 28 }}
       className="pointer-events-auto mb-3"
     >
       <div
-        className={`${bgColor} text-white px-4 py-3 rounded-lg flex items-center gap-3 shadow-lg border border-white/10 cursor-pointer`}
+        className={`bg-gradient-to-r ${styles.accent} backdrop-blur-xl border ${styles.border} ${styles.glow} text-white px-4 py-3.5 rounded-2xl flex items-center gap-3.5 cursor-pointer`}
         onClick={() => onRemove(toast.id)}
       >
-        <span className="text-lg font-bold">{icon}</span>
-        <p className="text-sm flex-1">{toast.message}</p>
+        {styles.icon}
+        <p className="text-xs sm:text-sm font-medium flex-1 text-gray-100 leading-snug">
+          {toast.message}
+        </p>
         <button
           onClick={(e) => {
             e.stopPropagation();
             onRemove(toast.id);
           }}
-          className="text-white/70 hover:text-white transition"
+          className="text-gray-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
         >
-          ✕
+          <X className="w-4 h-4" />
         </button>
       </div>
     </motion.div>

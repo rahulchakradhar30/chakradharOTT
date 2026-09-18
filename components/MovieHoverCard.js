@@ -8,7 +8,7 @@ import { db } from "@/firebase";
 import { doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import AuthModal from "@/components/AuthModal";
-import { PlayIcon, WishlistIcon, TrophyIcon } from "@/components/Icon";
+import { Play, Heart, Trophy, Star, Plus, Check } from "lucide-react";
 
 export default function MovieHoverCard({ movie }) {
   const { user } = useAuth();
@@ -18,7 +18,7 @@ export default function MovieHoverCard({ movie }) {
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   const hoverTimeoutRef = useRef(null);
 
-  // Generate a random match percentage (e.g. 94% - 99%) based on movie ID hash to keep it consistent
+  // Generate a consistent match percentage (94% - 99%)
   const matchPercentage = (() => {
     let hash = 0;
     const str = movie.id || "";
@@ -31,9 +31,13 @@ export default function MovieHoverCard({ movie }) {
   useEffect(() => {
     const checkSaved = async () => {
       if (!user || !movie.id) return;
-      const ref = doc(db, "users", user.uid, "wishlist", movie.id);
-      const snap = await getDoc(ref);
-      setSaved(snap.exists());
+      try {
+        const ref = doc(db, "users", user.uid, "wishlist", movie.id);
+        const snap = await getDoc(ref);
+        setSaved(snap.exists());
+      } catch (e) {
+        console.warn("Wishlist check skipped:", e);
+      }
     };
     checkSaved();
   }, [user, movie.id]);
@@ -52,11 +56,11 @@ export default function MovieHoverCard({ movie }) {
   }, []);
 
   const handleMouseEnter = () => {
-    if (isTouchDevice) return; // Disable hover overlay on touch/mobile viewports
+    if (isTouchDevice) return;
     clearTimeout(hoverTimeoutRef.current);
     hoverTimeoutRef.current = setTimeout(() => {
       setIsHovered(true);
-    }, 450); // Delay hover state to prevent aggressive activation on scroll
+    }, 350);
   };
 
   const handleMouseLeave = () => {
@@ -92,68 +96,85 @@ export default function MovieHoverCard({ movie }) {
     return () => clearTimeout(hoverTimeoutRef.current);
   }, []);
 
-  const poster = movie.posterImage || movie.bannerImage || "https://images.unsplash.com/photo-1524985069026-dd778a71c7b4";
+  const poster =
+    movie.posterImage ||
+    movie.bannerImage ||
+    "https://images.unsplash.com/photo-1524985069026-dd778a71c7b4";
 
   return (
     <>
       <div
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className="relative w-[160px] md:w-[220px] lg:w-[260px] aspect-[2/3] shrink-0"
+        className="relative w-[155px] sm:w-[190px] md:w-[220px] lg:w-[250px] aspect-[2/3] shrink-0 select-none group"
       >
         {/* Base Card */}
         <Link href={`/movie/${movie.id}`} className="block w-full h-full">
-          <div className="relative w-full h-full rounded-2xl md:rounded-3xl overflow-hidden border border-white/15 bg-gradient-to-br from-[#0b1328] to-[#04070f] transition-all duration-300">
+          <div className="relative w-full h-full rounded-2xl md:rounded-3xl overflow-hidden border border-white/[0.08] group-hover:border-red-500/40 bg-[#0c0f17] shadow-lg group-hover:shadow-[0_12px_30px_rgba(0,0,0,0.8)] transition-all duration-300">
             {poster.startsWith("data:image/") ? (
               <img
                 src={poster}
                 alt={movie.title || "Movie"}
-                className="absolute inset-0 w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
             ) : (
               <Image
                 src={poster}
                 alt={movie.title || "Movie"}
                 fill
-                className="object-cover"
-                sizes="(max-width: 768px) 160px, (max-width: 1024px) 220px, 260px"
+                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                sizes="(max-width: 640px) 155px, (max-width: 768px) 190px, (max-width: 1024px) 220px, 250px"
               />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#04070f] via-transparent to-transparent" />
+            
+            {/* Ambient Multi-Layer Vignette */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent" />
+            <div className="absolute inset-0 bg-radial-gradient from-transparent to-black/60 opacity-0 group-hover:opacity-100 transition-opacity" />
 
             {/* Base Title overlay */}
-            <div className="absolute bottom-4 left-4 right-4 z-10">
-              <h3 className="text-sm md:text-base font-bold text-gray-200 line-clamp-1">
+            <div className="absolute bottom-3 left-3 right-3 z-10 space-y-1">
+              <h3 className="text-xs md:text-sm font-extrabold text-white line-clamp-1 group-hover:text-red-400 transition-colors">
                 {movie.title}
               </h3>
-              {movie.rating && (
-                <div className="text-[10px] md:text-xs text-yellow-400 font-bold mt-1">
-                  ⭐ {movie.rating.toFixed(1)}
-                </div>
-              )}
+              <div className="flex items-center justify-between text-[10px] md:text-xs">
+                {movie.genre && (
+                  <span className="text-gray-400 font-medium truncate max-w-[65%]">
+                    {movie.genre}
+                  </span>
+                )}
+                {movie.rating ? (
+                  <div className="flex items-center gap-1 text-amber-400 font-bold">
+                    <Star className="w-3 h-3 fill-current" />
+                    <span>{movie.rating.toFixed(1)}</span>
+                  </div>
+                ) : (
+                  <span className="text-emerald-400 font-bold">{matchPercentage}% Match</span>
+                )}
+              </div>
             </div>
           </div>
         </Link>
 
-        {/* Hover Hover Zoom & Details */}
+        {/* Hover Zoom & Details Card */}
         <AnimatePresence>
           {isHovered && (
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 0 }}
-              animate={{ scale: 1.15, opacity: 1, y: -20 }}
+              animate={{ scale: 1.18, opacity: 1, y: -24 }}
               exit={{ scale: 0.95, opacity: 0, y: 0 }}
-              transition={{ type: "spring", stiffness: 260, damping: 25 }}
-              className="absolute top-0 left-0 w-full z-50 bg-[#080d1e] rounded-3xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-cyan-500/30"
+              transition={{ type: "spring", stiffness: 300, damping: 26 }}
+              className="absolute top-0 left-0 w-full z-50 bg-[#0a0d14] rounded-3xl overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.95)] border border-red-500/40"
               style={{ originY: 0.3 }}
             >
               {/* Media Section */}
-              <Link href={`/movie/${movie.id}`} className="block relative aspect-video w-full">
+              <Link href={`/movie/${movie.id}`} className="block relative aspect-video w-full bg-black">
                 {movie.videoUrl ? (
                   <video
                     src={movie.videoUrl}
                     autoPlay
                     muted
                     loop
+                    playsInline
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -169,74 +190,75 @@ export default function MovieHoverCard({ movie }) {
                       alt={movie.title || "Movie"}
                       fill
                       className="object-cover"
-                      sizes="260px"
+                      sizes="280px"
                     />
                   )
                 )}
-                {/* Visual Mute Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#080d1e] via-transparent to-transparent" />
-                <div className="absolute bottom-3 left-3 text-xs bg-black/60 px-2.5 py-1 rounded backdrop-blur font-black tracking-widest text-cyan-300">
-                  PREVIEW
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0a0d14] via-transparent to-transparent" />
+                <div className="absolute top-2 left-2 text-[9px] bg-red-600/90 text-white font-black px-2 py-0.5 rounded-full tracking-wider uppercase shadow-md">
+                  Preview
                 </div>
               </Link>
 
               {/* Detail Info Panel */}
-              <div className="p-4 space-y-3 bg-[#080d1e]">
-                {/* Row 1: Actions */}
+              <div className="p-3.5 space-y-2.5 bg-[#0a0d14]">
+                {/* Actions Row */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <Link
                       href={`/movie/${movie.id}`}
-                      className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center hover:bg-cyan-100 transition-colors"
+                      className="w-7 h-7 rounded-full bg-white text-black flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-md"
                       title="Play Movie"
                     >
-                      <PlayIcon className="w-3.5 h-3.5 text-black fill-current ml-0.5" />
+                      <Play className="w-3 h-3 fill-current ml-0.5" />
                     </Link>
                     <button
                       onClick={toggleWishlist}
-                      className={`w-8 h-8 rounded-full border flex items-center justify-center transition-colors ${saved
-                          ? "bg-red-500 border-red-500 text-white"
-                          : "border-white/20 hover:border-white/40 text-gray-300 hover:text-white"
-                        }`}
+                      className={`w-7 h-7 rounded-full border flex items-center justify-center transition-all ${
+                        saved
+                          ? "bg-red-600 border-red-500 text-white shadow-md shadow-red-600/30"
+                          : "border-white/20 hover:border-white/50 text-gray-300 hover:text-white bg-white/[0.06]"
+                      }`}
+                      title="Wishlist"
                     >
                       {saved ? (
-                        <WishlistIcon className="w-3.5 h-3.5 text-white fill-current" />
+                        <Check className="w-3.5 h-3.5 text-white" />
                       ) : (
-                        <svg className="w-3.5 h-3.5 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="12" y1="5" x2="12" y2="19"></line>
-                          <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
+                        <Plus className="w-3.5 h-3.5 text-gray-200" />
                       )}
                     </button>
                     <Link
                       href={`/movie/${movie.id}/quiz`}
-                      className="w-8 h-8 rounded-full border border-white/20 hover:border-white/40 text-gray-300 hover:text-white flex items-center justify-center transition-colors"
+                      className="w-7 h-7 rounded-full border border-white/20 hover:border-amber-400/60 bg-white/[0.06] text-gray-300 hover:text-amber-300 flex items-center justify-center transition-all"
                       title="Play Trivia Quiz"
                     >
-                      <TrophyIcon className="w-3.5 h-3.5 text-yellow-400 fill-current" />
+                      <Trophy className="w-3 h-3 text-amber-400" />
                     </Link>
                   </div>
-                  <div className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-gray-400 font-bold uppercase tracking-wider">
+                  <div className="text-[9px] bg-white/[0.08] px-2 py-0.5 rounded-full text-gray-300 font-bold uppercase tracking-wider border border-white/10">
                     {movie.genre || "Drama"}
                   </div>
                 </div>
 
-                {/* Row 2: Match Score & Rating */}
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-green-400 font-bold">{matchPercentage}% Match</span>
+                {/* Score & Rating */}
+                <div className="flex items-center gap-2 text-[11px]">
+                  <span className="text-emerald-400 font-bold">{matchPercentage}% Match</span>
                   {movie.year && <span className="text-gray-400">{movie.year}</span>}
                   {movie.rating && (
-                    <span className="text-yellow-400 font-medium">⭐ {movie.rating.toFixed(1)}</span>
+                    <span className="text-amber-400 font-bold flex items-center gap-0.5">
+                      <Star className="w-2.5 h-2.5 fill-current" />
+                      {movie.rating.toFixed(1)}
+                    </span>
                   )}
                 </div>
 
-                {/* Row 3: Synopsis / Title */}
+                {/* Title & Tagline */}
                 <div>
-                  <h4 className="text-sm font-black text-white line-clamp-1">
+                  <h4 className="text-xs font-black text-white line-clamp-1">
                     {movie.title}
                   </h4>
-                  <p className="text-[11px] text-gray-400 line-clamp-2 mt-1 font-medium leading-normal">
-                    {movie.tagline || movie.description || "Stream this cinematic highlight on Chakradhar STREAM."}
+                  <p className="text-[10px] text-gray-400 line-clamp-2 mt-0.5 leading-tight">
+                    {movie.tagline || movie.description || "Experience this cinematic highlight on Chakradhar Stream."}
                   </p>
                 </div>
               </div>

@@ -8,38 +8,40 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/Toast";
 import WishlistButton from "@/components/WishlistButton";
 import {
-  ThumbsUpIcon,
-  ThumbsDownIcon,
-  ShareIcon,
-  RobotIcon,
-  UserIcon,
-} from "@/components/Icon";
+  ThumbsUp,
+  ThumbsDown,
+  Share2,
+  Bot,
+  Users,
+} from "lucide-react";
 
 export default function MovieActionBar({ movieId, title, initialLikes = 0, posterImage }) {
   const { user } = useAuth();
   const { addToast } = useToast();
 
   const [likes, setLikes] = useState(initialLikes);
-  const [userVote, setUserVote] = useState(null); // 'like', 'dislike', or null
+  const [userVote, setUserVote] = useState(null);
   const [liking, setLiking] = useState(false);
 
-  // Load user vote from localStorage for persistent voting feel
   useEffect(() => {
     if (!movieId) return;
-    const storedVote = localStorage.getItem(`vote_movie_${movieId}`);
-    if (storedVote) {
-      setUserVote(storedVote);
+    try {
+      const storedVote = localStorage.getItem(`vote_movie_${movieId}`);
+      if (storedVote) {
+        setUserVote(storedVote);
+      }
+    } catch (e) {
+      console.warn("Storage vote check error:", e);
     }
   }, [movieId]);
 
-  // HANDLE REAL LIKE TOGGLE
+  // Handle Like
   const handleLike = async () => {
     if (liking) return;
     try {
       setLiking(true);
 
       if (userVote === "like") {
-        // Undo like
         setUserVote(null);
         setLikes((prev) => Math.max(0, prev - 1));
         localStorage.removeItem(`vote_movie_${movieId}`);
@@ -48,7 +50,6 @@ export default function MovieActionBar({ movieId, title, initialLikes = 0, poste
           likesCount: increment(-1),
         });
       } else {
-        // Apply like
         const isSwitching = userVote === "dislike";
         setUserVote("like");
         setLikes((prev) => prev + (isSwitching ? 1 : 1));
@@ -66,7 +67,7 @@ export default function MovieActionBar({ movieId, title, initialLikes = 0, poste
     }
   };
 
-  // HANDLE DISLIKE TOGGLE
+  // Handle Dislike
   const handleDislike = () => {
     if (userVote === "dislike") {
       setUserVote(null);
@@ -84,7 +85,7 @@ export default function MovieActionBar({ movieId, title, initialLikes = 0, poste
     }
   };
 
-  // HANDLE SHARE ACTION
+  // Handle Share
   const handleShare = async () => {
     const shareData = {
       title: title || "Chakradhar Stream Movie",
@@ -107,75 +108,78 @@ export default function MovieActionBar({ movieId, title, initialLikes = 0, poste
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 py-3 border-b border-white/10 pb-4 my-2">
-      {/* LEFT: JOIN WATCH PARTY / PREMIERE BUTTON (High-Contrast Cyan with Visible Bold Text) */}
+    <div className="flex flex-wrap items-center justify-between gap-3 py-3 border-b border-white/[0.08] pb-4 my-2">
+      {/* Left: Watch Party Button */}
       <div className="flex items-center gap-3">
         <Link
           href={`/watch-party?movie=${movieId}`}
-          className="bg-cyan-500 hover:bg-cyan-400 text-black font-extrabold text-xs md:text-sm py-2.5 px-6 rounded-full transition-all shadow-lg shadow-cyan-500/20 flex items-center gap-2 active:scale-95"
+          className="btn-luxury-primary text-xs sm:text-sm py-2.5 px-5 rounded-full flex items-center gap-2 shadow-lg"
         >
-          <UserIcon className="w-4 h-4 text-black stroke-[2.5]" />
-          <span className="tracking-wide">Watch Party / Premiere</span>
+          <Users className="w-4 h-4 text-white" />
+          <span className="font-bold tracking-wide">Watch Party / Premiere</span>
         </Link>
       </div>
 
-      {/* RIGHT: CONNECTED FUNCTIONAL ACTION PILLS */}
-      <div className="flex flex-wrap items-center gap-2.5">
-        
-        {/* 1. LIKE / DISLIKE SPLIT PILL */}
-        <div className="flex items-center bg-[#272727] hover:bg-[#313131] rounded-full text-xs font-bold text-white overflow-hidden border border-white/15 shadow-sm">
+      {/* Right: Action Pills */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Like / Dislike Split Pill */}
+        <div className="flex items-center bg-white/[0.06] hover:bg-white/[0.09] rounded-full text-xs font-bold text-white overflow-hidden border border-white/[0.1] shadow-inner transition-colors">
           <button
             type="button"
             onClick={handleLike}
             disabled={liking}
-            className={`px-4 py-2.5 flex items-center gap-2 transition border-r border-white/15 ${
+            className={`px-3.5 py-2 flex items-center gap-1.5 transition-colors border-r border-white/10 ${
               userVote === "like"
-                ? "bg-cyan-500/20 text-cyan-300 font-black"
-                : "hover:bg-white/10 text-white"
+                ? "bg-red-600/30 text-red-300 font-bold"
+                : "hover:bg-white/10 text-gray-200"
             }`}
             title="Like this movie"
           >
-            <ThumbsUpIcon className={`w-4 h-4 ${userVote === "like" ? "text-cyan-400 fill-cyan-400" : "text-white"}`} />
+            <ThumbsUp
+              className={`w-3.5 h-3.5 ${userVote === "like" ? "text-red-400 fill-current" : "text-gray-300"}`}
+            />
             <span>{likes > 0 ? likes.toLocaleString() : "Like"}</span>
           </button>
 
           <button
             type="button"
             onClick={handleDislike}
-            className={`px-3.5 py-2.5 transition ${
+            className={`px-3 py-2 transition-colors ${
               userVote === "dislike"
-                ? "bg-rose-500/20 text-rose-300"
-                : "hover:bg-white/10 text-white"
+                ? "bg-rose-600/30 text-rose-300"
+                : "hover:bg-white/10 text-gray-200"
             }`}
             title="Dislike"
           >
-            <ThumbsDownIcon className={`w-4 h-4 ${userVote === "dislike" ? "text-rose-400 fill-rose-400" : "text-white"}`} />
+            <ThumbsDown
+              className={`w-3.5 h-3.5 ${userVote === "dislike" ? "text-rose-400 fill-current" : "text-gray-300"}`}
+            />
           </button>
         </div>
 
-        {/* 2. SHARE BUTTON */}
+        {/* Share Button */}
         <button
           type="button"
           onClick={handleShare}
-          className="bg-[#272727] hover:bg-[#313131] border border-white/15 text-xs font-bold px-4 py-2.5 rounded-full flex items-center gap-2 transition text-white shadow-sm active:scale-95"
+          className="bg-white/[0.06] hover:bg-white/[0.09] border border-white/[0.1] text-xs font-bold px-3.5 py-2 rounded-full flex items-center gap-1.5 transition text-gray-200 hover:text-white shadow-inner active:scale-95"
           title="Share Movie Link"
         >
-          <ShareIcon className="w-4 h-4 text-white" />
+          <Share2 className="w-3.5 h-3.5 text-gray-300" />
           <span>Share</span>
         </button>
 
-        {/* 3. ASK AI GUIDE BUTTON */}
+        {/* Ask AI Guide */}
         <Link
           href={`/ai-assistant?prompt=${encodeURIComponent(`Tell me about the movie ${title}`)}`}
-          className="bg-[#272727] hover:bg-[#313131] border border-white/15 text-xs font-bold px-4 py-2.5 rounded-full flex items-center gap-2 transition text-white shadow-sm active:scale-95"
+          className="bg-white/[0.06] hover:bg-white/[0.09] border border-white/[0.1] text-xs font-bold px-3.5 py-2 rounded-full flex items-center gap-1.5 transition text-gray-200 hover:text-white shadow-inner active:scale-95"
           title="Ask AI Guide about this movie"
         >
-          <RobotIcon className="w-4 h-4 text-cyan-400" />
+          <Bot className="w-3.5 h-3.5 text-red-400" />
           <span>Ask AI</span>
         </Link>
 
-        {/* 4. WATCHLIST / SAVE BUTTON */}
-        <div className="bg-[#272727] hover:bg-[#313131] border border-white/15 text-xs font-bold px-3 py-1.5 rounded-full flex items-center transition shadow-sm">
+        {/* Wishlist Button */}
+        <div className="bg-white/[0.06] hover:bg-white/[0.09] border border-white/[0.1] text-xs font-bold px-2.5 py-1.5 rounded-full flex items-center transition shadow-inner">
           <WishlistButton
             movie={{
               id: movieId,

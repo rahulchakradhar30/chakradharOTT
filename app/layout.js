@@ -25,29 +25,33 @@ export const metadata = buildBaseMetadata({
   },
 });
 
+import SmoothScroll from "@/components/SmoothScroll";
+
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body className="app-shell min-h-screen flex flex-col text-white">
+    <html lang="en" className="dark">
+      <body className="app-shell min-h-screen flex flex-col text-white antialiased selection:bg-red-600/40 selection:text-white">
         {/* Razorpay Script */}
         <Script
           src="https://checkout.razorpay.com/v1/checkout.js"
           strategy="beforeInteractive"
         />
 
-        <ToastProvider>
-          <AuthProvider>
-            <ThemeProvider>
-              <Navbar />
-              <NotificationListener />
-              <MainContentContainer>
-                {children}
-              </MainContentContainer>
-              <Footer />
-              <CookieBanner />
-            </ThemeProvider>
-          </AuthProvider>
-        </ToastProvider>
+        <SmoothScroll>
+          <ToastProvider>
+            <AuthProvider>
+              <ThemeProvider>
+                <Navbar />
+                <NotificationListener />
+                <MainContentContainer>
+                  {children}
+                </MainContentContainer>
+                <Footer />
+                <CookieBanner />
+              </ThemeProvider>
+            </AuthProvider>
+          </ToastProvider>
+        </SmoothScroll>
       </body>
     </html>
   );

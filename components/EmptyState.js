@@ -2,31 +2,32 @@
 
 import { motion } from "framer-motion";
 import {
-  WarningIcon,
-  SearchIcon,
-  MovieIcon,
-  SparklesIcon,
-  PopcornIcon
-} from "@/components/Icon";
+  AlertTriangle,
+  Search,
+  Film,
+  Sparkles,
+  Clapperboard,
+} from "lucide-react";
+import Button from "@/components/Button";
 
 function EmojiToIcon({ emoji }) {
-  if (!emoji) return <WarningIcon className="w-12 h-12 text-cyan-500/60 mx-auto" />;
+  if (!emoji) return <AlertTriangle className="w-10 h-10 text-red-500/80 mx-auto" />;
   if (typeof emoji !== "string") return emoji;
 
   switch (emoji.trim()) {
     case "🔍":
     case "🔎":
-      return <SearchIcon className="w-12 h-12 text-cyan-400 mx-auto" />;
+      return <Search className="w-10 h-10 text-red-400 mx-auto" />;
     case "❌":
-      return <WarningIcon className="w-12 h-12 text-rose-500/80 mx-auto" />;
+      return <AlertTriangle className="w-10 h-10 text-rose-500/90 mx-auto" />;
     case "🎬":
-      return <MovieIcon className="w-12 h-12 text-cyan-400 mx-auto" />;
+      return <Film className="w-10 h-10 text-red-400 mx-auto" />;
     case "✨":
-      return <SparklesIcon className="w-12 h-12 text-yellow-400 mx-auto" />;
+      return <Sparkles className="w-10 h-10 text-amber-400 mx-auto" />;
     case "🍿":
-      return <PopcornIcon className="w-12 h-12 text-cyan-400 mx-auto" />;
+      return <Clapperboard className="w-10 h-10 text-red-400 mx-auto" />;
     default:
-      return <WarningIcon className="w-12 h-12 text-cyan-500/60 mx-auto" />;
+      return <AlertTriangle className="w-10 h-10 text-red-500/80 mx-auto" />;
   }
 }
 
@@ -38,23 +39,31 @@ export default function EmptyState({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4 }}
-      className="flex flex-col items-center justify-center py-16 px-4"
+      className="flex flex-col items-center justify-center py-20 px-6 max-w-md mx-auto text-center"
     >
-      <div className="mb-4">
-        <EmojiToIcon emoji={icon} />
+      <div className="relative mb-6">
+        <div className="absolute inset-0 bg-red-600/15 blur-2xl rounded-full scale-150" />
+        <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-b from-white/10 to-white/5 border border-white/15 flex items-center justify-center backdrop-blur-xl shadow-2xl">
+          <EmojiToIcon emoji={icon} />
+        </div>
       </div>
-      <h3 className="text-xl font-semibold text-white mb-2">{title}</h3>
-      <p className="text-gray-400 text-center max-w-sm mb-6">{description}</p>
+      <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight mb-2.5">
+        {title}
+      </h3>
+      <p className="text-gray-400 text-sm leading-relaxed max-w-xs mb-8">
+        {description}
+      </p>
       {action && (
-        <button
+        <Button
           onClick={action.onClick}
-          className="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition"
+          variant="primary"
+          size="md"
         >
           {action.label}
-        </button>
+        </Button>
       )}
     </motion.div>
   );

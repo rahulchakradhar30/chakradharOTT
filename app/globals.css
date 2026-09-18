@@ -1,36 +1,63 @@
 @import "tailwindcss";
 
 :root {
-  --bg-primary: #0f0f0f;
-  --bg-secondary: #0f0f0f;
-  --bg-tertiary: #181818;
-  --surface-glass: rgba(255, 255, 255, 0.08);
-  --surface-soft: rgba(255, 255, 255, 0.05);
-  --border-soft: rgba(255, 255, 255, 0.12);
-  --text-primary: #ffffff;
-  --text-muted: #aaaaaa;
-  --brand-cyan: #ff0000;
-  --brand-blue: #cc0000;
-  --brand-pink: #ff4d8d;
-  --brand-amber: #ffae33;
+  --bg-base: #06070a;
+  --bg-primary: #0a0c10;
+  --bg-secondary: #0f1218;
+  --bg-tertiary: #161b24;
+  --surface-glass: rgba(255, 255, 255, 0.05);
+  --surface-glass-hover: rgba(255, 255, 255, 0.09);
+  --surface-soft: rgba(255, 255, 255, 0.03);
+  --border-soft: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.15);
+  --border-glow: rgba(229, 9, 20, 0.4);
+  --text-primary: #f8fafc;
+  --text-muted: #94a3b8;
+  --brand-red: #e50914;
+  --brand-red-hover: #ff2a3a;
+  --brand-cyan: #38bdf8;
+  --brand-blue: #2563eb;
+  --brand-amber: #f59e0b;
 }
 
 * {
   box-sizing: border-box;
 }
 
-html,
-body {
-  min-height: 100%;
-  color: var(--text-primary);
-  background-color: #0f0f0f;
-  background-attachment: fixed;
-  font-feature-settings: "ss01", "cv10";
+html {
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html.lenis, html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-scrolling iframe {
+  pointer-events: none;
 }
 
 body {
   margin: 0;
+  min-height: 100%;
+  color: var(--text-primary);
+  background-color: var(--bg-base);
   overflow-x: hidden;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
 a {
@@ -39,26 +66,34 @@ a {
 }
 
 ::selection {
-  background: rgba(255, 0, 0, 0.4);
+  background: rgba(229, 9, 20, 0.45);
   color: #ffffff;
 }
 
+/* ── Modern Custom Scrollbars ── */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 7px;
+  height: 7px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(6, 7, 10, 0.85);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, var(--brand-cyan), var(--brand-blue));
-  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 9999px;
+  transition: background 0.2s ease;
 }
 
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(229, 9, 20, 0.6);
+}
+
+/* ── Ambient Background Texture ── */
 .app-shell {
   position: relative;
+  background-color: var(--bg-base);
 }
 
 .app-shell::before {
@@ -66,19 +101,87 @@ a {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 42px 42px;
-  mask-image: radial-gradient(circle at center, black 35%, transparent 100%);
-  z-index: -1;
+  background-image: 
+    radial-gradient(circle at 15% 15%, rgba(229, 9, 20, 0.04), transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(56, 189, 248, 0.03), transparent 40%),
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 48px 48px, 48px 48px;
+  mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+  z-index: 0;
+}
+
+/* ── Glassmorphic Surfaces ── */
+.glass-nav {
+  background: rgba(8, 10, 14, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .glass-card {
-  background: #212121;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 1rem;
+  background: rgba(15, 18, 24, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-soft);
+  border-radius: 1.25rem;
+  transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
 }
 
+.glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.glass-panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.5rem;
+}
+
+.glass-pill {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* ── Luxury Buttons & Inputs ── */
+.btn-luxury-primary {
+  position: relative;
+  background: linear-gradient(135deg, #e50914 0%, #b8050e 100%);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 4px 20px rgba(229, 9, 20, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-luxury-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(229, 9, 20, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  background: linear-gradient(135deg, #ff1e2b 0%, #c80812 100%);
+}
+
+.btn-luxury-secondary {
+  position: relative;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #ffffff;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-luxury-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+/* Compatibility classes preserved */
 .admin-page {
   position: relative;
   min-height: 100%;
@@ -86,10 +189,10 @@ a {
 }
 
 .admin-surface {
-  background: #212121;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #11141c;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 1.25rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
 }
 
 .admin-section {
@@ -100,16 +203,17 @@ a {
 
 .admin-kicker {
   font-size: 0.72rem;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgba(163, 230, 255, 0.86);
+  color: rgba(56, 189, 248, 0.9);
+  font-weight: 700;
 }
 
 .admin-title {
   font-size: clamp(1.8rem, 2.7vw, 3.4rem);
-  line-height: 1.02;
+  line-height: 1.05;
   font-weight: 800;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
 }
 
 .admin-lead {
@@ -126,8 +230,8 @@ a {
 }
 
 .admin-panel {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 1.25rem;
   backdrop-filter: blur(16px);
 }
@@ -136,25 +240,26 @@ a {
 .admin-textarea,
 .admin-select {
   width: 100%;
-  border-radius: 0.95rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.28);
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.45);
   padding: 0.85rem 1rem;
   color: var(--text-primary);
-  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
-}
-
-.admin-input::placeholder,
-.admin-textarea::placeholder {
-  color: rgba(185, 196, 226, 0.55);
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .admin-input:focus,
 .admin-textarea:focus,
 .admin-select:focus {
   outline: none;
-  border-color: rgba(0, 212, 255, 0.7);
-  background: rgba(0, 0, 0, 0.35);
+  border-color: rgba(229, 9, 20, 0.7);
+  box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.15);
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.admin-input::placeholder,
+.admin-textarea::placeholder {
+  color: rgba(148, 163, 184, 0.55);
 }
 
 .admin-button {
@@ -162,10 +267,10 @@ a {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 0.95rem;
-  padding: 0.85rem 1.1rem;
+  border-radius: 0.85rem;
+  padding: 0.8rem 1.2rem;
   font-weight: 700;
-  transition: transform 0.2s ease, opacity 0.2s ease, background 0.2s ease;
+  transition: transform 0.2s ease, opacity 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .admin-button:hover {
@@ -173,12 +278,13 @@ a {
 }
 
 .admin-button-primary {
-  background: linear-gradient(135deg, var(--brand-cyan), var(--brand-blue));
+  background: linear-gradient(135deg, #e50914, #b8050e);
   color: #fff;
+  box-shadow: 0 4px 16px rgba(229, 9, 20, 0.3);
 }
 
 .admin-button-secondary {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.07);
   color: var(--text-primary);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -191,15 +297,15 @@ a {
   padding: 0.35rem 0.75rem;
   font-size: 0.75rem;
   font-weight: 700;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.05);
 }
 
 .admin-empty {
   border-radius: 1.25rem;
   border: 1px dashed rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.04);
-  padding: 1.25rem;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 1.5rem;
   color: var(--text-muted);
 }
 
@@ -216,8 +322,8 @@ a {
 }
 
 .section-title {
-  letter-spacing: 0.02em;
-  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-weight: 800;
   color: var(--text-primary);
 }
 
@@ -226,7 +332,7 @@ a {
 }
 
 .focus-ring:focus-visible {
-  outline: 2px solid var(--brand-cyan);
+  outline: 2px solid #e50914;
   outline-offset: 2px;
 }
 
@@ -239,45 +345,53 @@ a {
   display: none;
 }
 
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
+/* ── Shimmer & Pulse Animation ── */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  100% {
+    transform: translateX(100%);
   }
 }
 
-.animate-fadeUp {
-  animation: fadeUp 0.8s ease-out forwards;
+.animate-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.animate-shimmer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.05) 20%,
+    rgba(255, 255, 255, 0.1) 60%,
+    rgba(255, 255, 255, 0)
+  );
+  animation: shimmer 2s infinite;
 }
 
 @keyframes softPulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 rgba(0, 212, 255, 0);
+  0%, 100% {
+    box-shadow: 0 0 0 rgba(229, 9, 20, 0);
   }
   50% {
-    box-shadow: 0 0 24px rgba(0, 212, 255, 0.35);
+    box-shadow: 0 0 24px rgba(229, 9, 20, 0.35);
   }
 }
 
 .animate-softPulse {
-  animation: softPulse 2.2s ease-in-out infinite;
+  animation: softPulse 2.4s ease-in-out infinite;
 }
 
-/* ── iOS Safe Area Support ── */
-.safe-area-top {
-  padding-top: env(safe-area-inset-top, 0);
-}
-
-.safe-area-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 0);
-}
-
-/* ── Mobile Admin Styles ── */
+/* ── Mobile & Responsive Optimizations ── */
 @media (max-width: 768px) {
   .admin-title {
     font-size: clamp(1.4rem, 5vw, 2rem);
@@ -303,56 +417,21 @@ a {
   .admin-textarea,
   .admin-select {
     padding: 0.75rem 0.85rem;
-    font-size: 16px; /* Prevents iOS zoom on focus */
-    border-radius: 0.85rem;
+    font-size: 16px;
+    border-radius: 0.75rem;
   }
 
   .admin-button {
     padding: 0.75rem 1rem;
-    min-height: 44px; /* Touch-friendly minimum */
+    min-height: 44px;
     font-size: 0.875rem;
-  }
-
-  .admin-surface {
-    border-radius: 1.25rem;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  }
-
-  .admin-chip {
-    font-size: 0.65rem;
-    padding: 0.25rem 0.6rem;
-  }
-
-  .glass-card {
-    border-radius: 1.25rem;
   }
 }
 
-/* ── Touch-friendly elements ── */
 button,
 a,
 input[type="checkbox"],
 input[type="radio"],
 select {
   touch-action: manipulation;
-}
-
-/* Ensure minimum tap target size on mobile */
-@media (max-width: 768px) {
-  button:not(.admin-chip),
-  a.admin-button {
-    min-height: 44px;
-    min-width: 44px;
-  }
-}
-
-/* ── Smooth scrolling ── */
-html {
-  scroll-behavior: smooth;
-  -webkit-text-size-adjust: 100%;
-}
-
-/* ── Prevent overscroll on iOS ── */
-body {
-  overscroll-behavior-y: none;
 }

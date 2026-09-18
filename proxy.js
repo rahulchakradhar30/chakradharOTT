@@ -11,8 +11,8 @@ export function proxy(request) {
     return NextResponse.next();
   }
 
-  // Protect admin routes
-  if (pathname.startsWith("/admin")) {
+  // Protect admin and sub-admin routes
+  if (pathname.startsWith("/admin") || pathname.startsWith("/sub-admin")) {
     const session = request.cookies.get("admin-session")?.value;
 
     if (!session) {
@@ -26,5 +26,5 @@ export function proxy(request) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/sub-admin/:path*"],
 };

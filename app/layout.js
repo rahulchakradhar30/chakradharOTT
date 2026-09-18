@@ -7,6 +7,7 @@ import MainContentContainer from "@/components/MainContentContainer";
 import { ToastProvider } from "@/components/Toast";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
+import SmoothScroll from "@/components/SmoothScroll";
 import Script from "next/script";
 import {
   SITE_DESCRIPTION,
@@ -24,8 +25,6 @@ export const metadata = buildBaseMetadata({
     google: "Csxb9nxcEL6g8tDMkQro8B9G0qlNfMIncWdLgN-T7p0",
   },
 });
-
-import SmoothScroll from "@/components/SmoothScroll";
 
 export default function RootLayout({ children }) {
   return (

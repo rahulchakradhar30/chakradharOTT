@@ -5,10 +5,13 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   // Override default ignores of eslint-config-next.
   globalIgnores([
-    // Default ignores of eslint-config-next:
+    "node_modules/**",
+    ".git/**",
     ".next/**",
     "out/**",
     "build/**",
+    "public/**",
+    "functions/**",
     "next-env.d.ts",
   ]),
 ]);

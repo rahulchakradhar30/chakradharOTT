@@ -21,6 +21,7 @@ import {
   BellIcon,
   SettingsIcon,
 } from "@/components/Icon";
+import AdminNotificationListener from "@/components/AdminNotificationListener";
 
 const ALL_NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", Icon: DashboardIcon },
@@ -436,6 +437,10 @@ export default function AdminLayoutClient({ children }) {
           children
         )}
       </main>
+
+      {!isLoginPage && adminEmail && (
+        <AdminNotificationListener adminEmail={adminEmail} />
+      )}
     </div>
   );
 }

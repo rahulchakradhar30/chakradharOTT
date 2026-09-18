@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/firebase";
 import { doc, getDoc } from "firebase/firestore";
-import Link from "next/link";
-
 import { WishlistIcon } from "@/components/Icon";
 
 export default function CardWishlistIcon({ movieId }) {

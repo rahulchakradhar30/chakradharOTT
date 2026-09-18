@@ -303,7 +303,7 @@ export default function AIAssistantClient() {
                             />
                             {movie.rating && (
                               <div className="absolute top-2 right-2 bg-yellow-400/90 text-[#04070f] font-black px-2 py-0.5 rounded text-[10px] shadow">
-                                ⭐ {movie.rating.toFixed(1)}
+                                ⭐ {Number(movie.rating).toFixed(1)}
                               </div>
                             )}
                           </div>

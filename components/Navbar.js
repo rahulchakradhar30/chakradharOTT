@@ -314,7 +314,7 @@ export default function Navbar() {
                               {movie.rating && (
                                 <span className="flex items-center gap-0.5 text-amber-400 font-semibold">
                                   <Star className="w-2.5 h-2.5 fill-current" />
-                                  {movie.rating.toFixed(1)}
+                                  {Number(movie.rating).toFixed(1)}
                                 </span>
                               )}
                             </div>

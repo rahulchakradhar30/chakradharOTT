@@ -208,7 +208,7 @@ export function AuthProvider({ children }) {
       const { doc, getDoc, setDoc, collection, getDocs, query, where } = await import("firebase/firestore");
       const { db } = await import("@/firebase");
       
-      const emailLower = firebaseUser.email.toLowerCase();
+      const emailLower = (firebaseUser.email || "").toLowerCase();
       const userRef = doc(db, "users", firebaseUser.uid);
       const userSnap = await getDoc(userRef);
       

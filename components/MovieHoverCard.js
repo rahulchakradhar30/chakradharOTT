@@ -21,7 +21,7 @@ export default function MovieHoverCard({ movie }) {
   // Generate a consistent match percentage (94% - 99%)
   const matchPercentage = (() => {
     let hash = 0;
-    const str = movie.id || "";
+    const str = movie?.id || "";
     for (let i = 0; i < str.length; i++) {
       hash = str.charCodeAt(i) + ((hash << 5) - hash);
     }
@@ -30,7 +30,7 @@ export default function MovieHoverCard({ movie }) {
 
   useEffect(() => {
     const checkSaved = async () => {
-      if (!user || !movie.id) return;
+      if (!user || !movie?.id) return;
       try {
         const ref = doc(db, "users", user.uid, "wishlist", movie.id);
         const snap = await getDoc(ref);
@@ -40,7 +40,7 @@ export default function MovieHoverCard({ movie }) {
       }
     };
     checkSaved();
-  }, [user, movie.id]);
+  }, [user, movie?.id]);
 
   useEffect(() => {
     const checkTouch = () => {
@@ -145,7 +145,7 @@ export default function MovieHoverCard({ movie }) {
                 {movie.rating ? (
                   <div className="flex items-center gap-1 text-amber-400 font-bold">
                     <Star className="w-3 h-3 fill-current" />
-                    <span>{movie.rating.toFixed(1)}</span>
+                    <span>{Number(movie.rating).toFixed(1)}</span>
                   </div>
                 ) : (
                   <span className="text-emerald-400 font-bold">{matchPercentage}% Match</span>
@@ -247,7 +247,7 @@ export default function MovieHoverCard({ movie }) {
                   {movie.rating && (
                     <span className="text-amber-400 font-bold flex items-center gap-0.5">
                       <Star className="w-2.5 h-2.5 fill-current" />
-                      {movie.rating.toFixed(1)}
+                      {Number(movie.rating).toFixed(1)}
                     </span>
                   )}
                 </div>

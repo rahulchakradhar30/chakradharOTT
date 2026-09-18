@@ -154,7 +154,7 @@ function CinematicHero({ movie, loading }) {
               )}
               {movie.rating && (
                 <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-300 border border-amber-400/30 backdrop-blur-md">
-                  ★ {movie.rating.toFixed(1)}
+                  ★ {Number(movie.rating).toFixed(1)}
                 </span>
               )}
             </motion.div>

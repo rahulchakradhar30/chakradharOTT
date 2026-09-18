@@ -10,6 +10,7 @@ import { WishlistIcon } from "@/components/Icon";
 
 export default function WishlistButton({ movie }) {
   const { user } = useAuth();
+  const movieId = movie?.id;
 
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -19,7 +20,7 @@ export default function WishlistButton({ movie }) {
 
   useEffect(() => {
     const checkWishlist = async () => {
-      if (!user) {
+      if (!user || !movieId) {
         setSaved(false);
         setLoading(false);
         return;
@@ -30,7 +31,7 @@ export default function WishlistButton({ movie }) {
         "users",
         user.uid,
         "wishlist",
-        movie.id
+        movieId
       );
 
       const snap = await getDoc(docRef);
@@ -39,7 +40,7 @@ export default function WishlistButton({ movie }) {
     };
 
     checkWishlist();
-  }, [user, movie.id]);
+  }, [user, movieId]);
 
   /* ---------- Toggle Wishlist ---------- */
 

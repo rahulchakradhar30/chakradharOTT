@@ -53,7 +53,12 @@ export default function AdminLogin() {
     }
 
     startCooldown(30);
-    setMessage("6-digit verification code sent to your email.");
+    if (data.devOtp) {
+      setMessage(`Dev Mode Code: ${data.devOtp} (also printed in server console)`);
+      setOtp(data.devOtp);
+    } else {
+      setMessage(data.message || "6-digit verification code sent to your email.");
+    }
   };
 
   /* Step 1: Validate Email & Password -> fetch 2FA options */
@@ -90,29 +95,40 @@ export default function AdminLogin() {
       await signInWithEmailAndPassword(auth, cleanEmail, password);
 
       // 3. Fetch 2FA methods enabled for account
-      const methodsRes = await fetch("/api/admin/2fa/methods", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: cleanEmail }),
-      });
+      let initialTab = "otp";
+      try {
+        const methodsRes = await fetch("/api/admin/2fa/methods", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: cleanEmail }),
+        });
 
-      if (methodsRes.ok) {
-        const mData = await methodsRes.json();
-        setTwoFactorData(mData);
-        if (mData.passkeysCount > 0) {
-          setActiveTab("passkey");
-        } else if (mData.totpEnabled) {
-          setActiveTab("totp");
-        } else {
-          setActiveTab("otp");
-          await sendEmailOtp(cleanEmail);
+        if (methodsRes.ok) {
+          const mData = await methodsRes.json();
+          setTwoFactorData(mData);
+          if (mData.passkeysCount > 0) {
+            initialTab = "passkey";
+          } else if (mData.totpEnabled) {
+            initialTab = "totp";
+          } else {
+            initialTab = "otp";
+          }
         }
-      } else {
-        setActiveTab("otp");
-        await sendEmailOtp(cleanEmail);
+      } catch (methodsErr) {
+        console.warn("Could not query 2FA methods:", methodsErr);
       }
 
+      setActiveTab(initialTab);
+      // Advance to step 2 so user can always see options and enter code
       setStep(2);
+
+      if (initialTab === "otp") {
+        try {
+          await sendEmailOtp(cleanEmail);
+        } catch (otpErr) {
+          setErrorMsg(otpErr.message || "Failed to send OTP code to email.");
+        }
+      }
     } catch (error) {
       const code = error.code || "";
       if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
